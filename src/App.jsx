@@ -206,17 +206,18 @@ const AlertBanner = ({ settings }) => {
     switch (stage) {
       case 'Submission': // سمائي
         return { 
-            bg: 'linear-gradient(135deg, #0891b2 0%, #06b6d4 100%)', 
-            glow: '#22d3ee',
-            border: 'border-cyan-500/40',
-            ripple: 'border-cyan-400'
+          bg: 'linear-gradient(135deg, #00f2ea 0%, #25f4ee 100%)', 
+          glow: '#25f4ee',
+          border: 'border-[#25f4ee]/40',
+          ripple: 'border-[#25f4ee]',
         };
       case 'Voting': // زهري
         return { 
-            bg: 'linear-gradient(135deg, #be185d 0%, #db2777 100%)', 
-            glow: '#f472b6',
-            border: 'border-pink-500/40',
-            ripple: 'border-pink-400'
+          bg: 'linear-gradient(135deg, #fe2c55 0%, #ee1d52 100%)', 
+          glow: '#fe2c55',
+          border: 'border-[#fe2c55]/40',
+          ripple: 'border-[#fe2c55]',
+          iconColor: 'text-white'
         };
       case 'Ended': // أخضر
         return { 

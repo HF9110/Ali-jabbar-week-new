@@ -38,7 +38,10 @@ import {
   Trash2,
   Filter,
   User,
-  Lock
+  Lock,
+  Zap,
+  PauseCircle,
+  Trophy
 } from 'lucide-react';
 
 // =========================================================================
@@ -78,11 +81,12 @@ const PATHS = {
 // 2. CONSTANTS & STYLES
 // =========================================================================
 
+// تحديث الأيقونات لتناسب التصميم الجديد
 const STAGES = {
   Submission: { label: 'استقبال المشاركات', color: 'blue', icon: Clock },
-  Voting: { label: 'التصويت مفتوح', color: 'yellow', icon: CheckCircle },
-  Paused: { label: 'متوقفة مؤقتاً', color: 'red', icon: AlertTriangle },
-  Ended: { label: 'إعلان النتائج', color: 'green', icon: Crown },
+  Voting: { label: 'التصويت مفتوح', color: 'yellow', icon: Zap }, // أيقونة طاقة للتصويت
+  Paused: { label: 'متوقفة مؤقتاً', color: 'red', icon: PauseCircle },
+  Ended: { label: 'إعلان النتائج', color: 'green', icon: Trophy },
 };
 
 const COUNTRIES = [
@@ -189,55 +193,105 @@ const InputField = ({ label, id, value, onChange, type = 'text', placeholder = '
   </div>
 );
 
-// شريط التنبيه المتطور (Advanced Animated Alert Banner)
+// =========================================================================
+// *** NEW PROFESSIONAL ALERT BANNER ***
+// =========================================================================
 const AlertBanner = ({ settings }) => {
-  const stageInfo = STAGES[settings.stage] || STAGES.Voting;
-  const currentText = settings.stageTexts?.[settings.stage] || 'أهلاً بكم في المسابقة';
-  
-  // تحديد كلاس الأنميشن بناءً على المرحلة
-  let animationClass = "";
-  let glowColor = settings.mainColor;
+  const stage = settings.stage || 'Voting';
+  const stageInfo = STAGES[stage];
+  const currentText = settings.stageTexts?.[stage] || 'أهلاً بكم في المسابقة';
 
-  if (settings.stage === 'Voting') {
-    animationClass = "animate-heartbeat border-red-500/50 shadow-red-500/20";
-  } else if (settings.stage === 'Submission') {
-    animationClass = "animate-pulse-slow border-blue-500/50 shadow-blue-500/20";
-    glowColor = "#3b82f6";
-  } else if (settings.stage === 'Ended') {
-    animationClass = "animate-shimmer border-yellow-500/50 shadow-yellow-500/20";
-    glowColor = "#eab308";
-  } else {
-    animationClass = "opacity-80 border-gray-500/50"; // Paused
-    glowColor = "#6b7280";
-  }
-  
+  // تكوين الأنماط بناءً على الحالة (Styles Config)
+  const getStyles = () => {
+    switch (stage) {
+      case 'Voting':
+        return {
+          containerClass: 'border-red-500/30 shadow-[0_0_40px_-10px_rgba(239,68,68,0.3)]',
+          bgGradient: `linear-gradient(135deg, ${settings.mainColor}dd 0%, #000 100%)`,
+          iconBg: 'bg-red-500/20 text-red-400',
+          animation: 'animate-pulse-glow'
+        };
+      case 'Submission':
+        return {
+          containerClass: 'border-blue-500/30 shadow-[0_0_40px_-10px_rgba(59,130,246,0.3)]',
+          bgGradient: 'linear-gradient(135deg, rgba(59,130,246,0.8) 0%, #000 100%)',
+          iconBg: 'bg-blue-500/20 text-blue-400',
+          animation: 'animate-flow'
+        };
+      case 'Paused':
+        return {
+          containerClass: 'border-orange-500/30',
+          bgGradient: 'repeating-linear-gradient(45deg, #1f1f1f, #1f1f1f 10px, #2a2a2a 10px, #2a2a2a 20px)', // Striped pattern
+          iconBg: 'bg-orange-500/20 text-orange-400',
+          animation: 'animate-none'
+        };
+      case 'Ended':
+        return {
+          containerClass: 'border-yellow-500/50 shadow-[0_0_50px_-15px_rgba(234,179,8,0.4)]',
+          bgGradient: 'linear-gradient(135deg, rgba(234,179,8,0.9) 0%, #000 100%)',
+          iconBg: 'bg-yellow-500/20 text-yellow-300',
+          animation: 'animate-shine-sweep'
+        };
+      default:
+        return {};
+    }
+  };
+
+  const styles = getStyles();
+
   return (
-    <div className={`mb-8 relative overflow-hidden rounded-xl shadow-2xl border-2 transition-all duration-500 ${animationClass}`}
-         style={{ 
-           backgroundColor: 'rgba(0,0,0,0.4)',
-           boxShadow: `0 0 20px ${glowColor}20`
-         }}>
+    <div className={`relative w-full mb-10 rounded-2xl overflow-hidden border-t border-l border-r ${styles.containerClass} group transition-all duration-500 transform hover:scale-[1.01]`}>
       <style>{`
-        @keyframes heartbeat { 0%, 100% { transform: scale(1); border-color: ${settings.mainColor}40; } 50% { transform: scale(1.01); border-color: ${settings.mainColor}; box-shadow: 0 0 25px ${settings.mainColor}40; } }
-        @keyframes pulse-slow { 0%, 100% { opacity: 1; } 50% { opacity: 0.8; } }
-        @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
-        .animate-heartbeat { animation: heartbeat 2s infinite ease-in-out; }
-        .animate-pulse-slow { animation: pulse-slow 3s infinite; }
-        .animate-shimmer { background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent); background-size: 200% 100%; animation: shimmer 3s infinite linear; }
-      `}</style>
-      
-      {/* خلفية ملونة خفيفة */}
-      <div className="absolute inset-0 opacity-20" style={{ backgroundColor: glowColor }}></div>
-
-      <div className="flex items-center justify-center p-4 text-white text-center relative z-10">
-        {/* أيقونة المرحلة */}
-        <div className="bg-white/10 p-2 rounded-full ml-3 shrink-0 absolute right-4 hidden md:block border border-white/10">
-          <stageInfo.icon className="w-5 h-5" style={{ color: glowColor }} />
-        </div>
+        @keyframes pulse-glow { 0%, 100% { opacity: 1; box-shadow: 0 0 20px ${settings.mainColor}40; } 50% { opacity: 0.9; box-shadow: 0 0 40px ${settings.mainColor}60; } }
+        @keyframes flow { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+        @keyframes shine-sweep { 0% { transform: translateX(-100%) skewX(-15deg); } 100% { transform: translateX(200%) skewX(-15deg); } }
+        @keyframes float-icon { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
         
-        <p className="font-bold tracking-wide drop-shadow-md" style={{ fontSize: `${settings.marqueeSize || 18}px` }}>
-           {currentText}
-        </p>
+        .animate-pulse-glow { animation: pulse-glow 3s infinite; }
+        .animate-flow { background-size: 200% 200%; animation: flow 5s ease infinite; }
+        .animate-float { animation: float-icon 3s ease-in-out infinite; }
+      `}</style>
+
+      {/* الخلفية الديناميكية */}
+      <div 
+        className={`absolute inset-0 z-0 ${styles.animation}`}
+        style={{ background: styles.bgGradient }}
+      />
+      
+      {/* طبقة الزجاج */}
+      <div className="absolute inset-0 backdrop-blur-md bg-black/40 z-0" />
+
+      {/* تأثير اللمعان (للمنتهية) */}
+      {stage === 'Ended' && (
+        <div className="absolute inset-0 z-10 w-1/2 h-full bg-gradient-to-r from-transparent via-white/20 to-transparent animate-[shine-sweep_3s_infinite_linear]" />
+      )}
+
+      {/* المحتوى */}
+      <div className="relative z-20 flex items-center justify-between px-6 py-5 md:px-8">
+        
+        {/* النص */}
+        <div className="flex-1 text-center md:text-right">
+          <div className="flex items-center justify-center md:justify-start gap-3 mb-1">
+            <span className={`text-xs font-bold uppercase tracking-widest px-2 py-0.5 rounded bg-black/30 border border-white/10 text-white/80`}>
+              {stageInfo.label}
+            </span>
+            {/* نقطة الحالة */}
+            <span className="flex h-2 w-2 relative">
+              <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${stage === 'Voting' ? 'bg-red-400' : 'bg-white'}`}></span>
+              <span className={`relative inline-flex rounded-full h-2 w-2 ${stage === 'Voting' ? 'bg-red-500' : 'bg-white'}`}></span>
+            </span>
+          </div>
+          
+          <h2 className="text-white font-bold leading-tight drop-shadow-lg" 
+              style={{ fontSize: `${settings.marqueeSize}px` }}>
+            {currentText}
+          </h2>
+        </div>
+
+        {/* الأيقونة العائمة */}
+        <div className={`hidden md:flex items-center justify-center w-14 h-14 rounded-2xl border border-white/10 shadow-lg animate-float ${styles.iconBg} backdrop-blur-xl ml-6`}>
+          <stageInfo.icon size={28} />
+        </div>
       </div>
     </div>
   );
@@ -854,18 +908,6 @@ const ContestApp = () => {
 
   return (
     <div className="min-h-screen bg-[#050505] text-white font-sans selection:bg-[var(--highlight-color)] selection:text-black">
-       <style>{`
-         @keyframes shine { 100% { transform: translateX(150%); } }
-         .animate-shine { animation: shine 1.5s infinite; }
-         @keyframes scroll { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
-         .animate-scroll { animation: scroll 30s linear infinite; }
-         .hover\\:pause:hover { animation-play-state: paused; }
-         ::-webkit-scrollbar { width: 6px; } 
-         ::-webkit-scrollbar-track { background: #000; } 
-         ::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }
-         ::-webkit-scrollbar-thumb:hover { background: var(--main-color); }
-       `}</style>
-
        <Routes>
          <Route path="/admin" element={user ? (
             <div className="container mx-auto px-4 py-8 animate-fadeIn">
@@ -891,7 +933,6 @@ const ContestApp = () => {
                    <div className="flex items-center gap-3" onClick={() => window.location.reload()}>
                       <img src={settings.logoUrl} className="object-contain rounded-lg" style={{ height: `${settings.logoSize || 100}px` }} alt="Logo"/>
                    </div>
-                   {/* تم إزالة زر الإدارة من هنا بناءً على طلبك */}
                 </div>
              </header>
 

@@ -1961,27 +1961,34 @@ const App = () => {
     }
   }, [settings]);
 
-  // التحقق من رابط المدير عند التحميل
+  // التعامل مع الدخول التلقائي كمدير عبر الرابط
   useEffect(() => {
-    // إذا كنا في وضع المدير بالفعل، لا داعي للتحقق مرة أخرى
+    // 1. إذا كنت مديراً بالفعل، لا تفعل شيئاً
     if (adminMode) return;
 
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.has('admin') && urlParams.get('admin') === 'true') {
-      // نعتمد على المتغير userId من الـ hook بدلاً من auth.currentUser المباشر لضمان التزامن
-      const isLoggedIn = userId && userId !== 'public-read-only' && userId !== 'mock-user-id';
+    // 2. إذا كانت نافذة الدخول مفتوحة، انتظر المستخدم ولا تفعل شيئاً
+    if (authModalOpen) return;
 
-      if (isLoggedIn) {
-        setAdminMode(true);
-        setAuthModalOpen(false); 
-      } else {
-         // لا نفتح النافذة إلا إذا تأكدنا من تحميل حالة المصادقة
-         if (isAuthReady) {
-            setAuthModalOpen(true);
-         }
-      }
+    const urlParams = new URLSearchParams(window.location.search);
+    const shouldBeAdmin = urlParams.has('admin') && urlParams.get('admin') === 'true';
+
+    // 3. إذا لم يكن الرابط يطلب الدخول كمدير، لا تفعل شيئاً
+    if (!shouldBeAdmin) return;
+
+    // 4. انتظر حتى نتأكد من حالة المصادقة (Firebase)
+    if (!isAuthReady) return;
+
+    const isLoggedIn = userId && userId !== 'public-read-only' && userId !== 'mock-user-id';
+
+    if (isLoggedIn) {
+      // إذا كان المستخدم مسجلاً بالفعل، فعّل وضع المدير
+      setAdminMode(true);
+      setAuthModalOpen(false);
+    } else {
+      // إذا لم يكن مسجلاً، افتح نافذة الدخول (مرة واحدة فقط)
+      setAuthModalOpen(true);
     }
-  }, [isAuthReady, userId, adminMode]); // إضافة adminMode و userId للاعتماديات
+  }, [isAuthReady, userId, adminMode, authModalOpen]);
 
   const initDataRef = useRef(false);
 

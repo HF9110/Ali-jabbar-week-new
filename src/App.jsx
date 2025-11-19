@@ -71,7 +71,7 @@ const getEnvVar = (key, fallback) => {
   return fallback;
 };
 
-// ⚠️ المفتاح الاحتياطي فارغ للأمان. يجب ضبط المفتاح في بيئة النشر (Vercel/Netlify).
+// المفتاح الاحتياطي فارغ للأمان. يجب ضبط المفتاح في بيئة النشر (Vercel/Netlify).
 const VITE_FIREBASE_API_KEY = getEnvVar('VITE_FIREBASE_API_KEY', ''); 
 
 const userFirebaseConfig = {
@@ -84,7 +84,6 @@ const userFirebaseConfig = {
   measurementId: 'G-8XSRK7TE1K',
 };
 
-// ⬅️ متغير جديد لتتبع ما إذا كانت Firebase مهيأة بنجاح
 let isFirebaseInitialized = false; 
 let firebaseApp, db, auth;
 
@@ -94,7 +93,7 @@ if (VITE_FIREBASE_API_KEY) {
     firebaseApp = initializeApp(firebaseConfig);
     db = getFirestore(firebaseApp);
     auth = getAuth(firebaseApp);
-    isFirebaseInitialized = true; // ⬅️ تم التعيين بنجاح
+    isFirebaseInitialized = true; 
   } catch (e) {
     console.error('Firebase Initialization Failed:', e);
     isFirebaseInitialized = false;
@@ -123,7 +122,6 @@ const retryOperation = async (operation, maxRetries = 3, delay = 1000) => {
 
 // =========================================================================
 // 2. CONSTANTS (STAGES, COUNTRIES, MOCK DATA)
-// (تم ترك الثوابت كما هي لضمان عدم تغيير منطق التطبيق)
 // =========================================================================
 const STAGES = {
   Submission: { label: 'استقبال المشاركات', color: 'blue', icon: Clock },
@@ -322,7 +320,7 @@ const useAuth = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   useEffect(() => {
-    // ⬅️ التحقق الأول: إذا لم يتم تهيئة Firebase، عيِّن الحالة على الفور
+    // ⬅️ منطق Firebase Auth الأصلي (مع إضافة حالة تسجيل الدخول)
     if (!isFirebaseInitialized || !auth) {
       setUserId('mock-user-id');
       setIsLoggedIn(false);
@@ -334,9 +332,9 @@ const useAuth = () => {
       (user) => {
         if (user) {
           setUserId(user.uid);
-          setIsLoggedIn(true); 
+          setIsLoggedIn(true);
         } else {
-          setUserId('public-read-only'); 
+          setUserId('public-read-only');
           setIsLoggedIn(false);
         }
       },
@@ -494,7 +492,7 @@ const AdminAuthModal = ({ isOpen, onClose, onAuthSuccess }) => {
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
-      onClick={onClose} 
+      // ⬅️ الحل النهائي: تم إزالة onClick={onClose} من الـ div الخارجي
     >
       <GlassCard
         isGlassmorphism
@@ -1981,7 +1979,7 @@ const ContestApp = ({ isAdminRoute }) => {
   const [loading, setLoading] = useState(true);
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [voteConfirmData, setVoteConfirmData] = useState(null);
-  const { userId, isAuthReady, isLoggedIn } = useAuth(); 
+  const { isAuthReady, isLoggedIn } = useAuth(); 
   const [clickCount, setClickCount] = useState(0); 
   const [cooldown, setCooldown] = useState(0);
   const navigate = useNavigate(); 
@@ -2026,8 +2024,7 @@ const ContestApp = ({ isAdminRoute }) => {
     initDataRef.current = true;
 
     const initializeFirestore = async () => {
-      // ⬅️ إذا لم يتم التهيئة، سنعتمد على الإعدادات الافتراضية
-      if (!isFirebaseInitialized) {
+      if (!isFirebaseInitialized || !db) {
         console.warn("Using default settings due to uninitialized Firebase.");
         setSettings(DEFAULT_SETTINGS);
         setLoading(false);
@@ -2063,13 +2060,16 @@ const ContestApp = ({ isAdminRoute }) => {
       }
       setLoading(false);
     };
-    initializeFirestore();
+    // ⬅️ يجب انتظار انتهاء المصادقة قبل محاولة القراءة
+    if (isAuthReady) {
+        initializeFirestore();
+    }
+    
   }, [isAuthReady]);
 
   // 4. الاشتراك في تحديثات Firestore (Realtime Data)
   useEffect(() => {
-    // ⬅️ لا نشترك إذا لم يتم تهيئة Firebase
-    if (!isFirebaseInitialized || !isAuthReady) {
+    if (!isFirebaseInitialized || !isAuthReady || !db) {
       return;
     }
 
@@ -2165,7 +2165,6 @@ const ContestApp = ({ isAdminRoute }) => {
       console.warn(`الرجاء الانتظار ${cooldown} ثواني قبل التصويت مرة أخرى.`);
       return;
     }
-    // ⬅️ لا يمكن التصويت إذا لم يكن Firebase متصلاً
     if (!db || !isFirebaseInitialized) {
         console.error("Voting failed: Firebase is not initialized.");
         return;
@@ -2304,7 +2303,7 @@ const ContestApp = ({ isAdminRoute }) => {
                 onClick={() => handleConfirmVote(voteConfirmData)}
                 className="py-3 px-8 rounded-lg text-gray-900 font-semibold transition"
                 style={{ backgroundColor: settings.mainColor }}
-                disabled={cooldown > 0 || !isFirebaseInitialized} // ⬅️ إضافة شرط Firebase
+                disabled={cooldown > 0 || !isFirebaseInitialized} 
               >
                 تأكيد التصويت
               </button>

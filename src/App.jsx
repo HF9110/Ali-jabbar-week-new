@@ -399,12 +399,12 @@ const AlertBanner = ({ settings }) => {
             `}</style>
       <div
         className={`pulse-animation p-1 rounded-full border-2 mr-4`}
-        style={{ borderColor: iconBorderColor }}
+        style={{ borderColor: iconBorderColor, maxHeight: '40px', maxWidth: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
       >
-        <stageInfo.icon className="w-6 h-6" />
+        <stageInfo.icon className="w-5 h-5" />
       </div>
-      <span className="font-bold ml-2 text-xl">{stageInfo.label}</span>
-      <span className="mr-auto text-lg">{marqueeText}</span>
+      <span className="font-bold ml-2 text-xl whitespace-nowrap">{stageInfo.label}</span>
+      <span className="mr-auto text-lg truncate ml-4">{marqueeText}</span>
       <img
         src={logoUrl}
         alt="Logo"
@@ -1963,12 +1963,17 @@ const App = () => {
 
   // التحقق من رابط المدير عند التحميل
   useEffect(() => {
+    // إذا كنا في وضع المدير بالفعل، لا داعي للتحقق مرة أخرى
+    if (adminMode) return;
+
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.has('admin') && urlParams.get('admin') === 'true') {
-      // إذا كان المستخدم مسجل دخول بالفعل كمدير
-      if (auth?.currentUser) {
+      // نعتمد على المتغير userId من الـ hook بدلاً من auth.currentUser المباشر لضمان التزامن
+      const isLoggedIn = userId && userId !== 'public-read-only' && userId !== 'mock-user-id';
+
+      if (isLoggedIn) {
         setAdminMode(true);
-        setAuthModalOpen(false); // تأكيد إغلاق النافذة إذا كان المستخدم مسجلاً
+        setAuthModalOpen(false); 
       } else {
          // لا نفتح النافذة إلا إذا تأكدنا من تحميل حالة المصادقة
          if (isAuthReady) {
@@ -1976,7 +1981,7 @@ const App = () => {
          }
       }
     }
-  }, [isAuthReady, userId]); // تم إضافة userId هنا لحل المشكلة
+  }, [isAuthReady, userId, adminMode]); // إضافة adminMode و userId للاعتماديات
 
   const initDataRef = useRef(false);
 

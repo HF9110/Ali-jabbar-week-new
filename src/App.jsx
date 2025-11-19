@@ -315,40 +315,43 @@ const MOCK_SUBMISSIONS = [
 // =========================================================================
 
 /** Custom hook for managing Firebase authentication state. */
+
+
 const useAuth = () => {
   const [userId, setUserId] = useState(null);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   useEffect(() => {
-    // ⬅️ منطق Firebase Auth الأصلي (مع إضافة حالة تسجيل الدخول)
-    if (!isFirebaseInitialized || !auth) {
+    if (!auth) {
       setUserId('mock-user-id');
-      setIsLoggedIn(false);
       return;
     }
+
+    // 🛑 (1) لا تحاول تسجيل الدخول المجهول لتجنب الخطأ
+    // نعتمد هنا فقط على onAuthStateChanged للمدير، والقراءة العامة للمستخدمين العاديين
 
     const unsubscribe = onAuthStateChanged(
       auth,
       (user) => {
         if (user) {
+          // إذا كان هناك مستخدم مصادق عليه (المدير)
           setUserId(user.uid);
-          setIsLoggedIn(true);
         } else {
+          // إذا لم يكن هناك مستخدم، نعتبره مجهولاً لتمكين القراءة العامة
           setUserId('public-read-only');
-          setIsLoggedIn(false);
         }
       },
       (error) => {
         console.error('Firebase Auth State Error:', error);
         setUserId('public-read-only');
-        setIsLoggedIn(false);
       }
     );
+
+    // 🛑 (2) إزالة كود handleAuth الذي كان يسبب المشاكل
 
     return () => unsubscribe();
   }, []);
 
-  return { userId, isAuthReady: userId !== null, isLoggedIn };
+  return { userId, isAuthReady: userId !== null };
 };
 
 /** Glassmorphism Card Wrapper */
@@ -367,61 +370,6 @@ const GlassCard = ({
     </div>
   );
 };
-
-/** Alert Banner */
-const AlertBanner = ({ settings }) => {
-  const { stage, logoUrl, marqueeText, highlightColor, mainColor } = settings;
-  const stageInfo = STAGES[stage];
-
-  const pulseColor = highlightColor;
-  const bannerBgColor =
-    stage === 'Voting'
-      ? mainColor
-      : stage === 'Submission'
-      ? '#2563eb'
-      : '#b91c1c';
-  const iconBorderColor =
-    stage === 'Voting'
-      ? highlightColor
-      : stage === 'Submission'
-      ? '#93c5fd'
-      : '#fca5a5';
-
-  return (
-    <div
-      className={`p-3 text-white border-r-4 rounded-lg flex items-center mb-6 shadow-2xl overflow-hidden`}
-      style={{
-        '--highlight-color-css': highlightColor,
-        '--pulse-shadow': `0 0 10px 2px ${pulseColor}`,
-        backgroundColor: bannerBgColor,
-        borderColor: iconBorderColor,
-      }}
-    >
-      <style>{`
-            @keyframes pulse-effect {
-                0%, 100% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.7); }
-                50% { box-shadow: var(--pulse-shadow); }
-            }
-            .pulse-animation { animation: pulse-effect 2s infinite ease-in-out; }
-        `}</style>
-      <div
-        className={`pulse-animation p-1 rounded-full border-2 mr-4`}
-        style={{ borderColor: iconBorderColor, maxHeight: '40px', maxWidth: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-      >
-        <stageInfo.icon className="w-5 h-5" />
-      </div>
-      <span className="font-bold ml-2 text-xl whitespace-nowrap">{stageInfo.label}</span>
-      <span className="mr-auto text-lg truncate ml-4">{marqueeText}</span>
-      <img
-        src={logoUrl}
-        alt="Logo"
-        className="h-8 w-auto mr-2 rounded-lg"
-        onError={(e) => (e.target.style.display = 'none')}
-      />
-    </div>
-  );
-};
-
 /** Generic Modal Component */
 const Modal = ({ isOpen, onClose, title, children }) => {
   if (!isOpen) return null;

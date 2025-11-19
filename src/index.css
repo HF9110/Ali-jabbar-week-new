@@ -1,0 +1,51 @@
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap');
+
+:root {
+  --main-color-css: #fe2c55;
+  --highlight-color-css: #25f4ee;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Cairo', sans-serif !important; /* فرض الخط بقوة */
+  background-color: #000000;
+  color: #ffffff;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+  direction: rtl; /* ضمان الاتجاه من اليمين لليسار */
+}
+
+/* تخصيص شريط التمرير ليناسب التصميم الداكن */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0f0f0f;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #333;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+/* ضمان تطبيق الخط على جميع عناصر الإدخال والأزرار */
+input,
+button,
+select,
+textarea {
+  font-family: 'Cairo', sans-serif !important;
+}
+
+/* تحسينات إضافية لضمان ظهور العناصر الزجاجية بشكل صحيح */
+.glass-effect {
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}

@@ -293,12 +293,21 @@ const AlertBanner = ({ settings }) => {
 
 const LiveHeader = ({ settings }) => (
   <div className="flex items-center justify-center gap-3 mb-8 animate-fadeIn mt-4">
-    <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-pink-500/10 border border-pink-500/30">
+    <div 
+      className="flex items-center gap-2 px-4 py-2 rounded-full border"
+      style={{ 
+        backgroundColor: 'rgba(254, 44, 85, 0.1)', // خلفية زهرية شفافة
+        borderColor: 'rgba(254, 44, 85, 0.3)'      // حدود زهرية شفافة
+      }}
+    >
         <span className="relative flex h-3 w-3">
-        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-pink-500 opacity-75"></span>
-        <span className="relative inline-flex rounded-full h-3 w-3 bg-pink-500"></span>
+          {/* النقطة النابضة بلون تيك توك */}
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ backgroundColor: '#fe2c55' }}></span>
+          <span className="relative inline-flex rounded-full h-3 w-3" style={{ backgroundColor: '#fe2c55' }}></span>
         </span>
-        <h3 className="font-bold text-xl tracking-wide text-pink-500">
+        
+        {/* النص بلون تيك توك */}
+        <h3 className="font-bold text-xl tracking-wide" style={{ color: '#fe2c55' }}>
         النتائج مباشرة
         </h3>
     </div>

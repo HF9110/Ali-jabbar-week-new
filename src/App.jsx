@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-// ⬅️ إضافة مكتبة إدارة المسارات
+// ⬅️ استخدام أدوات التوجيه الصحيحة
 import {
   BrowserRouter,
   Routes,
@@ -56,7 +56,6 @@ import {
 // =========================================================================
 
 const appId = 'ali-jabbar-week';
-// const initialAuthToken = null; // غير مستخدم
 
 // دالة مساعدة لقراءة متغيرات البيئة بأمان لتجنب أخطاء import.meta في بعض البيئات
 const getEnvVar = (key, fallback) => {
@@ -1748,7 +1747,6 @@ const AdminSettingsPanel = ({ settings, isGlassmorphism, onSaveSettings }) => {
   );
 };
 
-// ⬅️ لوحة التحكم المُعدلة للفصل
 const SettingsPanel = ({
   settings,
   submissions,
@@ -1822,58 +1820,60 @@ const SettingsPanel = ({
   );
 };
 
-const Header = ({ settings, currentStage, isAdminAuthenticated, onAdminAccess }) => (
-  <header
-    className="sticky top-0 z-40 p-4 border-b"
-    style={{
-      backgroundColor: settings.useGlassmorphism
-        ? 'rgba(0,0,0,0.5)'
-        : '#000000',
-      borderColor: 'rgba(255, 255, 255, 0.1)',
-    }}
-  >
-    <div className="container mx-auto flex justify-between items-center">
-      <div className="flex items-center">
-        <img
-          src={settings.logoUrl}
-          alt="Logo"
-          className="h-10 w-auto rounded-lg"
-          onError={(e) => (e.target.style.display = 'none')}
-        />
-        <h1 className="text-2xl font-black mr-4 text-white">
-          {settings.title}
-        </h1>
+// ⬅️ تم تعديل Header لاستخدام navigate
+const Header = ({ settings, currentStage, isAdminAuthenticated, onAdminAccess }) => {
+  const navigate = useNavigate();
+  return (
+    <header
+      className="sticky top-0 z-40 p-4 border-b"
+      style={{
+        backgroundColor: settings.useGlassmorphism
+          ? 'rgba(0,0,0,0.5)'
+          : '#000000',
+        borderColor: 'rgba(255, 255, 255, 0.1)',
+      }}
+    >
+      <div className="container mx-auto flex justify-between items-center">
+        <div className="flex items-center">
+          <img
+            src={settings.logoUrl}
+            alt="Logo"
+            className="h-10 w-auto rounded-lg"
+            onError={(e) => (e.target.style.display = 'none')}
+          />
+          <h1 className="text-2xl font-black mr-4 text-white">
+            {settings.title}
+          </h1>
+        </div>
+        <nav className="flex items-center space-x-6 space-x-reverse text-white">
+          {(currentStage === 'Voting' || currentStage === 'Ended') && (
+            <a
+              href="#submission"
+              className="font-semibold hover:opacity-80 transition py-2 px-4 rounded-full text-white"
+              style={{
+                backgroundColor: `var(--main-color-css)`,
+                boxShadow: `0 0 10px var(--main-color-css)`,
+              }}
+            >
+              إرسال مشاركة جديدة
+            </a>
+          )}
+          {!isAdminAuthenticated && (
+            <button
+              onClick={onAdminAccess} // ⬅️ يستخدم دالة تمرر من App
+              className="text-white/70 hover:text-white transition flex items-center"
+              title="الدخول إلى لوحة التحكم"
+            >
+              <Lock className="w-4 h-4 ml-1" /> المدير
+            </button>
+          )}
+        </nav>
       </div>
-      <nav className="flex items-center space-x-6 space-x-reverse text-white">
-        {(currentStage === 'Voting' || currentStage === 'Ended') && (
-          <a
-            href="#submission"
-            className="font-semibold hover:opacity-80 transition py-2 px-4 rounded-full text-white"
-            style={{
-              backgroundColor: `var(--main-color-css)`,
-              boxShadow: `0 0 10px var(--main-color-css)`,
-            }}
-          >
-            إرسال مشاركة جديدة
-          </a>
-        )}
-        {/* زر الدخول كمدير يظهر فقط في الواجهة الأمامية */}
-        {!isAdminAuthenticated && (
-          <button
-            onClick={onAdminAccess}
-            className="text-white/70 hover:text-white transition flex items-center"
-            title="الدخول إلى لوحة التحكم"
-          >
-            <Lock className="w-4 h-4 ml-1" /> المدير
-          </button>
-        )}
-      </nav>
-    </div>
-  </header>
-);
+    </header>
+  );
+};
 
 const Footer = ({ settings, onSecretAdminAccess }) => {
-  // حالة للتحكم في فتح وإغلاق النوافذ
   const [modal, setModal] = useState(null); // 'terms', 'why', 'organizers'
 
   return (
@@ -1913,7 +1913,7 @@ const Footer = ({ settings, onSecretAdminAccess }) => {
 
         <p className="mt-8 text-white/50 border-t border-white/10 pt-4">
           <span 
-              onClick={onSecretAdminAccess} // ⬅️ التعديل هنا: إضافة دالة النقر السرية
+              onClick={onSecretAdminAccess} 
               className="cursor-pointer hover:text-white/80 transition"
               title="اضغط 5 مرات للدخول للمدير"
             >
@@ -1959,7 +1959,7 @@ const Footer = ({ settings, onSecretAdminAccess }) => {
 };
 
 // =========================================================================
-// 4. NEW MAIN APPLICATION COMPONENT
+// 4. NEW MAIN APPLICATION COMPONENT (CONTEST APP)
 // =========================================================================
 
 // ⬅️ المكون الذي يحتوي على منطق التطبيق والحالات المشتركة
@@ -1969,15 +1969,19 @@ const ContestApp = ({ isAdminRoute }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   
-  // ⬅️ حالة وضع المدير يتم تحديدها هنا لغرض العرض فقط، والتحقق يتم في AdminRouteWrapper
-  const [adminMode, setAdminMode] = useState(isAdminRoute); 
-
+  // ⬅️ حالة وضع المدير تظهر فقط عند التحقق من المصادقة بنجاح
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [voteConfirmData, setVoteConfirmData] = useState(null);
   const { userId, isAuthReady } = useAuth();
   const [clickCount, setClickCount] = useState(0); 
   const [cooldown, setCooldown] = useState(0);
-  const navigate = useNavigate(); // ⬅️ لغرض التنقل بعد تسجيل الخروج أو الدخول
+  const navigate = useNavigate(); 
+  const location = useLocation();
+
+  const isUserLoggedIn = userId && userId !== 'public-read-only' && userId !== 'mock-user-id';
+  // ⬅️ يتم تفعيل وضع المدير الفعلي فقط إذا كنا في المسار الإداري والمستخدم مسجل دخول
+  const effectiveAdminMode = isAdminRoute && isUserLoggedIn;
+
 
   // 1. تطبيق الإعدادات المرئية
   useEffect(() => {
@@ -1995,18 +1999,22 @@ const ContestApp = ({ isAdminRoute }) => {
     }
   }, [settings]);
 
-  // 2. معالجة وضع المدير عند تحميل المسار
+  // 2. معالجة فتح المودال مباشرة عند الدخول لمسار /admin
   useEffect(() => {
-    // إذا كان المسار هو /admin، يجب أن يكون وضع المدير هو الهدف
+    if (!isAuthReady) return;
+
     if (isAdminRoute) {
-      setAdminMode(true);
-      if (isAuthReady && userId === 'public-read-only') {
+      if (userId === 'public-read-only') {
+        // المستخدم مجهول في مسار المدير، افتح نافذة الدخول
         setAuthModalOpen(true);
+      } else if (isUserLoggedIn) {
+        // المستخدم مسجل دخول بالفعل، أغلق المودال
+        setAuthModalOpen(false);
       }
     } else {
-      setAdminMode(false);
+      setAuthModalOpen(false);
     }
-  }, [isAdminRoute, isAuthReady, userId]); // ⬅️
+  }, [isAdminRoute, isAuthReady, userId, isUserLoggedIn]); 
 
   // 3. تهيئة البيانات الأولية (الإعدادات والمشاركات الوهمية)
   const initDataRef = useRef(false);
@@ -2103,19 +2111,19 @@ const ContestApp = ({ isAdminRoute }) => {
   // --- دوال الإدارة والتحكم ---
   
   const handleAdminLoginSuccess = () => {
-    setAdminMode(true);
     setAuthModalOpen(false);
     if (!isAdminRoute) {
-      navigate('/admin'); // ⬅️ انتقل إلى مسار المدير بعد الدخول
+      // توجيه لـ /admin فقط إذا لم نكن فيه أصلاً (من النقر السري)
+      navigate('/admin'); 
     }
   };
 
   const handleAdminLogout = () => {
-    setAdminMode(false);
     if (auth) {
       signOut(auth);
     }
-    navigate('/'); // ⬅️ انتقل إلى الواجهة الأمامية بعد تسجيل الخروج
+    // التوجيه للرئيسية وإعادة تحميل الصفحة لضمان مسح كافة الحالات الإدارية
+    navigate('/'); 
   };
 
   const handleSaveSettings = async (newSettings) => {
@@ -2171,9 +2179,13 @@ const ContestApp = ({ isAdminRoute }) => {
       setClickCount(0); 
     }
 
-    setTimeout(() => {
+    // إعادة التعيين لضمان النقر السريع
+    const timer = setTimeout(() => {
       setClickCount(0);
     }, 2000);
+
+    // مسح المؤقت السابق لمنع إعادة التعيين المتكررة
+    return () => clearTimeout(timer);
   };
   // ⬅️
 
@@ -2205,12 +2217,12 @@ const ContestApp = ({ isAdminRoute }) => {
       <Header
         settings={settings}
         currentStage={settings.stage}
-        isAdminAuthenticated={adminMode}
-        onAdminAccess={() => navigate('/admin')} // ⬅️ توجيه إلى مسار /admin
+        isAdminAuthenticated={effectiveAdminMode}
+        onAdminAccess={() => navigate('/admin')} // توجيه مسار المدير
       />
 
       <main>
-        {adminMode && userId !== 'public-read-only' ? ( // ⬅️ عرض لوحة التحكم
+        {effectiveAdminMode ? ( // ⬅️ عرض لوحة التحكم الفعلي
           <SettingsPanel
             settings={settings}
             submissions={submissions}
@@ -2235,12 +2247,13 @@ const ContestApp = ({ isAdminRoute }) => {
         onSecretAdminAccess={handleSecretAdminAccess} 
       />
 
-      <AdminAuthModal // ⬅️ نافذة الدخول للمدير
-        isOpen={authModalOpen && adminMode} // ⬅️ تظهر فقط إذا كنا في وضع المدير
+      <AdminAuthModal 
+        isOpen={isAdminRoute && !isUserLoggedIn && authModalOpen} // ⬅️ تظهر فقط في مسار /admin إذا لم يسجل دخول
         onClose={() => {
           setAuthModalOpen(false);
-          if (isAdminRoute && userId === 'public-read-only') {
-             navigate('/'); // ⬅️ إذا أغلق النافذة في مسار المدير وهو غير مسجل، اذهب للرئيسية
+          // إذا أغلق النافذة في مسار المدير وهو غير مسجل، اذهب للرئيسية
+          if (isAdminRoute && !isUserLoggedIn) { 
+             navigate('/'); 
           }
         }}
         onAuthSuccess={handleAdminLoginSuccess}
@@ -2289,64 +2302,15 @@ const ContestApp = ({ isAdminRoute }) => {
   );
 };
 
-// ⬅️ المكون المغلف للمسار الإداري
-const AdminRouteWrapper = () => {
-    const { userId, isAuthReady } = useAuth();
-    const navigate = useNavigate();
-
-    // التحقق من حالة المصادقة وحالة userId
-    useEffect(() => {
-        if (isAuthReady && userId !== null && userId !== 'public-read-only') {
-            // المستخدم مسجل الدخول، لا تفعل شيئاً (ContestApp سيعرض لوحة التحكم)
-        } else if (isAuthReady && userId === 'public-read-only') {
-            // المستخدم مجهول، ContestApp سيفتح نافذة الدخول
-        } else if (isAuthReady && userId === 'mock-user-id') {
-             // Mock user case, allow access for development/mock mode.
-        }
-
-    }, [isAuthReady, userId, navigate]);
-
-    // عرض شاشة التحميل حتى التأكد من حالة المصادقة
-    if (!isAuthReady) {
-         return (
-             <div className="flex items-center justify-center h-screen" style={{ backgroundColor: '#000000' }}>
-                 <Loader className="w-10 h-10 text-white animate-spin" />
-                 <span className="text-white mr-4 text-xl">جار التحقق من المصادقة...</span>
-             </div>
-         );
-    }
-
-    // إذا وصلنا إلى هنا، فإما أن المستخدم مسجل الدخول أو أنه مجهول (وسيتم عرض نافذة الدخول داخل ContestApp)
-    return <ContestApp isAdminRoute={true} />;
-};
-
-
-// ⬅️ المكون الرئيسي الذي يستخدم Router
-const MainApp = () => {
-    const location = useLocation();
-    const isAdminRoute = location.pathname.startsWith('/admin');
-
-    // لضمان عرض المحتوى بالاتجاه الصحيح في الواجهة الأمامية والإدارية
-    const directionStyle = {
-        dir: 'rtl',
-        minHeight: '100vh',
-        backgroundColor: '#000000'
-    };
-    
-    return (
-        <Routes>
-             <Route path="/" element={<ContestApp isAdminRoute={false} />} />
-             <Route path="/admin" element={<AdminRouteWrapper />} />
-             {/* يمكن إضافة مسار 404 هنا إذا لزم الأمر */}
-             <Route path="*" element={<ContestApp isAdminRoute={false} />} />
-        </Routes>
-    );
-};
-
-// ⬅️ المكون الذي يتم تصديره (يجب أن يكون مغلفاً بـ BrowserRouter)
+// ⬅️ المكون الذي يتم تصديره (يجب أن يكون مغلفاً بـ BrowserRouter ويحتوي على المسارات)
 const App = () => (
   <BrowserRouter>
-    <MainApp />
+    <Routes>
+      <Route path="/" element={<ContestApp isAdminRoute={false} />} />
+      <Route path="/admin" element={<ContestApp isAdminRoute={true} />} />
+      {/* مسار احتياطي في حالة عدم تطابق أي مسار */}
+      <Route path="*" element={<ContestApp isAdminRoute={false} />} />
+    </Routes>
   </BrowserRouter>
 );
 

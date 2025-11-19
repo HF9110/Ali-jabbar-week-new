@@ -292,8 +292,8 @@ const AlertBanner = ({ settings }) => {
 };
 
 const LiveHeader = ({ settings }) => (
-  <div className="flex items-center justify-center gap-3 mb-8 animate-fadeIn mt-4">
-    <div 
+<div className="flex items-center justify-center gap-3 mb-24 animate-fadeIn mt-4">
+      <div 
       className="flex items-center gap-2 px-4 py-2 rounded-full border"
       style={{ 
         backgroundColor: 'rgba(254, 44, 85, 0.1)', // خلفية زهرية شفافة

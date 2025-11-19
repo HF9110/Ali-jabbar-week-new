@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-// ⬅️ استخدام أدوات التوجيه الصحيحة
 import {
   BrowserRouter,
   Routes,
@@ -7,7 +6,6 @@ import {
   useLocation,
   useNavigate,
 } from 'react-router-dom';
-// ⬅️
 import { initializeApp } from 'firebase/app';
 import {
   getAuth,
@@ -57,7 +55,7 @@ import {
 
 const appId = 'ali-jabbar-week';
 
-// دالة مساعدة لقراءة متغيرات البيئة بأمان لتجنب أخطاء import.meta في بعض البيئات
+// دالة مساعدة لقراءة متغيرات البيئة بأمان
 const getEnvVar = (key, fallback) => {
   try {
     if (
@@ -68,15 +66,13 @@ const getEnvVar = (key, fallback) => {
       return import.meta.env[key];
     }
   } catch (e) {
-    // تجاهل الأخطاء في حال عدم دعم import.meta
+    // تجاهل الأخطاء
   }
   return fallback;
 };
 
-const VITE_FIREBASE_API_KEY = getEnvVar(
-  'VITE_FIREBASE_API_KEY',
-  'AIzaSyDUxC_2orwmSLL9iEBIkeohZKfH36MjZ4Y'
-);
+// ⚠️ تنويه: تم حذف المفتاح الاحتياطي من الكود المصدر لزيادة الأمان.
+const VITE_FIREBASE_API_KEY = getEnvVar('VITE_FIREBASE_API_KEY', ''); 
 
 const userFirebaseConfig = {
   apiKey: VITE_FIREBASE_API_KEY,
@@ -87,11 +83,12 @@ const userFirebaseConfig = {
   appId: '1:642187294882:web:fe30f0016e5803a5e1bffb',
   measurementId: 'G-8XSRK7TE1K',
 };
+
 const firebaseConfig =
-  Object.keys(userFirebaseConfig).length > 0 ? userFirebaseConfig : {};
+  VITE_FIREBASE_API_KEY && Object.keys(userFirebaseConfig).length > 0 ? userFirebaseConfig : {};
 
 let firebaseApp, db, auth;
-if (Object.keys(firebaseConfig).length) {
+if (VITE_FIREBASE_API_KEY) {
   try {
     firebaseApp = initializeApp(firebaseConfig);
     db = getFirestore(firebaseApp);
@@ -100,7 +97,7 @@ if (Object.keys(firebaseConfig).length) {
     console.error('Firebase Initialization Failed:', e);
   }
 } else {
-  console.error('Firebase configuration not found. Running in mock mode.');
+  console.error('Firebase API Key not found. Running in mock/development mode.');
 }
 
 const PUBLIC_SETTINGS_PATH = `artifacts/${appId}/public/data/settings/config`;
@@ -123,6 +120,7 @@ const retryOperation = async (operation, maxRetries = 3, delay = 1000) => {
 
 // =========================================================================
 // 2. CONSTANTS (STAGES, COUNTRIES, MOCK DATA)
+// (تم ترك الثوابت كما هي لضمان عدم تغيير منطق التطبيق)
 // =========================================================================
 const STAGES = {
   Submission: { label: 'استقبال المشاركات', color: 'blue', icon: Clock },
@@ -318,10 +316,12 @@ const MOCK_SUBMISSIONS = [
 /** Custom hook for managing Firebase authentication state. */
 const useAuth = () => {
   const [userId, setUserId] = useState(null);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   useEffect(() => {
     if (!auth) {
       setUserId('mock-user-id');
+      setIsLoggedIn(false);
       return;
     }
 
@@ -329,23 +329,24 @@ const useAuth = () => {
       auth,
       (user) => {
         if (user) {
-          // إذا كان هناك مستخدم مصادق عليه (المدير)
           setUserId(user.uid);
+          setIsLoggedIn(true); // تم تسجيل الدخول كمدير
         } else {
-          // إذا لم يكن هناك مستخدم، نعتبره مجهولاً لتمكين القراءة العامة
-          setUserId('public-read-only');
+          setUserId('public-read-only'); // مستخدم عام
+          setIsLoggedIn(false);
         }
       },
       (error) => {
         console.error('Firebase Auth State Error:', error);
         setUserId('public-read-only');
+        setIsLoggedIn(false);
       }
     );
 
     return () => unsubscribe();
   }, []);
 
-  return { userId, isAuthReady: userId !== null };
+  return { userId, isAuthReady: userId !== null, isLoggedIn };
 };
 
 /** Glassmorphism Card Wrapper */
@@ -426,12 +427,12 @@ const Modal = ({ isOpen, onClose, title, children }) => {
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
-      onClick={onClose}
+      onClick={onClose} // ⬅️ الإغلاق عند النقر على الخلفية فقط
     >
       <GlassCard
         isGlassmorphism
         className="w-full max-w-2xl max-h-[90vh] overflow-y-auto"
-        onClick={(e) => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()} // ⬅️ منع إغلاق النافذة عند النقر داخل البطاقة
       >
         <div className="flex justify-between items-center pb-3 border-b border-white/20">
           <h2 className="text-2xl font-bold text-white">{title}</h2>
@@ -489,13 +490,13 @@ const AdminAuthModal = ({ isOpen, onClose, onAuthSuccess }) => {
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
-      onClick={onClose}
+      onClick={onClose} // ⬅️ الإغلاق عند النقر على الخلفية فقط
     >
       <GlassCard
         isGlassmorphism
         className="w-full max-w-sm"
         color="bg-gray-900"
-        onClick={(e) => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()} // ⬅️ منع إغلاق النافذة عند النقر داخل البطاقة
       >
         <h2 className="text-2xl font-bold text-white mb-6 text-center flex items-center justify-center">
           <Lock className="w-6 h-6 ml-2" />
@@ -963,7 +964,8 @@ const LiveResultsView = ({ approvedSubmissions, settings }) => {
   const perSlide = 4;
 
   const rankedSubmissions = useMemo(
-    () => approvedSubmissions.sort((a, b) => b.votes - a.votes),
+    // ⬅️ تم إصلاح مشكلة عدم القابلية للتعديل (Immutability)
+    () => [...approvedSubmissions].sort((a, b) => b.votes - a.votes),
     [approvedSubmissions]
   );
   const topThree = rankedSubmissions.slice(0, 3);
@@ -1136,7 +1138,8 @@ const Home = ({
 
   const approvedSubmissions = useMemo(
     () =>
-      allSubmissions
+      // ⬅️ تم إصلاح مشكلة عدم القابلية للتعديل
+      [...allSubmissions]
         .filter((sub) => sub.status === 'Approved')
         .sort((a, b) => b.votes - a.votes),
     [allSubmissions]
@@ -1314,6 +1317,7 @@ const AdminSubmissionsPanel = ({
   settings,
   isGlassmorphism,
   onUpdateSubmissionStatus,
+  isUserLoggedIn, // ⬅️ تحقق أمني
 }) => {
   const [activeTab, setActiveTab] = useState('Pending');
   const [submissionToEdit, setSubmissionToEdit] = useState(null);
@@ -1322,7 +1326,8 @@ const AdminSubmissionsPanel = ({
   const filteredSubmissions = useMemo(() => {
     let list = submissions.filter((sub) => sub.status === activeTab);
     if (activeTab === 'Approved') {
-      list = list.sort((a, b) => b.votes - a.votes);
+      // ⬅️ تم إصلاح مشكلة عدم القابلية للتعديل
+      list = [...list].sort((a, b) => b.votes - a.votes);
     }
     return list;
   }, [submissions, activeTab]);
@@ -1333,6 +1338,8 @@ const AdminSubmissionsPanel = ({
   };
 
   const handleSaveEdit = async (updatedSubmission) => {
+    if (!isUserLoggedIn) return; // ⬅️ تحقق أمني في جانب العميل
+
     try {
       if (!db) {
         console.error('Database not initialized.');
@@ -1539,7 +1546,7 @@ const AdminSubmissionsPanel = ({
   );
 };
 
-const AdminSettingsPanel = ({ settings, isGlassmorphism, onSaveSettings }) => {
+const AdminSettingsPanel = ({ settings, isGlassmorphism, onSaveSettings, isUserLoggedIn }) => {
   const [currentSettings, setCurrentSettings] = useState(settings);
   useEffect(() => {
     setCurrentSettings(settings);
@@ -1548,6 +1555,7 @@ const AdminSettingsPanel = ({ settings, isGlassmorphism, onSaveSettings }) => {
     setCurrentSettings((prev) => ({ ...prev, [field]: value }));
   };
   const handleSave = () => {
+    if (!isUserLoggedIn) return; // ⬅️ تحقق أمني في جانب العميل
     onSaveSettings(currentSettings);
   };
 
@@ -1753,6 +1761,7 @@ const SettingsPanel = ({
   onSaveSettings,
   onUpdateSubmissionStatus,
   onLogout,
+  isUserLoggedIn, // ⬅️ تمرير حالة تسجيل الدخول
 }) => {
   const [activeTab, setActiveTab] = useState('settings');
   return (
@@ -1806,6 +1815,7 @@ const SettingsPanel = ({
           settings={settings}
           isGlassmorphism={settings.useGlassmorphism}
           onSaveSettings={onSaveSettings}
+          isUserLoggedIn={isUserLoggedIn}
         />
       )}
       {activeTab === 'submissions' && (
@@ -1814,13 +1824,13 @@ const SettingsPanel = ({
           settings={settings}
           isGlassmorphism={settings.useGlassmorphism}
           onUpdateSubmissionStatus={onUpdateSubmissionStatus}
+          isUserLoggedIn={isUserLoggedIn}
         />
       )}
     </div>
   );
 };
 
-// ⬅️ تم تعديل Header لاستخدام navigate
 const Header = ({ settings, currentStage, isAdminAuthenticated, onAdminAccess }) => {
   const navigate = useNavigate();
   return (
@@ -1834,7 +1844,7 @@ const Header = ({ settings, currentStage, isAdminAuthenticated, onAdminAccess })
       }}
     >
       <div className="container mx-auto flex justify-between items-center">
-        <div className="flex items-center">
+        <div className="flex items-center cursor-pointer" onClick={() => navigate('/')}>
           <img
             src={settings.logoUrl}
             alt="Logo"
@@ -1860,7 +1870,7 @@ const Header = ({ settings, currentStage, isAdminAuthenticated, onAdminAccess })
           )}
           {!isAdminAuthenticated && (
             <button
-              onClick={onAdminAccess} // ⬅️ يستخدم دالة تمرر من App
+              onClick={onAdminAccess} 
               className="text-white/70 hover:text-white transition flex items-center"
               title="الدخول إلى لوحة التحكم"
             >
@@ -1874,8 +1884,13 @@ const Header = ({ settings, currentStage, isAdminAuthenticated, onAdminAccess })
 };
 
 const Footer = ({ settings, onSecretAdminAccess }) => {
-  const [modal, setModal] = useState(null); // 'terms', 'why', 'organizers'
+  const [modal, setModal] = useState(null); 
+  const timerRef = useRef(null);
 
+  const handleSecretClick = () => {
+    onSecretAdminAccess(timerRef);
+  };
+  
   return (
     <footer className="bg-gray-900/50 p-6 mt-10 border-t border-white/10">
       <div className="container mx-auto text-white text-center text-sm">
@@ -1913,7 +1928,7 @@ const Footer = ({ settings, onSecretAdminAccess }) => {
 
         <p className="mt-8 text-white/50 border-t border-white/10 pt-4">
           <span 
-              onClick={onSecretAdminAccess} 
+              onClick={handleSecretClick} // ⬅️ استخدام دالة النقر المُعدلة
               className="cursor-pointer hover:text-white/80 transition"
               title="اضغط 5 مرات للدخول للمدير"
             >
@@ -1924,17 +1939,14 @@ const Footer = ({ settings, onSecretAdminAccess }) => {
 
       {/* --- النوافذ المنبثقة (Modals) --- */}
 
-      {/* نافذة "لماذا" */}
       <Modal isOpen={modal === 'why'} onClose={() => setModal(null)} title="لماذا هذه المسابقة؟">
         <p>{settings.whyText}</p>
       </Modal>
 
-      {/* نافذة "الشروط" */}
       <Modal isOpen={modal === 'terms'} onClose={() => setModal(null)} title="الشروط والأحكام">
         <p>{settings.termsText}</p>
       </Modal>
 
-      {/* نافذة "المنظمون" */}
       <Modal isOpen={modal === 'organizers'} onClose={() => setModal(null)} title="القائمون على المسابقة">
         <div className="space-y-4">
           {ORGANIZERS.map((org, index) => (
@@ -1959,29 +1971,22 @@ const Footer = ({ settings, onSecretAdminAccess }) => {
 };
 
 // =========================================================================
-// 4. NEW MAIN APPLICATION COMPONENT (CONTEST APP)
+// 4. MAIN APPLICATION LOGIC COMPONENT (ContestApp)
 // =========================================================================
 
-// ⬅️ المكون الذي يحتوي على منطق التطبيق والحالات المشتركة
 const ContestApp = ({ isAdminRoute }) => {
   const [settings, setSettings] = useState(null);
   const [submissions, setSubmissions] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  
-  // ⬅️ حالة وضع المدير تظهر فقط عند التحقق من المصادقة بنجاح
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [voteConfirmData, setVoteConfirmData] = useState(null);
-  const { userId, isAuthReady } = useAuth();
+  const { userId, isAuthReady, isLoggedIn } = useAuth(); // ⬅️ استخدام isLoggedIn
   const [clickCount, setClickCount] = useState(0); 
   const [cooldown, setCooldown] = useState(0);
   const navigate = useNavigate(); 
-  const location = useLocation();
 
-  const isUserLoggedIn = userId && userId !== 'public-read-only' && userId !== 'mock-user-id';
-  // ⬅️ يتم تفعيل وضع المدير الفعلي فقط إذا كنا في المسار الإداري والمستخدم مسجل دخول
-  const effectiveAdminMode = isAdminRoute && isUserLoggedIn;
-
+  // حالة المدير الفعلي: صحيح فقط إذا كان المسار هو /admin والمستخدم مسجل دخول
+  const effectiveAdminMode = isAdminRoute && isLoggedIn;
 
   // 1. تطبيق الإعدادات المرئية
   useEffect(() => {
@@ -2004,19 +2009,17 @@ const ContestApp = ({ isAdminRoute }) => {
     if (!isAuthReady) return;
 
     if (isAdminRoute) {
-      if (userId === 'public-read-only') {
-        // المستخدم مجهول في مسار المدير، افتح نافذة الدخول
-        setAuthModalOpen(true);
-      } else if (isUserLoggedIn) {
-        // المستخدم مسجل دخول بالفعل، أغلق المودال
-        setAuthModalOpen(false);
+      if (!isLoggedIn) {
+        setAuthModalOpen(true); // المستخدم مجهول في مسار المدير، افتح النافذة
+      } else {
+        setAuthModalOpen(false); // مسجل دخول، أغلق النافذة
       }
     } else {
-      setAuthModalOpen(false);
+      setAuthModalOpen(false); // مسار عادي، أغلق النافذة
     }
-  }, [isAdminRoute, isAuthReady, userId, isUserLoggedIn]); 
+  }, [isAdminRoute, isAuthReady, isLoggedIn]); 
 
-  // 3. تهيئة البيانات الأولية (الإعدادات والمشاركات الوهمية)
+  // 3. تهيئة البيانات الأولية (تنفيذ Mock Data)
   const initDataRef = useRef(false);
   useEffect(() => {
     if (!db || !isAuthReady || initDataRef.current) return;
@@ -2045,8 +2048,8 @@ const ContestApp = ({ isAdminRoute }) => {
           }
         }
       } catch (e) {
-        setError(
-          'Failed to initialize data. Check permissions or Firebase configuration.'
+        console.error(
+          'Failed to initialize data. Check permissions or Firebase configuration.', e
         );
       }
       setLoading(false);
@@ -2054,7 +2057,7 @@ const ContestApp = ({ isAdminRoute }) => {
     initializeFirestore();
   }, [isAuthReady]);
 
-  // 4. الاشتراك في تحديثات Firestore
+  // 4. الاشتراك في تحديثات Firestore (Realtime Data)
   useEffect(() => {
     if (!db || !isAuthReady) {
       return;
@@ -2072,7 +2075,7 @@ const ContestApp = ({ isAdminRoute }) => {
         setLoading(false);
       },
       (e) => {
-        setError('Failed to load settings. Check Firestore connectivity.');
+        console.error('Failed to load settings:', e);
         setSettings(DEFAULT_SETTINGS);
         setLoading(false);
       }
@@ -2112,8 +2115,8 @@ const ContestApp = ({ isAdminRoute }) => {
   
   const handleAdminLoginSuccess = () => {
     setAuthModalOpen(false);
+    // إذا قام بتسجيل الدخول بنجاح من مسار عادي (زر المدير)، ننتقل لـ /admin
     if (!isAdminRoute) {
-      // توجيه لـ /admin فقط إذا لم نكن فيه أصلاً (من النقر السري)
       navigate('/admin'); 
     }
   };
@@ -2122,13 +2125,15 @@ const ContestApp = ({ isAdminRoute }) => {
     if (auth) {
       signOut(auth);
     }
-    // التوجيه للرئيسية وإعادة تحميل الصفحة لضمان مسح كافة الحالات الإدارية
+    // التوجيه للرئيسية لإنهاء وضع المدير
     navigate('/'); 
   };
 
   const handleSaveSettings = async (newSettings) => {
+    // ⬅️ تحقق أمني في جانب العميل
+    if (!db || !isLoggedIn) return; 
+
     try {
-      if (!db) return;
       const settingsDocRef = doc(db, PUBLIC_SETTINGS_PATH);
       await retryOperation(() => setDoc(settingsDocRef, newSettings));
     } catch (e) {
@@ -2137,8 +2142,10 @@ const ContestApp = ({ isAdminRoute }) => {
   };
 
   const handleUpdateSubmissionStatus = async (id, newStatus) => {
+    // ⬅️ تحقق أمني في جانب العميل
+    if (!db || !isLoggedIn) return;
+
     try {
-      if (!db) return;
       const docRef = doc(db, PUBLIC_SUBMISSIONS_COLLECTION, id);
       await retryOperation(() => updateDoc(docRef, { status: newStatus }));
     } catch (e) {
@@ -2170,22 +2177,26 @@ const ContestApp = ({ isAdminRoute }) => {
     setVoteConfirmData(submission);
   };
   
-  // ⬅️ منطق الوصول السري
-  const handleSecretAdminAccess = () => {
+  // ⬅️ منطق الوصول السري المُحسَّن
+  const handleSecretAdminAccess = (timerRef) => {
+    // 1. مسح المؤقت السابق لمنع التداخل
+    if (timerRef.current) {
+        clearTimeout(timerRef.current);
+    }
+
+    // 2. زيادة العداد
     setClickCount((prev) => prev + 1);
 
+    // 3. التحقق وفتح المودال
     if (clickCount + 1 >= 5) {
       setAuthModalOpen(true);
       setClickCount(0); 
     }
 
-    // إعادة التعيين لضمان النقر السريع
-    const timer = setTimeout(() => {
+    // 4. تعيين مؤقت جديد لإعادة تعيين العداد بعد فترة وجيزة من السكون
+    timerRef.current = setTimeout(() => {
       setClickCount(0);
     }, 2000);
-
-    // مسح المؤقت السابق لمنع إعادة التعيين المتكررة
-    return () => clearTimeout(timer);
   };
   // ⬅️
 
@@ -2210,7 +2221,7 @@ const ContestApp = ({ isAdminRoute }) => {
 
   return (
     <div
-      dir="rtl"
+      // تم إزالة dir="rtl" من هنا ليتم تطبيقه على الـ <html> أو <body> في index.html
       className="min-h-screen"
       style={{ backgroundColor: '#000000' }}
     >
@@ -2218,20 +2229,21 @@ const ContestApp = ({ isAdminRoute }) => {
         settings={settings}
         currentStage={settings.stage}
         isAdminAuthenticated={effectiveAdminMode}
-        onAdminAccess={() => navigate('/admin')} // توجيه مسار المدير
+        onAdminAccess={() => navigate('/admin')} 
       />
 
       <main>
-        {effectiveAdminMode ? ( // ⬅️ عرض لوحة التحكم الفعلي
+        {effectiveAdminMode ? (
           <SettingsPanel
             settings={settings}
             submissions={submissions}
             onSaveSettings={handleSaveSettings}
             onUpdateSubmissionStatus={handleUpdateSubmissionStatus}
             onLogout={handleAdminLogout}
+            isUserLoggedIn={isLoggedIn} // ⬅️ تمرير حالة تسجيل الدخول
           />
         ) : (
-          <Home // ⬅️ عرض الواجهة الأمامية
+          <Home
             settings={settings}
             allSubmissions={submissions}
             totalApproved={totalApproved}
@@ -2248,18 +2260,18 @@ const ContestApp = ({ isAdminRoute }) => {
       />
 
       <AdminAuthModal 
-        isOpen={isAdminRoute && !isUserLoggedIn && authModalOpen} // ⬅️ تظهر فقط في مسار /admin إذا لم يسجل دخول
+        isOpen={isAdminRoute && !isLoggedIn && authModalOpen} 
         onClose={() => {
           setAuthModalOpen(false);
-          // إذا أغلق النافذة في مسار المدير وهو غير مسجل، اذهب للرئيسية
-          if (isAdminRoute && !isUserLoggedIn) { 
+          // إذا أغلق النافذة في مسار المدير وهو غير مسجل، نرجعه للرئيسية
+          if (isAdminRoute && !isLoggedIn) { 
              navigate('/'); 
           }
         }}
         onAuthSuccess={handleAdminLoginSuccess}
       />
 
-      <Modal // ⬅️ نافذة تأكيد التصويت
+      <Modal
         isOpen={voteConfirmData !== null}
         onClose={() => setVoteConfirmData(null)}
         title="تأكيد التصويت"
@@ -2302,13 +2314,13 @@ const ContestApp = ({ isAdminRoute }) => {
   );
 };
 
-// ⬅️ المكون الذي يتم تصديره (يجب أن يكون مغلفاً بـ BrowserRouter ويحتوي على المسارات)
+// ⬅️ المكون الجذري الذي يستخدم Router
 const App = () => (
   <BrowserRouter>
     <Routes>
       <Route path="/" element={<ContestApp isAdminRoute={false} />} />
       <Route path="/admin" element={<ContestApp isAdminRoute={true} />} />
-      {/* مسار احتياطي في حالة عدم تطابق أي مسار */}
+      {/* مسار احتياطي، يعرض الواجهة الأمامية */}
       <Route path="*" element={<ContestApp isAdminRoute={false} />} />
     </Routes>
   </BrowserRouter>

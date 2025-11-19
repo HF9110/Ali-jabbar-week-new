@@ -42,7 +42,7 @@ import {
   Zap,
   PauseCircle,
   Trophy,
-  Sparkles
+  Star
 } from 'lucide-react';
 
 // =========================================================================
@@ -83,8 +83,8 @@ const PATHS = {
 // =========================================================================
 
 const STAGES = {
-  Submission: { label: 'استقبال المشاركات', color: 'blue', icon: Clock },
-  Voting: { label: 'التصويت مفتوح', color: 'yellow', icon: Zap },
+  Submission: { label: 'استقبال المشاركات', color: 'cyan', icon: Clock },
+  Voting: { label: 'التصويت مفتوح', color: 'pink', icon: Zap },
   Paused: { label: 'متوقفة مؤقتاً', color: 'red', icon: PauseCircle },
   Ended: { label: 'إعلان النتائج', color: 'green', icon: Trophy },
 };
@@ -126,9 +126,9 @@ const DEFAULT_SETTINGS = {
     Submission: 'باب المشاركة مفتوح الآن! أرسل إبداعك',
     Voting: 'استعدوا للتصويت قريباً 🔥',
     Paused: 'استراحة قصيرة.. سنعود حالاً',
-    Ended: 'انتهت المسابقة! انتظروا النتائج'
+    Ended: 'انتهت المسابقة! مبارك للفائزين'
   },
-  marqueeSize: 20,
+  marqueeSize: 16,
   termsText: 'الشروط والأحكام:\n- الالتزام بالآداب العامة.',
   whyText: 'لتعزيز المحتوى العربي الإبداعي.',
   startTime: '',
@@ -194,91 +194,77 @@ const InputField = ({ label, id, value, onChange, type = 'text', placeholder = '
 );
 
 // =========================================================================
-// *** ULTIMATE ANIMATED ALERT BANNER ***
+// *** THE NEW ALERT BANNER ***
 // =========================================================================
 const AlertBanner = ({ settings }) => {
   const stage = settings.stage || 'Voting';
-  const stageInfo = STAGES[stage];
   const currentText = settings.stageTexts?.[stage] || 'أهلاً بكم';
 
-  // إعدادات الألوان المتغيرة لكل مرحلة
+  // إعدادات الألوان والأنميشن حسب الطلب
   const config = useMemo(() => {
     switch (stage) {
-      case 'Voting': // ناري ومشتعل
-        return { from: '#f59e0b', via: '#ef4444', to: '#ec4899', shadow: 'rgba(239, 68, 68, 0.5)' };
-      case 'Submission': // أزرق سماوي متموج
-        return { from: '#06b6d4', via: '#3b82f6', to: '#6366f1', shadow: 'rgba(59, 130, 246, 0.5)' };
-      case 'Ended': // ذهبي احتفالي
-        return { from: '#fbbf24', via: '#d97706', to: '#f59e0b', shadow: 'rgba(234, 179, 8, 0.5)' };
-      default: // رمادي/برتقالي للتوقف
-        return { from: '#4b5563', via: '#6b7280', to: '#9ca3af', shadow: 'rgba(107, 114, 128, 0.5)' };
+      case 'Submission': // سمائي (Cyan)
+        return { 
+          bg: 'linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%)',
+          shadow: 'rgba(6, 182, 212, 0.4)',
+          animate: 'animate-pulse-slow'
+        };
+      case 'Voting': // زهري (Pink/Main)
+        return { 
+          bg: `linear-gradient(135deg, #ec4899 0%, ${settings.mainColor} 100%)`,
+          shadow: 'rgba(236, 72, 153, 0.4)',
+          animate: 'animate-heartbeat'
+        };
+      case 'Ended': // أخضر (Green)
+        return { 
+          bg: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+          shadow: 'rgba(16, 185, 129, 0.4)',
+          animate: 'animate-shimmer'
+        };
+      case 'Paused': // أحمر (Red)
+        return { 
+          bg: 'linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)',
+          shadow: 'rgba(239, 68, 68, 0.4)',
+          animate: 'animate-none'
+        };
+      default:
+        return { bg: '#333', shadow: 'transparent' };
     }
-  }, [stage]);
+  }, [stage, settings.mainColor]);
 
   return (
-    <div className="relative w-full mb-10 p-[2px] rounded-2xl overflow-hidden group perspective-1000 transform transition-transform hover:scale-[1.02]">
+    <div className={`relative w-full mb-10 rounded-2xl overflow-hidden shadow-2xl transform transition-all hover:scale-[1.01] ${config.animate}`}
+         style={{ boxShadow: `0 10px 30px -5px ${config.shadow}` }}>
       
-      {/* 1. الخلفية الدوارة (The Moving Border Effect) */}
-      <div 
-        className="absolute inset-0 animate-spin-slow opacity-80"
-        style={{
-          background: `conic-gradient(from 0deg, transparent 0%, ${config.from} 10%, ${config.via} 50%, ${config.to} 90%, transparent 100%)`,
-          filter: 'blur(20px)',
-        }}
-      />
-      
-      {/* 2. طبقة البطاقة الداخلية */}
-      <div className="relative bg-black/80 backdrop-blur-xl rounded-2xl h-full w-full overflow-hidden border border-white/10">
+      <style>{`
+        @keyframes pulse-slow { 0%, 100% { opacity: 1; } 50% { opacity: 0.85; } }
+        @keyframes heartbeat { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.005); } }
+        @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
         
-        {/* 3. خلفية شبكية متحركة (Animated Mesh) */}
-        <div className="absolute inset-0 opacity-30 animate-pulse-slow"
-             style={{
-               background: `radial-gradient(circle at 50% 50%, ${config.via}20 0%, transparent 60%)`
-             }}
-        />
+        .animate-pulse-slow { animation: pulse-slow 4s infinite ease-in-out; }
+        .animate-heartbeat { animation: heartbeat 1.5s infinite ease-in-out; }
+        .animate-shimmer { position: relative; overflow: hidden; }
+        .animate-shimmer::after { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent); transform: skewX(-20deg); animation: shimmer 3s infinite; }
+      `}</style>
 
-        <style>{`
-          @keyframes spin-slow { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-          @keyframes ripple { 0% { transform: scale(0.8); opacity: 1; } 100% { transform: scale(2); opacity: 0; } }
-          @keyframes slide-text { 0% { transform: translateY(10px); opacity: 0; } 100% { transform: translateY(0); opacity: 1; } }
-          .animate-spin-slow { animation: spin-slow 8s linear infinite; }
-          .animate-ripple { animation: ripple 2s cubic-bezier(0, 0.2, 0.8, 1) infinite; }
-          .animate-slide-text { animation: slide-text 0.8s ease-out forwards; }
-        `}</style>
+      {/* الخلفية */}
+      <div className="absolute inset-0 opacity-90" style={{ background: config.bg }} />
+      
+      {/* نقش خفيف */}
+      <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')]"></div>
 
-        <div className="relative z-10 flex flex-col md:flex-row items-center justify-between p-6 gap-4">
-            
-            {/* الأيقونة مع تأثير الرادار */}
-            <div className="relative shrink-0">
-               <div className="absolute inset-0 rounded-full animate-ripple" style={{ border: `2px solid ${config.via}` }}></div>
-               <div className="absolute inset-0 rounded-full animate-ripple delay-75" style={{ border: `2px solid ${config.via}` }}></div>
-               <div className="w-16 h-16 rounded-full flex items-center justify-center bg-gradient-to-br from-white/10 to-white/5 border border-white/10 shadow-xl backdrop-blur-md">
-                 <stageInfo.icon className="w-8 h-8 text-white drop-shadow-lg" />
-               </div>
-            </div>
-
-            {/* النص */}
-            <div className="flex-1 text-center md:text-right animate-slide-text">
-               <div className="flex items-center justify-center md:justify-start gap-2 mb-1">
-                  <span className="w-2 h-2 rounded-full animate-ping" style={{ backgroundColor: config.via }}></span>
-                  <span className="text-xs font-bold uppercase tracking-[0.2em] text-white/60">{stageInfo.label}</span>
-               </div>
-               <h1 className="font-black text-white leading-tight drop-shadow-2xl"
-                   style={{ 
-                     fontSize: `${settings.marqueeSize || 22}px`,
-                     textShadow: `0 0 30px ${config.via}60`
-                   }}>
-                 {currentText}
-               </h1>
-            </div>
-
-            {/* زر إجراء (اختياري - يظهر كديكور) */}
-            {stage === 'Voting' && (
-               <div className="hidden md:block shrink-0">
-                  <Zap className="w-12 h-12 text-white/10 rotate-12" />
-               </div>
-            )}
-        </div>
+      {/* المحتوى */}
+      <div className="relative z-10 py-6 px-4 text-center">
+        {/* العنوان الكبير (عنوان المسابقة) */}
+        <h1 className="text-3xl md:text-4xl font-black text-white drop-shadow-lg mb-2 tracking-tight">
+          {settings.title}
+        </h1>
+        
+        {/* النص الفرعي (النص المخصص) */}
+        <p className="text-white/90 font-medium text-lg md:text-xl drop-shadow-md" 
+           style={{ fontSize: `${settings.marqueeSize}px` }}>
+          {currentText}
+        </p>
       </div>
     </div>
   );
@@ -290,7 +276,7 @@ const LiveHeader = ({ settings }) => (
       <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ backgroundColor: settings?.mainColor || '#fe2c55' }}></span>
       <span className="relative inline-flex rounded-full h-4 w-4" style={{ backgroundColor: settings?.mainColor || '#fe2c55' }}></span>
     </span>
-    {/* توحيد اللون الزهري مع الشعار */}
+    {/* نفس لون شريط التنبيه (الزهري في حالة التصويت، أو اللون الرئيسي) */}
     <h3 className="font-black tracking-wide text-2xl md:text-3xl" style={{ color: settings?.mainColor || '#fe2c55' }}>
       النتائج مباشرة
     </h3>
@@ -391,7 +377,7 @@ const SubmissionForm = ({ settings }) => {
   );
 };
 
-const Leaderboard = ({ submissions }) => {
+const Leaderboard = ({ submissions, isEnded }) => {
   const sorted = [...submissions].sort((a, b) => b.votes - a.votes);
   const top3 = sorted.slice(0, 3);
   const rest = sorted.slice(3);
@@ -399,71 +385,103 @@ const Leaderboard = ({ submissions }) => {
   if (sorted.length === 0) return null;
 
   return (
-    <div className="mb-12 animate-slideUp">
-      <div className="flex justify-center items-end gap-4 mb-10 min-h-[220px]">
+    <div className="mb-12 animate-slideUp relative">
+      {/* Fireworks Effect for Ended Stage */}
+      {isEnded && (
+        <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
+          <div className="firework"></div>
+          <div className="firework"></div>
+          <div className="firework"></div>
+          <style>{`
+            @keyframes firework { 0% { transform: translate(var(--x), var(--initialY)); width: var(--initialSize); opacity: 1; } 50% { width: 0.5vmin; opacity: 1; } 100% { width: var(--finalSize); opacity: 0; } }
+            .firework, .firework::before, .firework::after { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 0.5vmin; aspect-ratio: 1; background: radial-gradient(circle, #ff0 0.2vmin, #0000 0) 50% 0% / 100% 50% no-repeat; animation: firework 2s infinite; }
+            .firework::before { content: ""; transform: translate(-50%, -50%) rotate(25deg) !important; } .firework::after { content: ""; transform: translate(-50%, -50%) rotate(-37deg) !important; }
+          `}</style>
+        </div>
+      )}
+
+      {/* Podium */}
+      <div className="flex justify-center items-end gap-4 mb-12 min-h-[260px] relative z-10">
         {top3[1] && (
-          <div className="flex flex-col items-center w-1/3 md:w-auto animate-fadeIn">
+          <div className="flex flex-col items-center w-1/3 md:w-auto animate-fadeIn delay-100">
             <div className="relative">
-              <img src={top3[1].profilePicUrl} alt="2nd" className="w-16 h-16 md:w-20 md:h-20 rounded-full border-4 border-gray-400 shadow-lg object-cover bg-black" />
-              <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-gray-400 text-black text-xs font-bold px-2 py-0.5 rounded-full">#2</div>
+              <img src={top3[1].profilePicUrl} alt="2nd" className="w-20 h-20 md:w-24 md:h-24 rounded-full border-4 border-gray-300 shadow-xl object-cover bg-black" />
+              <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-gray-300 text-black text-sm font-bold px-3 py-1 rounded-full shadow-lg">#2</div>
             </div>
-            <div className="mt-3 text-center">
-              <p className="font-bold text-white text-xs md:text-sm truncate max-w-[100px]">{top3[1].participantName}</p>
-              <p className="font-bold text-gray-300 text-sm">{top3[1].votes}</p>
+            <div className="mt-4 text-center">
+              <p className="font-bold text-white text-sm md:text-base truncate max-w-[100px]">{top3[1].participantName}</p>
+              <p className="font-bold text-gray-400 text-sm">{top3[1].votes} صوت</p>
             </div>
-            <div className="w-16 md:w-20 h-20 bg-gray-700/30 rounded-t-lg border-t border-gray-500/30 mt-2"></div>
+            <div className={`w-20 md:w-24 h-24 rounded-t-xl mt-2 ${isEnded ? 'bg-gradient-to-b from-gray-400 to-gray-800' : 'bg-gray-800/50 border-t border-gray-500/30'}`}></div>
           </div>
         )}
 
         {top3[0] && (
           <div className="flex flex-col items-center z-10 w-1/3 md:w-auto animate-fadeIn">
             <div className="relative">
-              <Crown className="absolute -top-8 left-1/2 -translate-x-1/2 text-yellow-400 w-8 h-8 animate-pulse" />
-              <img src={top3[0].profilePicUrl} alt="1st" className="w-24 h-24 md:w-28 md:h-28 rounded-full border-4 border-yellow-400 shadow-2xl shadow-yellow-400/20 object-cover bg-black" />
-              <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-yellow-400 text-black text-xs font-bold px-3 py-1 rounded-full">#1</div>
+              <Crown className="absolute -top-10 left-1/2 -translate-x-1/2 text-yellow-400 w-10 h-10 animate-bounce" />
+              <img src={top3[0].profilePicUrl} alt="1st" className="w-28 h-28 md:w-32 md:h-32 rounded-full border-4 border-yellow-400 shadow-[0_0_30px_rgba(250,204,21,0.4)] object-cover bg-black" />
+              <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 bg-gradient-to-r from-yellow-500 to-yellow-300 text-black text-base font-black px-4 py-1 rounded-full shadow-xl">#1</div>
             </div>
-            <div className="mt-3 text-center">
-              <p className="font-bold text-white text-sm md:text-lg truncate max-w-[120px]">{top3[0].participantName}</p>
-              <p className="font-black text-yellow-400 text-xl">{top3[0].votes}</p>
+            <div className="mt-5 text-center">
+              <p className="font-bold text-white text-base md:text-xl truncate max-w-[140px]">{top3[0].participantName}</p>
+              <p className="font-black text-yellow-400 text-2xl">{top3[0].votes} صوت</p>
             </div>
-            <div className="w-20 md:w-24 h-28 bg-gradient-to-b from-yellow-500/20 to-transparent rounded-t-xl border-t border-yellow-500/30 mt-2 relative overflow-hidden">
-               <div className="absolute inset-0 bg-yellow-400/10 animate-pulse"></div>
+            <div className={`w-24 md:w-32 h-36 rounded-t-xl mt-2 relative overflow-hidden ${isEnded ? 'bg-gradient-to-b from-yellow-500 to-yellow-800' : 'bg-gradient-to-b from-yellow-500/20 to-transparent border-t border-yellow-500/30'}`}>
+               {isEnded && <div className="absolute inset-0 bg-white/20 animate-pulse"></div>}
             </div>
           </div>
         )}
 
         {top3[2] && (
-          <div className="flex flex-col items-center w-1/3 md:w-auto animate-fadeIn">
+          <div className="flex flex-col items-center w-1/3 md:w-auto animate-fadeIn delay-200">
             <div className="relative">
-              <img src={top3[2].profilePicUrl} alt="3rd" className="w-16 h-16 md:w-20 md:h-20 rounded-full border-4 border-orange-700 shadow-lg object-cover bg-black" />
-              <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-orange-700 text-white text-xs font-bold px-2 py-0.5 rounded-full">#3</div>
+              <img src={top3[2].profilePicUrl} alt="3rd" className="w-20 h-20 md:w-24 md:h-24 rounded-full border-4 border-orange-600 shadow-xl object-cover bg-black" />
+              <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-orange-600 text-white text-sm font-bold px-3 py-1 rounded-full shadow-lg">#3</div>
             </div>
-            <div className="mt-3 text-center">
-              <p className="font-bold text-white text-xs md:text-sm truncate max-w-[100px]">{top3[2].participantName}</p>
-              <p className="font-bold text-orange-400 text-sm">{top3[2].votes}</p>
+            <div className="mt-4 text-center">
+              <p className="font-bold text-white text-sm md:text-base truncate max-w-[100px]">{top3[2].participantName}</p>
+              <p className="font-bold text-orange-500 text-sm">{top3[2].votes} صوت</p>
             </div>
-            <div className="w-16 md:w-20 h-14 bg-gray-700/30 rounded-t-lg border-t border-orange-700/30 mt-2"></div>
+            <div className={`w-20 md:w-24 h-16 rounded-t-xl mt-2 ${isEnded ? 'bg-gradient-to-b from-orange-600 to-orange-900' : 'bg-gray-800/50 border-t border-orange-700/30'}`}></div>
           </div>
         )}
       </div>
 
-      {rest.length > 0 && (
+      {/* القائمة لباقي المشاركين (للنتائج النهائية فقط) */}
+      {isEnded && rest.length > 0 && (
+        <div className="max-w-3xl mx-auto bg-gray-900/80 backdrop-blur-md rounded-2xl overflow-hidden border border-white/10 animate-slideUp">
+          <div className="p-4 bg-white/5 border-b border-white/10 font-bold text-white flex justify-between">
+            <span>الترتيب</span>
+            <span>المشارك</span>
+            <span>الأصوات</span>
+          </div>
+          {rest.map((sub, i) => (
+            <div key={sub.id} className="flex items-center justify-between p-4 border-b border-white/5 hover:bg-white/5 transition">
+              <div className="flex items-center gap-4">
+                <span className="font-mono text-white/50 font-bold text-lg w-8">#{i + 4}</span>
+                <img src={sub.profilePicUrl} className="w-10 h-10 rounded-full object-cover" alt="" />
+                <div>
+                  <p className="font-bold text-white text-sm">{sub.participantName}</p>
+                  <p className="text-xs text-white/40">{sub.tiktokUser}</p>
+                </div>
+              </div>
+              <span className="font-bold text-white/80 bg-white/10 px-3 py-1 rounded-lg">{sub.votes}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* شريط متحرك (للحالات غير المنتهية) */}
+      {!isEnded && rest.length > 0 && (
         <div className="relative bg-white/5 border-y border-white/10 py-3 overflow-hidden group">
           <div className="flex animate-scroll gap-8 w-max hover:pause">
-            {rest.map((sub, i) => (
-              <div key={sub.id} className="flex items-center gap-3 px-4 border-l border-white/10 min-w-[200px]">
+            {[...rest, ...rest].map((sub, i) => (
+              <div key={`${sub.id}-${i}`} className="flex items-center gap-3 px-4 border-l border-white/10 min-w-[200px]">
                 <span className="text-white/30 font-mono text-sm">#{i + 4}</span>
                 <img src={sub.profilePicUrl} className="w-8 h-8 rounded-full object-cover bg-gray-800" alt="" />
                 <span className="text-white font-bold text-sm">{sub.participantName}</span>
                 <span className="text-[var(--highlight-color)] font-bold">{sub.votes} صوت</span>
-              </div>
-            ))}
-            {rest.map((sub, i) => (
-              <div key={`dup-${sub.id}`} className="flex items-center gap-3 px-4 border-l border-white/10 min-w-[200px]">
-                 <span className="text-white/30 font-mono text-sm">#{i + 4}</span>
-                 <img src={sub.profilePicUrl} className="w-8 h-8 rounded-full object-cover bg-gray-800" alt="" />
-                 <span className="text-white font-bold text-sm">{sub.participantName}</span>
-                 <span className="text-[var(--highlight-color)] font-bold">{sub.votes} صوت</span>
               </div>
             ))}
           </div>
@@ -680,8 +698,8 @@ const AdminSettingsPanel = ({ settings, onSaveSettings }) => {
           
           <div className="mb-4 mt-4">
              <label className="block text-white mb-2 text-sm opacity-90">حجم خط التنبيه</label>
-             <input type="range" min="12" max="40" value={localSettings.marqueeSize || 18} onChange={(e) => setLocalSettings({...localSettings, marqueeSize: e.target.value})} className="w-full"/>
-             <div className="text-right text-xs text-white/50">{localSettings.marqueeSize || 18}px</div>
+             <input type="range" min="12" max="40" value={localSettings.marqueeSize || 16} onChange={(e) => setLocalSettings({...localSettings, marqueeSize: e.target.value})} className="w-full"/>
+             <div className="text-right text-xs text-white/50">{localSettings.marqueeSize || 16}px</div>
           </div>
 
           <h3 className="text-lg font-bold text-white border-b border-white/10 pb-2 mt-6">المنظمون</h3>
@@ -816,6 +834,13 @@ const ContestApp = () => {
       body, button, input, select, textarea, h1, h2, h3, h4, h5, h6, p, span {
         font-family: 'Cairo', sans-serif !important;
       }
+      @keyframes scroll { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
+      .animate-scroll { animation: scroll 30s linear infinite; }
+      .hover\\:pause:hover { animation-play-state: paused; }
+      ::-webkit-scrollbar { width: 6px; } 
+      ::-webkit-scrollbar-track { background: #000; } 
+      ::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }
+      ::-webkit-scrollbar-thumb:hover { background: var(--main-color); }
     `;
     document.head.appendChild(style);
 
@@ -894,6 +919,8 @@ const ContestApp = () => {
 
   if (!settings) return <div className="h-screen bg-black flex items-center justify-center gap-3"><Loader className="animate-spin text-red-500"/><span className="text-white">جاري التحميل...</span></div>;
 
+  const isEnded = settings.stage === 'Ended';
+
   return (
     <div className="min-h-screen bg-[#050505] text-white font-sans selection:bg-[var(--highlight-color)] selection:text-black">
        <Routes>
@@ -929,37 +956,41 @@ const ContestApp = () => {
 
                 {settings.stage === 'Submission' && <SubmissionForm settings={settings} />}
                 
-                {(settings.stage === 'Voting' || settings.stage === 'Ended') && (
+                {(settings.stage === 'Voting' || isEnded) && (
                   <>
                     <LiveHeader settings={settings} />
-                    <Leaderboard submissions={submissions.filter(s => s.status === 'Approved')} />
+                    <Leaderboard submissions={submissions.filter(s => s.status === 'Approved')} isEnded={isEnded} />
                     
-                    <div className="flex items-center gap-2 mb-6 mt-10 border-b border-white/10 pb-4">
-                      <div className="h-8 w-1 bg-[var(--highlight-color)] rounded-full"></div>
-                      <h2 className="text-2xl font-bold">تصفح المشاركات</h2>
-                      <span className="bg-white/10 px-3 py-1 rounded-full text-xs text-white/60 mr-auto">
-                         {processedSubmissions.length} فيديو
-                      </span>
-                    </div>
-
-                    <SearchFilterBar onSearch={setSearchQuery} onFilter={setCountryFilter} />
-
-                    {processedSubmissions.length === 0 ? (
-                        <div className="text-center py-20 border border-dashed border-white/10 rounded-xl bg-white/5">
-                            <p className="text-white/40">لا توجد مشاركات مطابقة للبحث</p>
+                    {!isEnded && (
+                      <>
+                        <div className="flex items-center gap-2 mb-6 mt-10 border-b border-white/10 pb-4">
+                          <div className="h-8 w-1 bg-[var(--highlight-color)] rounded-full"></div>
+                          <h2 className="text-2xl font-bold">تصفح المشاركات</h2>
+                          <span className="bg-white/10 px-3 py-1 rounded-full text-xs text-white/60 mr-auto">
+                             {processedSubmissions.length} فيديو
+                          </span>
                         </div>
-                    ) : (
-                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-                        {processedSubmissions.map(sub => (
-                            <VideoCard 
-                            key={sub.id} 
-                            submission={sub} 
-                            settings={settings} 
-                            onVote={(s) => { if(cooldown > 0) return alert(`انتظر ${cooldown}s`); setModals(p=>({...p, voteConfirm: s})) }} 
-                            onClick={() => setModals(p=>({...p, videoPlayer: sub}))} 
-                            />
-                        ))}
-                        </div>
+
+                        <SearchFilterBar onSearch={setSearchQuery} onFilter={setCountryFilter} />
+
+                        {processedSubmissions.length === 0 ? (
+                            <div className="text-center py-20 border border-dashed border-white/10 rounded-xl bg-white/5">
+                                <p className="text-white/40">لا توجد مشاركات مطابقة للبحث</p>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+                            {processedSubmissions.map(sub => (
+                                <VideoCard 
+                                key={sub.id} 
+                                submission={sub} 
+                                settings={settings} 
+                                onVote={(s) => { if(cooldown > 0) return alert(`انتظر ${cooldown}s`); setModals(p=>({...p, voteConfirm: s})) }} 
+                                onClick={() => setModals(p=>({...p, videoPlayer: sub}))} 
+                                />
+                            ))}
+                            </div>
+                        )}
+                      </>
                     )}
                   </>
                 )}

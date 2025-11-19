@@ -38,7 +38,7 @@ import {
   Trash2,
   Filter,
   User,
-  Calendar
+  Type
 } from 'lucide-react';
 
 // =========================================================================
@@ -85,9 +85,8 @@ const STAGES = {
   Ended: { label: 'إعلان النتائج', color: 'green', icon: Crown },
 };
 
-// تعديل ترتيب الدول (العراق أولاً)
 const COUNTRIES = [
-  { name: 'الكل', code: 'ALL', flag: '🌍' }, // للفلتر فقط
+  { name: 'الكل', code: 'ALL', flag: '🌍' },
   { name: 'العراق', code: 'IQ', flag: '🇮🇶' },
   { name: 'الأردن', code: 'JO', flag: '🇯🇴' },
   { name: 'الإمارات', code: 'AE', flag: '🇦🇪' },
@@ -107,7 +106,7 @@ const COUNTRIES = [
   { name: 'ليبيا', code: 'LY', flag: '🇱🇾' },
   { name: 'مصر', code: 'EG', flag: '🇪🇬' },
 ].filter((c, index, self) => 
-  index === self.findIndex((t) => (t.code === c.code)) // منع التكرار إن وجد
+  index === self.findIndex((t) => (t.code === c.code))
 );
 
 const DEFAULT_SETTINGS = {
@@ -116,14 +115,15 @@ const DEFAULT_SETTINGS = {
   appFont: 'Cairo',
   title: 'Ali Jabbar Week',
   logoUrl: 'https://placehold.co/200x60/transparent/white?text=LOGO',
-  logoSize: 50, // حجم الشعار الافتراضي
+  logoSize: 50,
   stage: 'Voting',
   useGlassmorphism: true,
   marqueeText: 'التصويت مفتوح! شارك في تحديد أفضل تصميم عربي.',
+  marqueeSize: 16, // حجم خط شريط التنبيه
   termsText: 'الشروط والأحكام:\n- الالتزام بالآداب العامة.',
   whyText: 'لتعزيز المحتوى العربي الإبداعي.',
-  startTime: '', // وقت البدء
-  endTime: '',   // وقت الانتهاء
+  startTime: '',
+  endTime: '',
   organizers: [],
 };
 
@@ -184,6 +184,7 @@ const InputField = ({ label, id, value, onChange, type = 'text', placeholder = '
   </div>
 );
 
+// شريط التنبيه الثابت
 const AlertBanner = ({ settings }) => {
   const stageInfo = STAGES[settings.stage] || STAGES.Voting;
   return (
@@ -193,31 +194,26 @@ const AlertBanner = ({ settings }) => {
                             stageInfo.color === 'blue' ? '#2563eb' : 
                             stageInfo.color === 'red' ? '#b91c1c' : '#059669' 
          }}>
-      <style>{`
-        @keyframes marquee { 0% { transform: translateX(100%); } 100% { transform: translateX(-100%); } }
-        .animate-marquee { animation: marquee 25s linear infinite; }
-      `}</style>
-      <div className="flex items-center p-3 relative z-10 text-white">
-        <div className="bg-white/20 p-1.5 rounded-full ml-3 animate-pulse shrink-0">
+      <div className="flex items-center justify-center p-3 text-white text-center">
+        <div className="bg-white/20 p-1.5 rounded-full ml-3 shrink-0 hidden md:block">
           <stageInfo.icon className="w-5 h-5" />
         </div>
-        <div className="flex-1 overflow-hidden flex items-center">
-          <div className="whitespace-nowrap animate-marquee inline-block text-base font-medium">
-            {settings.marqueeText}
-          </div>
-        </div>
+        <p className="font-medium" style={{ fontSize: `${settings.marqueeSize || 16}px` }}>
+           {settings.marqueeText}
+        </p>
       </div>
     </div>
   );
 };
 
 const LiveHeader = () => (
-  <div className="flex items-center gap-2 mb-6 animate-fadeIn px-2">
-    <span className="relative flex h-3 w-3">
+  <div className="flex items-center gap-3 mb-6 animate-fadeIn px-2 mt-8">
+    <span className="relative flex h-4 w-4">
       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-pink-500 opacity-75"></span>
-      <span className="relative inline-flex rounded-full h-3 w-3 bg-pink-600"></span>
+      <span className="relative inline-flex rounded-full h-4 w-4 bg-pink-600"></span>
     </span>
-    <h3 className="text-pink-500 font-bold tracking-wider text-sm uppercase">النتائج مباشرة</h3>
+    {/* تكبير الخط هنا وتأكيد نوع الخط */}
+    <h3 className="text-pink-500 font-black tracking-wide text-2xl md:text-3xl">النتائج مباشرة</h3>
   </div>
 );
 
@@ -238,11 +234,10 @@ const ShinyButton = ({ children, onClick, disabled, className = '', style = {} }
 // =========================================================================
 
 const SubmissionForm = ({ settings }) => {
-  // تعيين العراق كافتراضي (رقم 1 في المصفوفة بعد الكل)
   const [form, setForm] = useState({ 
     displayName: '', 
     tiktokUser: '', 
-    country: 'العراق', // الافتراضي
+    country: 'العراق',
     url: '' 
   });
   const [status, setStatus] = useState('idle');
@@ -260,13 +255,12 @@ const SubmissionForm = ({ settings }) => {
     setStatus('submitting');
     try {
       const countryData = COUNTRIES.find(c => c.name === form.country);
-      // صورة افتراضية
       const defaultProfilePic = `https://ui-avatars.com/api/?name=${form.displayName}&background=random&color=fff&size=128`;
       const defaultThumb = `https://placehold.co/600x900/333/fff?text=Video`;
 
       await addDoc(collection(db, PATHS.SUBMISSIONS), {
-        participantName: form.displayName, // الاسم الظاهر
-        tiktokUser: form.tiktokUser,       // المعرف مع @
+        participantName: form.displayName,
+        tiktokUser: form.tiktokUser,
         profilePicUrl: defaultProfilePic,
         country: form.country,
         flag: countryData.flag,
@@ -301,12 +295,8 @@ const SubmissionForm = ({ settings }) => {
       )}
 
       <form onSubmit={handleSubmit} className="space-y-5">
-        {/* الاسم الظاهر */}
         <InputField label="اسم الحساب الظاهر" id="dname" value={form.displayName} onChange={v => setForm({...form, displayName: v})} placeholder="مثال: أحمد المصمم"/>
-
-        {/* اسم المستخدم مع @ */}
         <InputField label="اسم المستخدم (مع @)" id="tiktok" value={form.tiktokUser} onChange={handleUserChange} placeholder="@username"/>
-        
         <div className="mb-4">
           <label className="block text-white mb-2 text-sm opacity-90">البلد</label>
           <select 
@@ -314,13 +304,10 @@ const SubmissionForm = ({ settings }) => {
             onChange={e => setForm({...form, country: e.target.value})}
             className="w-full p-3 rounded-lg bg-gray-800/80 border border-white/10 text-white outline-none focus:ring-2 focus:ring-[var(--highlight-color)] appearance-none"
           >
-            {/* استثناء خيار "الكل" من قائمة التسجيل */}
             {COUNTRIES.filter(c => c.code !== 'ALL').map(c => <option key={c.code} value={c.name} className="bg-gray-900">{c.flag} {c.name}</option>)}
           </select>
         </div>
-
         <InputField label="رابط الفيديو" id="sub-url" value={form.url} onChange={v => setForm({...form, url: v})} placeholder="https://www.tiktok.com/..." />
-
         <ShinyButton type="submit" disabled={status === 'submitting'} className="w-full" style={{ backgroundColor: settings.mainColor }}>
           {status === 'submitting' ? <Loader className="animate-spin w-5 h-5 inline" /> : 'إرسال المشاركة'}
         </ShinyButton>
@@ -347,7 +334,6 @@ const Leaderboard = ({ submissions }) => {
               <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-gray-400 text-black text-xs font-bold px-2 py-0.5 rounded-full">#2</div>
             </div>
             <div className="mt-3 text-center">
-              {/* هنا يعرض الاسم الظاهر فقط */}
               <p className="font-bold text-white text-xs md:text-sm truncate max-w-[100px]">{top3[1].participantName}</p>
               <p className="font-bold text-gray-300 text-sm">{top3[1].votes}</p>
             </div>
@@ -363,7 +349,6 @@ const Leaderboard = ({ submissions }) => {
               <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-yellow-400 text-black text-xs font-bold px-3 py-1 rounded-full">#1</div>
             </div>
             <div className="mt-3 text-center">
-              {/* هنا يعرض الاسم الظاهر فقط */}
               <p className="font-bold text-white text-sm md:text-lg truncate max-w-[120px]">{top3[0].participantName}</p>
               <p className="font-black text-yellow-400 text-xl">{top3[0].votes}</p>
             </div>
@@ -380,7 +365,6 @@ const Leaderboard = ({ submissions }) => {
               <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-orange-700 text-white text-xs font-bold px-2 py-0.5 rounded-full">#3</div>
             </div>
             <div className="mt-3 text-center">
-              {/* هنا يعرض الاسم الظاهر فقط */}
               <p className="font-bold text-white text-xs md:text-sm truncate max-w-[100px]">{top3[2].participantName}</p>
               <p className="font-bold text-orange-400 text-sm">{top3[2].votes}</p>
             </div>
@@ -397,12 +381,10 @@ const Leaderboard = ({ submissions }) => {
               <div key={sub.id} className="flex items-center gap-3 px-4 border-l border-white/10 min-w-[200px]">
                 <span className="text-white/30 font-mono text-sm">#{i + 4}</span>
                 <img src={sub.profilePicUrl} className="w-8 h-8 rounded-full object-cover bg-gray-800" alt="" />
-                {/* الاسم الظاهر فقط في الشريط */}
                 <span className="text-white font-bold text-sm">{sub.participantName}</span>
                 <span className="text-[var(--highlight-color)] font-bold">{sub.votes} صوت</span>
               </div>
             ))}
-            {/* Duplicate for Loop */}
             {rest.map((sub, i) => (
               <div key={`dup-${sub.id}`} className="flex items-center gap-3 px-4 border-l border-white/10 min-w-[200px]">
                  <span className="text-white/30 font-mono text-sm">#{i + 4}</span>
@@ -436,7 +418,6 @@ const SearchFilterBar = ({ onSearch, onFilter }) => {
           onChange={(e) => onFilter(e.target.value)}
           className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pr-10 pl-4 text-white appearance-none focus:border-[var(--highlight-color)] outline-none cursor-pointer"
         >
-          {/* الكل هو الافتراضي في البحث */}
           {COUNTRIES.map(c => <option key={c.code} value={c.name} className="bg-gray-900">{c.flag} {c.name}</option>)}
         </select>
       </div>
@@ -460,9 +441,7 @@ const VideoCard = ({ submission, settings, onVote, onClick }) => (
       <div className="flex items-center gap-2 mb-3">
         <img src={submission.profilePicUrl} className="w-10 h-10 rounded-full border border-white/50 bg-black" alt="" />
         <div className="overflow-hidden">
-          {/* الاسم الظاهر */}
           <h3 className="font-bold text-white text-sm truncate shadow-sm">{submission.participantName}</h3>
-          {/* اليوزر نيم تحته */}
           <p className="text-[var(--highlight-color)] text-xs truncate opacity-90">{submission.tiktokUser}</p>
           <p className="text-white/60 text-[10px]">{submission.flag} {submission.country}</p>
         </div>
@@ -493,9 +472,7 @@ const VideoModal = ({ isOpen, onClose, submission, settings, onVote }) => {
         <div className="w-full md:w-1/3 bg-gray-900 p-6 flex flex-col relative border-l border-white/10">
            <div className="flex flex-col items-center mb-8 mt-4">
              <img src={submission.profilePicUrl} className="w-20 h-20 rounded-full border-4 border-[var(--highlight-color)] mb-4 object-cover bg-black" alt="" />
-             {/* الاسم الظاهر كبير */}
              <h2 className="text-xl font-bold text-white text-center">{submission.participantName}</h2>
-             {/* اليوزر نيم تحته */}
              <p className="text-[var(--highlight-color)] text-sm">{submission.tiktokUser}</p>
              <p className="text-white/50 text-xs mt-1">{submission.flag} {submission.country}</p>
            </div>
@@ -525,7 +502,6 @@ const AdminSettingsPanel = ({ settings, onSaveSettings }) => {
   const [isSaving, setIsSaving] = useState(false);
   const [turkeyTime, setTurkeyTime] = useState('');
 
-  // ساعة تركيا
   useEffect(() => {
     const timer = setInterval(() => {
       setTurkeyTime(new Date().toLocaleTimeString('ar-SA', { timeZone: 'Europe/Istanbul' }));
@@ -564,7 +540,8 @@ const AdminSettingsPanel = ({ settings, onSaveSettings }) => {
           
           <div className="mb-4">
              <label className="block text-white mb-2 text-sm opacity-90">حجم الشعار (بكسل)</label>
-             <input type="range" min="30" max="150" value={localSettings.logoSize || 50} onChange={(e) => setLocalSettings({...localSettings, logoSize: e.target.value})} className="w-full"/>
+             {/* تم تكبير الحد الأقصى إلى 300 */}
+             <input type="range" min="30" max="300" value={localSettings.logoSize || 50} onChange={(e) => setLocalSettings({...localSettings, logoSize: e.target.value})} className="w-full"/>
              <div className="text-right text-xs text-white/50">{localSettings.logoSize || 50}px</div>
           </div>
 
@@ -592,7 +569,13 @@ const AdminSettingsPanel = ({ settings, onSaveSettings }) => {
           </div>
 
           <h3 className="text-lg font-bold text-white border-b border-white/10 pb-2 mt-6">شريط التنبيه</h3>
-          <InputField label="نص الشريط المتحرك" id="marquee" value={localSettings.marqueeText} onChange={(v) => setLocalSettings({...localSettings, marqueeText: v})} />
+          <InputField label="نص الشريط" id="marquee" value={localSettings.marqueeText} onChange={(v) => setLocalSettings({...localSettings, marqueeText: v})} />
+          
+          <div className="mb-4">
+             <label className="block text-white mb-2 text-sm opacity-90">حجم خط التنبيه</label>
+             <input type="range" min="12" max="40" value={localSettings.marqueeSize || 16} onChange={(e) => setLocalSettings({...localSettings, marqueeSize: e.target.value})} className="w-full"/>
+             <div className="text-right text-xs text-white/50">{localSettings.marqueeSize || 16}px</div>
+          </div>
         </div>
 
         <div className="space-y-4">
@@ -640,7 +623,6 @@ const AdminSubmissionsPanel = ({ submissions, onUpdateStatus, onManualAdd }) => 
   const [editMode, setEditMode] = useState(null);
   const [editData, setEditData] = useState({});
   const [isAddModalOpen, setAddModal] = useState(false);
-  // نموذج الإضافة اليدوية في الأدمن
   const [newSub, setNewSub] = useState({ displayName: '', tiktokUser: '@', country: 'العراق', url: '' });
 
   const startEdit = (sub) => { setEditMode(sub.id); setEditData({ ...sub }); };
@@ -674,6 +656,7 @@ const AdminSubmissionsPanel = ({ submissions, onUpdateStatus, onManualAdd }) => 
               <div className="flex-1 grid grid-cols-2 gap-2 w-full">
                  <input value={editData.participantName} onChange={e => setEditData({...editData, participantName: e.target.value})} placeholder="الاسم الظاهر" className="bg-gray-800 border border-white/20 rounded p-2 text-white text-sm" />
                  <input value={editData.tiktokUser} onChange={e => setEditData({...editData, tiktokUser: e.target.value})} placeholder="@username" className="bg-gray-800 border border-white/20 rounded p-2 text-white text-sm" />
+                 <input value={editData.videoUrl} onChange={e => setEditData({...editData, videoUrl: e.target.value})} placeholder="URL" className="col-span-2 bg-gray-800 border border-white/20 rounded p-2 text-white text-sm" />
                  <div className="col-span-2 flex gap-2 justify-end mt-2">
                    <button onClick={() => setEditMode(null)} className="px-3 py-1 text-xs bg-gray-700 rounded text-white">إلغاء</button>
                    <button onClick={saveEdit} className="px-3 py-1 text-xs bg-green-600 rounded text-white">حفظ</button>
@@ -742,18 +725,26 @@ const ContestApp = () => {
     return () => { unsub1(); unsub2(); };
   }, []);
 
+  // فرض الخط على كل الموقع
   useEffect(() => {
     if (settings) {
       const root = document.documentElement;
       root.style.setProperty('--highlight-color', settings.highlightColor);
       root.style.setProperty('--main-color', settings.mainColor);
       root.style.fontFamily = `"${settings.appFont}", sans-serif`;
+      
+      // إضافة قاعدة CSS لإجبار الخط
+      const style = document.createElement('style');
+      style.innerHTML = `
+        * { font-family: "${settings.appFont}", sans-serif !important; }
+      `;
+      document.head.appendChild(style);
+      return () => document.head.removeChild(style);
     }
   }, [settings]);
 
   const processedSubmissions = useMemo(() => {
     let list = submissions.filter(s => s.status === 'Approved');
-    // الفلتر بالاسم الظاهر أو اليوزرنيم
     if (searchQuery) list = list.filter(s => 
       s.tiktokUser.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (s.participantName && s.participantName.toLowerCase().includes(searchQuery.toLowerCase()))

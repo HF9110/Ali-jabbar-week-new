@@ -314,39 +314,43 @@ const MOCK_SUBMISSIONS = [
 // =========================================================================
 
 /** Custom hook for managing Firebase authentication state. */
+
+
 const useAuth = () => {
   const [userId, setUserId] = useState(null);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   useEffect(() => {
     if (!auth) {
       setUserId('mock-user-id');
-      setIsLoggedIn(false);
       return;
     }
+
+    // 🛑 (1) لا تحاول تسجيل الدخول المجهول لتجنب الخطأ
+    // نعتمد هنا فقط على onAuthStateChanged للمدير، والقراءة العامة للمستخدمين العاديين
 
     const unsubscribe = onAuthStateChanged(
       auth,
       (user) => {
         if (user) {
+          // إذا كان هناك مستخدم مصادق عليه (المدير)
           setUserId(user.uid);
-          setIsLoggedIn(true); // تم تسجيل الدخول كمدير
         } else {
-          setUserId('public-read-only'); // مستخدم عام
-          setIsLoggedIn(false);
+          // إذا لم يكن هناك مستخدم، نعتبره مجهولاً لتمكين القراءة العامة
+          setUserId('public-read-only');
         }
       },
       (error) => {
         console.error('Firebase Auth State Error:', error);
         setUserId('public-read-only');
-        setIsLoggedIn(false);
       }
     );
+
+    // 🛑 (2) إزالة كود handleAuth الذي كان يسبب المشاكل
 
     return () => unsubscribe();
   }, []);
 
-  return { userId, isAuthReady: userId !== null, isLoggedIn };
+  return { userId, isAuthReady: userId !== null };
 };
 
 /** Glassmorphism Card Wrapper */

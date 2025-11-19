@@ -1854,42 +1854,85 @@ const Header = ({ settings, currentStage }) => (
   </header>
 );
 
-const Footer = ({ settings }) => (
-  <footer className="bg-gray-900/50 p-6 mt-10 border-t border-white/10">
-    <div className="container mx-auto text-white text-center text-sm">
-      <h3 className="font-bold mb-2" style={{ color: settings.highlightColor }}>
-        حول المسابقة
-      </h3>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-sm text-white/80 text-right">
-        <div>
-          <p className="font-semibold" style={{ color: settings.mainColor }}>
-            لماذا؟
-          </p>
-          <p>{settings.whyText}</p>
-        </div>
-        <div>
-          <p className="font-semibold" style={{ color: settings.mainColor }}>
-            الشروط
-          </p>
-          <p>{settings.termsText}</p>
-        </div>
-        <div>
-          <p className="font-semibold" style={{ color: settings.mainColor }}>
+const Footer = ({ settings }) => {
+  // حالة للتحكم في فتح وإغلاق النوافذ
+  const [modal, setModal] = useState(null); // 'terms', 'why', 'organizers'
+
+  return (
+    <footer className="bg-gray-900/50 p-6 mt-10 border-t border-white/10">
+      <div className="container mx-auto text-white text-center text-sm">
+        
+        <h3 className="font-bold mb-4 text-lg" style={{ color: settings.highlightColor }}>
+          روابط هامة
+        </h3>
+
+        {/* الأزرار التفاعلية */}
+        <div className="flex justify-center gap-8 text-sm font-semibold">
+          <button 
+            onClick={() => setModal('why')} 
+            className="hover:text-highlight-color transition duration-300 border-b-2 border-transparent hover:border-highlight-color pb-1"
+            style={{ '--highlight-color-css': settings.highlightColor }}
+          >
+            لماذا هذه المسابقة؟
+          </button>
+
+          <button 
+            onClick={() => setModal('terms')} 
+            className="hover:text-highlight-color transition duration-300 border-b-2 border-transparent hover:border-highlight-color pb-1"
+            style={{ '--highlight-color-css': settings.highlightColor }}
+          >
+            الشروط والأحكام
+          </button>
+
+          <button 
+            onClick={() => setModal('organizers')} 
+            className="hover:text-highlight-color transition duration-300 border-b-2 border-transparent hover:border-highlight-color pb-1"
+            style={{ '--highlight-color-css': settings.highlightColor }}
+          >
             المنظمون
-          </p>
-          {ORGANIZERS.map((org) => (
-            <p key={org.name} className="mt-1">
-              {org.name} - <span className="text-xs">{org.tiktok}</span>
-            </p>
+          </button>
+        </div>
+
+        <p className="mt-8 text-white/50 border-t border-white/10 pt-4">
+          &copy; {new Date().getFullYear()} {settings.title}. جميع الحقوق محفوظة.
+        </p>
+      </div>
+
+      {/* --- النوافذ المنبثقة (Modals) --- */}
+
+      {/* نافذة "لماذا" */}
+      <Modal isOpen={modal === 'why'} onClose={() => setModal(null)} title="لماذا هذه المسابقة؟">
+        <p>{settings.whyText}</p>
+      </Modal>
+
+      {/* نافذة "الشروط" */}
+      <Modal isOpen={modal === 'terms'} onClose={() => setModal(null)} title="الشروط والأحكام">
+        <p>{settings.termsText}</p>
+      </Modal>
+
+      {/* نافذة "المنظمون" */}
+      <Modal isOpen={modal === 'organizers'} onClose={() => setModal(null)} title="القائمون على المسابقة">
+        <div className="space-y-4">
+          {ORGANIZERS.map((org, index) => (
+            <div key={index} className="flex items-center bg-gray-800/80 p-3 rounded-lg border border-white/10">
+              <img 
+                src={org.imageUrl} 
+                alt={org.name} 
+                className="w-16 h-16 rounded-full ml-4 object-cover border-2"
+                style={{ borderColor: settings.mainColor }}
+              />
+              <div className="text-right">
+                <p className="text-lg font-bold text-white">{org.name}</p>
+                <p className="text-sm font-medium" style={{ color: settings.mainColor }}>{org.role}</p>
+                <p className="text-xs text-white/70 dir-ltr text-right">{org.tiktok}</p>
+              </div>
+            </div>
           ))}
         </div>
-      </div>
-      <p className="mt-8 text-white/50 border-t border-white/10 pt-4">
-        &copy; {new Date().getFullYear()} {settings.title}. جميع الحقوق محفوظة.
-      </p>
-    </div>
-  </footer>
-);
+      </Modal>
+    </footer>
+  );
+};
 
 const App = () => {
   const [settings, setSettings] = useState(null);

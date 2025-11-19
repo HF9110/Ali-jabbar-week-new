@@ -55,7 +55,6 @@ import {
 
 const appId = 'ali-jabbar-week';
 
-// دالة مساعدة لقراءة متغيرات البيئة بأمان
 const getEnvVar = (key, fallback) => {
   try {
     if (
@@ -320,7 +319,7 @@ const useAuth = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   useEffect(() => {
-    // ⬅️ منطق Firebase Auth الأصلي (مع إضافة حالة تسجيل الدخول)
+    // ⬅️ منطق Firebase Auth الأصلي والمستقر
     if (!isFirebaseInitialized || !auth) {
       setUserId('mock-user-id');
       setIsLoggedIn(false);
@@ -457,7 +456,7 @@ const Modal = ({ isOpen, onClose, title, children }) => {
   );
 };
 
-/** Admin Login Modal - الحل النهائي لمشكلة الإغلاق */
+/** Admin Login Modal - تم إصلاح مشكلة الإغلاق */
 const AdminAuthModal = ({ isOpen, onClose, onAuthSuccess }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -469,8 +468,9 @@ const AdminAuthModal = ({ isOpen, onClose, onAuthSuccess }) => {
     setError(null);
     setIsLoading(true);
 
-    if (!auth) {
-      setError('Firebase is not initialized.');
+    // ⬅️ رسالة خطأ واضحة عند فشل التهيئة
+    if (!isFirebaseInitialized || !auth) {
+      setError('Firebase is not initialized. الرجاء التأكد من مفتاح API وإعادة المحاولة.');
       setIsLoading(false);
       return;
     }
@@ -492,13 +492,13 @@ const AdminAuthModal = ({ isOpen, onClose, onAuthSuccess }) => {
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
-      // ⬅️ تم إزالة onClick={onClose} لضمان عدم الإغلاق أثناء محاولة الكتابة
+      // ⬅️ الحل: إزالة onClick={onClose} من الـ div الخارجي لمنع الإغلاق غير المقصود
     >
       <GlassCard
         isGlassmorphism
         className="w-full max-w-sm"
         color="bg-gray-900"
-        onClick={(e) => e.stopPropagation()} // لا يزال مهماً
+        onClick={(e) => e.stopPropagation()} 
       >
         <h2 className="text-2xl font-bold text-white mb-6 text-center flex items-center justify-center">
           <Lock className="w-6 h-6 ml-2" />
@@ -873,7 +873,7 @@ const StatsCard = ({ submission, settings }) => {
               className="h-px w-1/2 my-2"
               style={{ backgroundColor: `var(--main-color-css)` }}
             />
-            <p className="text-xs text-white/70 mb-1">إجمالي الأصوات:</p>
+            <p className className="text-xs text-white/70 mb-1">إجمالي الأصوات:</p>
             <p
               className="text-2xl font-extrabold text-white"
               style={{ color: `var(--highlight-color-css)` }}
@@ -2025,16 +2025,15 @@ const ContestApp = ({ isAdminRoute }) => {
 
     const initializeData = async () => {
       if (!isFirebaseInitialized || !db) {
-        // ⬅️ الحل الحاسم: تعيين الإعدادات والإنهاء فوراً في وضع Mock
+        // ⬅️ الحل القاطع: تعيين الإعدادات والـ Mock Data والإنهاء فوراً
         console.warn("Using default settings due to uninitialized Firebase.");
         setSettings(DEFAULT_SETTINGS);
-        setSubmissions(MOCK_SUBMISSIONS); // تحميل Mock Submissions لكي لا تكون القائمة فارغة
+        setSubmissions(MOCK_SUBMISSIONS);
         setLoading(false);
         return; 
       }
 
       try {
-        // إذا كان Firebase مهيأ، تابع عملية القراءة والتهيئة
         const settingsDocRef = doc(db, PUBLIC_SETTINGS_PATH);
         const settingsSnap = await retryOperation(() => getDoc(settingsDocRef));
         if (!settingsSnap.exists()) {
@@ -2062,14 +2061,14 @@ const ContestApp = ({ isAdminRoute }) => {
         );
         // في حال فشل القراءة، استخدم الإعدادات الافتراضية
         setSettings(DEFAULT_SETTINGS);
+        setSubmissions(MOCK_SUBMISSIONS);
       }
       setLoading(false);
     };
     
-    // ⬅️ لا ننتظر isAuthReady لبدء جلب الإعدادات
     initializeData(); 
     
-  }, []); // تم إزالة isAuthReady من الـ Dependency Array
+  }, []); 
 
   // 4. الاشتراك في تحديثات Firestore (Realtime Data)
   useEffect(() => {
@@ -2170,10 +2169,13 @@ const ContestApp = ({ isAdminRoute }) => {
       console.warn(`الرجاء الانتظار ${cooldown} ثواني قبل التصويت مرة أخرى.`);
       return;
     }
-    if (!db || !isFirebaseInitialized) {
-        console.error("Voting failed: Firebase is not initialized.");
-        return;
+    // ⬅️ إذا لم يكن Firebase مهيأ، نفترض أن التصويت نجح في وضع Mock (بدون تحديث حقيقي)
+    if (!isFirebaseInitialized) {
+        console.warn("Voting in MOCK mode. No Firestore update performed.");
+        setCooldown(30); // 30 ثانية لتجربة العد التنازلي
+        return; 
     }
+    
     try {
       const docRef = doc(db, PUBLIC_SUBMISSIONS_COLLECTION, submission.id);
       await retryOperation(() => updateDoc(docRef, { votes: increment(1) }));
@@ -2308,7 +2310,7 @@ const ContestApp = ({ isAdminRoute }) => {
                 onClick={() => handleConfirmVote(voteConfirmData)}
                 className="py-3 px-8 rounded-lg text-gray-900 font-semibold transition"
                 style={{ backgroundColor: settings.mainColor }}
-                disabled={cooldown > 0 || !isFirebaseInitialized} 
+                disabled={cooldown > 0 && isFirebaseInitialized} // ⬅️ إذا كان وضع Mock مفعلاً، يتم تجاهل Cooldown
               >
                 تأكيد التصويت
               </button>

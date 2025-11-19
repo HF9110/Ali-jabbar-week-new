@@ -1965,14 +1965,18 @@ const App = () => {
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.has('admin') && urlParams.get('admin') === 'true') {
-      // إذا كان المستخدم مسجل دخول بالفعل كمدير، فعّل وضع المدير
+      // إذا كان المستخدم مسجل دخول بالفعل كمدير
       if (auth?.currentUser) {
         setAdminMode(true);
+        setAuthModalOpen(false); // تأكيد إغلاق النافذة إذا كان المستخدم مسجلاً
       } else {
-        setAuthModalOpen(true);
+         // لا نفتح النافذة إلا إذا تأكدنا من تحميل حالة المصادقة
+         if (isAuthReady) {
+            setAuthModalOpen(true);
+         }
       }
     }
-  }, [isAuthReady]); // يعتمد على جاهزية المصادقة
+  }, [isAuthReady, userId]); // تم إضافة userId هنا لحل المشكلة
 
   const initDataRef = useRef(false);
 

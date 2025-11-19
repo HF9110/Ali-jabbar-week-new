@@ -29,7 +29,6 @@ import {
   Settings as SettingsIcon,
   X,
   Loader,
-  AlertTriangle,
   CheckCircle,
   Clock,
   LogOut,
@@ -37,12 +36,9 @@ import {
   Edit3,
   Trash2,
   Filter,
-  User,
-  Lock,
   Zap,
   PauseCircle,
-  Trophy,
-  Sparkles
+  Trophy
 } from 'lucide-react';
 
 // =========================================================================
@@ -194,7 +190,7 @@ const InputField = ({ label, id, value, onChange, type = 'text', placeholder = '
 );
 
 // =========================================================================
-// *** ULTIMATE ALERT BANNER WITH FLASH & RIPPLE ***
+// *** ALERT BANNER ***
 // =========================================================================
 const AlertBanner = ({ settings }) => {
   const stage = settings.stage || 'Voting';
@@ -203,14 +199,14 @@ const AlertBanner = ({ settings }) => {
 
   const config = useMemo(() => {
     switch (stage) {
-      case 'Submission': // سمائي
+      case 'Submission': 
         return { 
           bg: 'linear-gradient(135deg, #00f2ea 0%, #25f4ee 100%)', 
           glow: '#25f4ee',
           border: 'border-[#25f4ee]/40',
           ripple: 'border-[#25f4ee]',
         };
-      case 'Voting': // زهري
+      case 'Voting':
         return { 
           bg: 'linear-gradient(135deg, #fe2c55 0%, #ee1d52 100%)', 
           glow: '#fe2c55',
@@ -218,14 +214,14 @@ const AlertBanner = ({ settings }) => {
           ripple: 'border-[#fe2c55]',
           iconColor: 'text-white'
         };
-      case 'Ended': // أخضر
+      case 'Ended':
         return { 
             bg: 'linear-gradient(135deg, #047857 0%, #059669 100%)', 
             glow: '#34d399',
             border: 'border-green-500/40',
             ripple: 'border-green-400'
         };
-      default: // أحمر (متوقف)
+      default:
         return { 
             bg: 'linear-gradient(135deg, #991b1b 0%, #dc2626 100%)', 
             glow: '#f87171',
@@ -260,8 +256,6 @@ const AlertBanner = ({ settings }) => {
         <div className="absolute -inset-1 blur-xl opacity-50 animate-pulse z-0" style={{ backgroundColor: config.glow }}></div>
         
         <div className="relative z-20 flex flex-col md:flex-row items-center justify-between px-8 py-6">
-            <div className="absolute inset-0 opacity-15 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] pointer-events-none"></div>
-
             <div className="relative shrink-0 mb-4 md:mb-0 md:ml-6">
                 <div className={`absolute inset-0 rounded-full border-2 ${config.ripple} animate-ripple`}></div>
                 <div className={`absolute inset-0 rounded-full border-2 ${config.ripple} animate-ripple delay-150`}></div>
@@ -283,7 +277,7 @@ const AlertBanner = ({ settings }) => {
   );
 };
 
-const LiveHeader = ({ settings }) => (
+const LiveHeader = () => (
 <div className="flex items-center justify-center gap-3 mb-24 animate-fadeIn mt-4">
       <div 
       className="flex items-center gap-2 px-4 py-2 rounded-full border"
@@ -513,7 +507,7 @@ const ResultsTable = ({ submissions }) => {
     );
 };
 
-// --- STANDARD LEADERBOARD FOR VOTING STAGE ---
+// --- LEADERBOARD & TICKER ---
 const VotingLeaderboard = ({ submissions }) => {
   const sorted = [...submissions].sort((a, b) => b.votes - a.votes);
   const top3 = sorted.slice(0, 3);
@@ -572,7 +566,8 @@ const VotingLeaderboard = ({ submissions }) => {
 
       {rest.length > 0 && (
         <div className="relative bg-white/5 border-y border-white/10 py-3 overflow-hidden group">
-          <div className="flex animate-scroll gap-8 w-max hover:pause">
+          {/* --- تعديل: شريط متحرك (Ticker) --- */}
+          <div className="flex animate-scroll gap-8 w-max hover:pause" style={{ animation: 'scroll 30s linear infinite' }}>
             {rest.map((sub, i) => (
               <div key={sub.id} className="flex items-center gap-3 px-4 border-l border-white/10 min-w-[200px]">
                 <span className="text-white/30 font-mono text-sm">#{i + 4}</span>
@@ -581,6 +576,7 @@ const VotingLeaderboard = ({ submissions }) => {
                 <span className="text-[var(--highlight-color)] font-bold">{sub.votes} صوت</span>
               </div>
             ))}
+            {/* تكرار العناصر لجعل الشريط مستمر */}
             {rest.map((sub, i) => (
               <div key={`dup-${sub.id}`} className="flex items-center gap-3 px-4 border-l border-white/10 min-w-[200px]">
                  <span className="text-white/30 font-mono text-sm">#{i + 4}</span>
@@ -622,7 +618,7 @@ const SearchFilterBar = ({ onSearch, onFilter }) => {
 };
 
 // =========================================================================
-// *** MODIFIED: VideoCard WITH COOLDOWN ***
+// *** MODIFIED: VideoCard ***
 // =========================================================================
 const VideoCard = ({ submission, settings, onVote, onClick, cooldown }) => (
   <div 
@@ -638,11 +634,10 @@ const VideoCard = ({ submission, settings, onVote, onClick, cooldown }) => (
     
     <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent flex flex-col justify-end p-4">
       <div className="flex items-center gap-2 mb-3">
-        <img src={submission.profilePicUrl} className="w-10 h-10 rounded-full border border-white/50 bg-black" alt="" />
+        <img src={submission.profilePicUrl} className="w-8 h-8 rounded-full border border-white/50 bg-black" alt="" />
         <div className="overflow-hidden">
           <h3 className="font-bold text-white text-sm truncate shadow-sm">{submission.participantName}</h3>
-          <p className="text-[var(--highlight-color)] text-xs truncate opacity-90">{submission.tiktokUser}</p>
-          <p className="text-white/60 text-[10px]">{submission.flag} {submission.country}</p>
+          <p className="text-[var(--highlight-color)] text-[10px] truncate opacity-90">{submission.tiktokUser}</p>
         </div>
       </div>
       
@@ -650,20 +645,20 @@ const VideoCard = ({ submission, settings, onVote, onClick, cooldown }) => (
           <button 
             onClick={(e) => { e.stopPropagation(); if(cooldown === 0) onVote(submission); }}
             disabled={cooldown > 0}
-            className={`w-full py-2.5 rounded-lg font-bold text-sm transition flex items-center justify-center gap-2 shadow-lg active:scale-95 
+            className={`w-full py-2 rounded-lg font-bold text-xs transition flex items-center justify-center gap-2 shadow-lg active:scale-95 
               ${cooldown > 0 
                 ? 'bg-gray-600 text-gray-300 cursor-not-allowed opacity-80' 
                 : 'bg-white text-black hover:bg-gray-200'}`}
           >
             {cooldown > 0 ? (
-              <span>انتظر {cooldown} ثانية</span>
+              <span>{cooldown}s</span>
             ) : (
-              <><Crown className="w-4 h-4 text-yellow-600" /> تصويت ({submission.votes})</>
+              <><Crown className="w-3 h-3 text-yellow-600" /> تصويت ({submission.votes})</>
             )}
           </button>
       )}
       {settings.stage === 'Ended' && (
-          <div className="w-full py-2.5 rounded-lg font-bold text-sm bg-white/10 text-white text-center border border-white/10">
+          <div className="w-full py-2 rounded-lg font-bold text-xs bg-white/10 text-white text-center border border-white/10">
              {submission.votes} صوت
           </div>
       )}
@@ -672,7 +667,7 @@ const VideoCard = ({ submission, settings, onVote, onClick, cooldown }) => (
 );
 
 // =========================================================================
-// *** MODIFIED: VideoModal WITH COOLDOWN ***
+// *** UPDATED: VideoModal (Full Responsive / Only Video) ***
 // =========================================================================
 const VideoModal = ({ isOpen, onClose, submission, settings, onVote, cooldown }) => {
   if (!isOpen || !submission) return null;
@@ -680,35 +675,75 @@ const VideoModal = ({ isOpen, onClose, submission, settings, onVote, cooldown })
   const embedUrl = `https://www.tiktok.com/embed/v2/${videoId}`;
 
   return (
-    <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md" onClick={onClose}>
-      <GlassCard className="w-full max-w-5xl h-[85vh] flex flex-col md:flex-row overflow-hidden !p-0" onClick={e => e.stopPropagation()}>
-        <div className="w-full md:w-2/3 bg-black relative flex items-center justify-center">
-           <iframe src={embedUrl} className="w-full h-full" title="Video" allowFullScreen></iframe>
-           <button onClick={onClose} className="absolute top-4 left-4 bg-black/50 p-2 rounded-full text-white hover:bg-red-600 transition z-50"><X /></button>
+    <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/95 backdrop-blur-md animate-fadeIn" onClick={onClose}>
+      {/* الحاوية الرئيسية: تأخذ كامل الشاشة تقريباً على الجوال */}
+      <div 
+        className="relative w-full h-full md:h-[90vh] md:max-w-6xl md:rounded-2xl overflow-hidden flex flex-col md:flex-row bg-black md:border md:border-white/10 shadow-2xl"
+        onClick={e => e.stopPropagation()}
+      >
+        
+        {/* زر الإغلاق - عائم دائماً */}
+        <button 
+            onClick={onClose} 
+            className="absolute top-4 left-4 z-[200] bg-black/50 p-2 rounded-full text-white hover:bg-red-600 transition border border-white/10"
+        >
+            <X size={24} />
+        </button>
+
+        {/* قسم الفيديو: يأخذ المساحة الأكبر */}
+        <div className="w-full md:flex-1 h-full bg-black relative flex items-center justify-center">
+           <iframe 
+             src={embedUrl} 
+             className="w-full h-full md:w-[400px] md:max-w-full" 
+             title="Video" 
+             allowFullScreen
+             style={{ border: 'none' }}
+           ></iframe>
         </div>
-        <div className="w-full md:w-1/3 bg-gray-900 p-6 flex flex-col relative border-l border-white/10">
-           <div className="flex flex-col items-center mb-8 mt-4">
-             <img src={submission.profilePicUrl} className="w-20 h-20 rounded-full border-4 border-[var(--highlight-color)] mb-4 object-cover bg-black" alt="" />
-             <h2 className="text-xl font-bold text-white text-center">{submission.participantName}</h2>
+
+        {/* قسم المعلومات الجانبي: يختفي أو يصغر في الموبايل للتركيز على الفيديو */}
+        <div className="hidden md:flex w-full md:w-80 bg-gray-900 border-l border-white/10 flex-col relative p-6">
+           <div className="flex flex-col items-center mb-6 mt-4">
+             <img src={submission.profilePicUrl} className="w-16 h-16 rounded-full border-2 border-[var(--highlight-color)] mb-3 object-cover bg-black" alt="" />
+             <h2 className="text-lg font-bold text-white text-center">{submission.participantName}</h2>
              <p className="text-[var(--highlight-color)] text-sm">{submission.tiktokUser}</p>
              <p className="text-white/50 text-xs mt-1">{submission.flag} {submission.country}</p>
            </div>
-           <div className="bg-white/5 p-6 rounded-2xl text-center mb-auto border border-white/5">
-             <p className="text-white/50 text-sm uppercase tracking-widest mb-2">عدد الأصوات</p>
-             <p className="text-5xl font-black text-[var(--highlight-color)]">{submission.votes}</p>
+
+           <div className="bg-white/5 p-4 rounded-xl text-center mb-auto border border-white/5">
+             <p className="text-white/50 text-xs uppercase tracking-widest mb-1">عدد الأصوات</p>
+             <p className="text-4xl font-black text-[var(--highlight-color)]">{submission.votes}</p>
            </div>
+
            {settings.stage !== 'Ended' && (
                <ShinyButton 
                  onClick={() => { if(cooldown === 0) onVote(submission); }}
                  disabled={cooldown > 0}
-                 className={`w-full py-4 text-lg mt-6 ${cooldown > 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
+                 className={`w-full py-3 text-md mt-4 ${cooldown > 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
                  style={{ backgroundColor: cooldown > 0 ? '#4b5563' : settings.mainColor }}
                >
-                 {cooldown > 0 ? `انتظر ${cooldown} ثانية للتصويت` : 'تصويت للمشارك'}
+                 {cooldown > 0 ? `انتظر ${cooldown}ث` : 'تصويت للمشارك'}
                </ShinyButton>
            )}
         </div>
-      </GlassCard>
+
+        {/* زر عائم للتصويت في الموبايل فقط (فوق الفيديو) */}
+        <div className="md:hidden absolute bottom-8 left-0 right-0 px-6 z-50 flex items-center justify-between gap-4">
+            <div className="bg-black/60 backdrop-blur-md rounded-full px-4 py-2 border border-white/10 flex items-center gap-2">
+                 <span className="text-white font-bold text-sm">{submission.votes} صوت</span>
+            </div>
+            {settings.stage !== 'Ended' && (
+                <button 
+                    onClick={() => { if(cooldown === 0) onVote(submission); }}
+                    disabled={cooldown > 0}
+                    className="flex-1 bg-[var(--highlight-color)] text-black font-bold py-3 rounded-full shadow-lg active:scale-95 transition"
+                >
+                     {cooldown > 0 ? `انتظر ${cooldown}ث` : '🔥 تصويت الآن'}
+                </button>
+            )}
+        </div>
+
+      </div>
     </div>
   );
 };
@@ -963,6 +998,18 @@ const ContestApp = () => {
       body, button, input, select, textarea, h1, h2, h3, h4, h5, h6, p, span {
         font-family: 'Cairo', sans-serif !important;
       }
+      /* حركة شريط النتائج */
+      @keyframes scroll {
+        0% { transform: translateX(0); }
+        100% { transform: translateX(-50%); }
+      }
+      .animate-scroll {
+         display: flex;
+         width: max-content;
+      }
+      .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+      .custom-scrollbar::-webkit-scrollbar-track { background: #111; }
+      .custom-scrollbar::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
     `;
     document.head.appendChild(style);
 
@@ -991,6 +1038,18 @@ const ContestApp = () => {
       root.style.setProperty('--main-color', settings.mainColor);
     }
   }, [settings]);
+
+  // --- CHECK LOCAL STORAGE FOR COOLDOWN ON MOUNT ---
+  useEffect(() => {
+    const lastVoteTime = localStorage.getItem('lastVoteTime_AliWeek');
+    if (lastVoteTime) {
+        const now = Date.now();
+        const diffInSeconds = Math.floor((now - parseInt(lastVoteTime)) / 1000);
+        if (diffInSeconds < 30) {
+            setCooldown(30 - diffInSeconds);
+        }
+    }
+  }, []);
 
   const processedSubmissions = useMemo(() => {
     let list = submissions.filter(s => s.status === 'Approved');
@@ -1023,10 +1082,18 @@ const ContestApp = () => {
      });
   };
   
+  // --- CONFIRM VOTE WITH PERSISTENCE ---
   const confirmVote = async () => {
     if (modals.voteConfirm) {
+      // 1. Update Firebase
       await updateDoc(doc(db, PATHS.SUBMISSIONS, modals.voteConfirm.id), { votes: increment(1) });
+      
+      // 2. Set Cooldown State
       setCooldown(30);
+      
+      // 3. Persist to LocalStorage
+      localStorage.setItem('lastVoteTime_AliWeek', Date.now().toString());
+
       setModals(p => ({...p, voteConfirm: null}));
     }
   };
@@ -1078,7 +1145,6 @@ const ContestApp = () => {
                 
                 {(settings.stage === 'Voting' || settings.stage === 'Ended') && (
                   <>
-                    {/* إظهار عنوان النتائج المباشرة فقط في حالة التصويت */}
                     {settings.stage === 'Voting' && <LiveHeader settings={settings} />}
                     
                     {settings.stage === 'Voting' ? (
@@ -1110,7 +1176,7 @@ const ContestApp = () => {
                                     <p className="text-white/40">لا توجد مشاركات مطابقة للبحث</p>
                                 </div>
                             ) : (
-                                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+                                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
                                 {processedSubmissions.map(sub => (
                                     <VideoCard 
                                     key={sub.id} 

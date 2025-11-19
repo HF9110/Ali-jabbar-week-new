@@ -38,7 +38,8 @@ import {
   Trash2,
   Filter,
   User,
-  Type
+  Type,
+  MessageSquare
 } from 'lucide-react';
 
 // =========================================================================
@@ -115,11 +116,17 @@ const DEFAULT_SETTINGS = {
   appFont: 'Cairo',
   title: 'Ali Jabbar Week',
   logoUrl: 'https://placehold.co/200x60/transparent/white?text=LOGO',
-  logoSize: 50,
+  logoSize: 100,
   stage: 'Voting',
   useGlassmorphism: true,
-  marqueeText: 'التصويت مفتوح! شارك في تحديد أفضل تصميم عربي.',
-  marqueeSize: 16, // حجم خط شريط التنبيه
+  // نصوص التنبيه لكل حالة
+  stageTexts: {
+    Submission: 'باب المشاركة مفتوح الآن! أرسل إبداعك',
+    Voting: 'استعدوا للتصويت قريباً 🔥',
+    Paused: 'استراحة قصيرة.. سنعود حالاً',
+    Ended: 'انتهت المسابقة! انتظروا النتائج'
+  },
+  marqueeSize: 18,
   termsText: 'الشروط والأحكام:\n- الالتزام بالآداب العامة.',
   whyText: 'لتعزيز المحتوى العربي الإبداعي.',
   startTime: '',
@@ -184,9 +191,12 @@ const InputField = ({ label, id, value, onChange, type = 'text', placeholder = '
   </div>
 );
 
-// شريط التنبيه الثابت
+// شريط التنبيه الذكي
 const AlertBanner = ({ settings }) => {
   const stageInfo = STAGES[settings.stage] || STAGES.Voting;
+  // جلب النص الخاص بالمرحلة الحالية
+  const currentText = settings.stageTexts?.[settings.stage] || 'أهلاً بكم في المسابقة';
+  
   return (
     <div className="mb-4 relative overflow-hidden rounded-xl shadow-2xl border border-white/10 animate-fadeIn"
          style={{ 
@@ -194,26 +204,34 @@ const AlertBanner = ({ settings }) => {
                             stageInfo.color === 'blue' ? '#2563eb' : 
                             stageInfo.color === 'red' ? '#b91c1c' : '#059669' 
          }}>
-      <div className="flex items-center justify-center p-3 text-white text-center">
-        <div className="bg-white/20 p-1.5 rounded-full ml-3 shrink-0 hidden md:block">
+      <style>{`
+        @keyframes pulse-text { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.9; transform: scale(1.02); } }
+        .animate-pulse-text { animation: pulse-text 3s ease-in-out infinite; }
+      `}</style>
+      <div className="flex items-center justify-center p-4 text-white text-center relative">
+        <div className="bg-white/20 p-1.5 rounded-full ml-3 shrink-0 hidden md:block absolute right-4">
           <stageInfo.icon className="w-5 h-5" />
         </div>
-        <p className="font-medium" style={{ fontSize: `${settings.marqueeSize || 16}px` }}>
-           {settings.marqueeText}
+        <p className="font-bold animate-pulse-text tracking-wide" style={{ fontSize: `${settings.marqueeSize || 18}px` }}>
+           {currentText}
         </p>
+        {/* تأثير لمعة خفيف */}
+        <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-r from-transparent via-white/10 to-transparent opacity-30"></div>
       </div>
     </div>
   );
 };
 
-const LiveHeader = () => (
+const LiveHeader = ({ settings }) => (
   <div className="flex items-center gap-3 mb-6 animate-fadeIn px-2 mt-8">
     <span className="relative flex h-4 w-4">
-      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-pink-500 opacity-75"></span>
-      <span className="relative inline-flex rounded-full h-4 w-4 bg-pink-600"></span>
+      <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ backgroundColor: settings?.mainColor || '#fe2c55' }}></span>
+      <span className="relative inline-flex rounded-full h-4 w-4" style={{ backgroundColor: settings?.mainColor || '#fe2c55' }}></span>
     </span>
-    {/* تكبير الخط هنا وتأكيد نوع الخط */}
-    <h3 className="text-pink-500 font-black tracking-wide text-2xl md:text-3xl">النتائج مباشرة</h3>
+    {/* اللون الزهري (الرئيسي) كما طلب المستخدم */}
+    <h3 className="font-black tracking-wide text-2xl md:text-3xl" style={{ color: settings?.mainColor || '#fe2c55' }}>
+      النتائج مباشرة
+    </h3>
   </div>
 );
 
@@ -234,12 +252,7 @@ const ShinyButton = ({ children, onClick, disabled, className = '', style = {} }
 // =========================================================================
 
 const SubmissionForm = ({ settings }) => {
-  const [form, setForm] = useState({ 
-    displayName: '', 
-    tiktokUser: '', 
-    country: 'العراق',
-    url: '' 
-  });
+  const [form, setForm] = useState({ displayName: '', tiktokUser: '', country: 'العراق', url: '' });
   const [status, setStatus] = useState('idle');
 
   const handleUserChange = (val) => {
@@ -325,7 +338,6 @@ const Leaderboard = ({ submissions }) => {
 
   return (
     <div className="mb-12 animate-slideUp">
-      {/* Podium */}
       <div className="flex justify-center items-end gap-4 mb-10 min-h-[220px]">
         {top3[1] && (
           <div className="flex flex-col items-center w-1/3 md:w-auto animate-fadeIn">
@@ -373,7 +385,6 @@ const Leaderboard = ({ submissions }) => {
         )}
       </div>
 
-      {/* Ticker */}
       {rest.length > 0 && (
         <div className="relative bg-white/5 border-y border-white/10 py-3 overflow-hidden group">
           <div className="flex animate-scroll gap-8 w-max hover:pause">
@@ -521,6 +532,14 @@ const AdminSettingsPanel = ({ settings, onSaveSettings }) => {
     setLocalSettings({ ...localSettings, organizers: newOrgs });
   };
 
+  // دالة لتحديث نصوص التنبيه
+  const handleStageTextChange = (stage, text) => {
+    setLocalSettings({
+      ...localSettings,
+      stageTexts: { ...localSettings.stageTexts, [stage]: text }
+    });
+  };
+
   return (
     <GlassCard className="p-6 mb-8 animate-slideUp" isGlassmorphism>
       <div className="flex justify-between items-center mb-6">
@@ -540,9 +559,8 @@ const AdminSettingsPanel = ({ settings, onSaveSettings }) => {
           
           <div className="mb-4">
              <label className="block text-white mb-2 text-sm opacity-90">حجم الشعار (بكسل)</label>
-             {/* تم تكبير الحد الأقصى إلى 300 */}
-             <input type="range" min="30" max="300" value={localSettings.logoSize || 50} onChange={(e) => setLocalSettings({...localSettings, logoSize: e.target.value})} className="w-full"/>
-             <div className="text-right text-xs text-white/50">{localSettings.logoSize || 50}px</div>
+             <input type="range" min="30" max="300" value={localSettings.logoSize || 100} onChange={(e) => setLocalSettings({...localSettings, logoSize: e.target.value})} className="w-full"/>
+             <div className="text-right text-xs text-white/50">{localSettings.logoSize || 100}px</div>
           </div>
 
           <div className="flex gap-4">
@@ -567,20 +585,11 @@ const AdminSettingsPanel = ({ settings, onSaveSettings }) => {
               <InputField label="وقت البدء" type="datetime-local" id="start" value={localSettings.startTime} onChange={(v) => setLocalSettings({...localSettings, startTime: v})} />
               <InputField label="وقت الانتهاء" type="datetime-local" id="end" value={localSettings.endTime} onChange={(v) => setLocalSettings({...localSettings, endTime: v})} />
           </div>
-
-          <h3 className="text-lg font-bold text-white border-b border-white/10 pb-2 mt-6">شريط التنبيه</h3>
-          <InputField label="نص الشريط" id="marquee" value={localSettings.marqueeText} onChange={(v) => setLocalSettings({...localSettings, marqueeText: v})} />
-          
-          <div className="mb-4">
-             <label className="block text-white mb-2 text-sm opacity-90">حجم خط التنبيه</label>
-             <input type="range" min="12" max="40" value={localSettings.marqueeSize || 16} onChange={(e) => setLocalSettings({...localSettings, marqueeSize: e.target.value})} className="w-full"/>
-             <div className="text-right text-xs text-white/50">{localSettings.marqueeSize || 16}px</div>
-          </div>
         </div>
 
         <div className="space-y-4">
-          <h3 className="text-lg font-bold text-white border-b border-white/10 pb-2">حالة المسابقة</h3>
-          <div className="grid grid-cols-2 gap-2">
+          <h3 className="text-lg font-bold text-white border-b border-white/10 pb-2">حالة المسابقة ونصوص التنبيه</h3>
+          <div className="grid grid-cols-2 gap-2 mb-4">
              {Object.keys(STAGES).map(key => (
                <button 
                  key={key} 
@@ -590,6 +599,29 @@ const AdminSettingsPanel = ({ settings, onSaveSettings }) => {
                  {STAGES[key].label}
                </button>
              ))}
+          </div>
+          
+          {/* حقول نصوص التنبيه */}
+          <div className="space-y-2">
+            <label className="text-sm text-white/70">نصوص شريط التنبيه لكل حالة:</label>
+            {Object.keys(STAGES).map(key => (
+              <div key={key} className="flex items-center gap-2">
+                 <span className="text-xs w-20 text-white/50">{STAGES[key].label}</span>
+                 <input 
+                   type="text" 
+                   value={localSettings.stageTexts?.[key] || ''} 
+                   onChange={(e) => handleStageTextChange(key, e.target.value)}
+                   className="flex-1 bg-gray-800 border border-white/10 rounded p-2 text-xs text-white"
+                   placeholder={`نص حالة ${STAGES[key].label}`}
+                 />
+              </div>
+            ))}
+          </div>
+          
+          <div className="mb-4 mt-4">
+             <label className="block text-white mb-2 text-sm opacity-90">حجم خط التنبيه</label>
+             <input type="range" min="12" max="40" value={localSettings.marqueeSize || 18} onChange={(e) => setLocalSettings({...localSettings, marqueeSize: e.target.value})} className="w-full"/>
+             <div className="text-right text-xs text-white/50">{localSettings.marqueeSize || 18}px</div>
           </div>
 
           <h3 className="text-lg font-bold text-white border-b border-white/10 pb-2 mt-6">المنظمون</h3>
@@ -714,6 +746,28 @@ const ContestApp = () => {
   const [cooldown, setCooldown] = useState(0);
 
   useEffect(() => {
+    // حقن الخط جذرياً
+    const link = document.createElement('link');
+    link.href = 'https://fonts.googleapis.com/css2?family=Cairo:wght@200;400;700;900&display=swap';
+    link.rel = 'stylesheet';
+    document.head.appendChild(link);
+
+    // إجبار الخط بالـ CSS
+    const style = document.createElement('style');
+    style.innerHTML = `
+      body, button, input, select, textarea, h1, h2, h3, h4, h5, h6, p, span {
+        font-family: 'Cairo', sans-serif !important;
+      }
+    `;
+    document.head.appendChild(style);
+
+    return () => {
+      document.head.removeChild(link);
+      document.head.removeChild(style);
+    };
+  }, []);
+
+  useEffect(() => {
     if (!isFirebaseInitialized) { setSettings(DEFAULT_SETTINGS); return; }
     const unsub1 = onSnapshot(doc(db, PATHS.SETTINGS), (s) => {
       if(s.exists()) setSettings(s.data());
@@ -725,21 +779,11 @@ const ContestApp = () => {
     return () => { unsub1(); unsub2(); };
   }, []);
 
-  // فرض الخط على كل الموقع
   useEffect(() => {
     if (settings) {
       const root = document.documentElement;
       root.style.setProperty('--highlight-color', settings.highlightColor);
       root.style.setProperty('--main-color', settings.mainColor);
-      root.style.fontFamily = `"${settings.appFont}", sans-serif`;
-      
-      // إضافة قاعدة CSS لإجبار الخط
-      const style = document.createElement('style');
-      style.innerHTML = `
-        * { font-family: "${settings.appFont}", sans-serif !important; }
-      `;
-      document.head.appendChild(style);
-      return () => document.head.removeChild(style);
     }
   }, [settings]);
 
@@ -811,7 +855,7 @@ const ContestApp = () => {
             <div className="container mx-auto px-4 py-8 animate-fadeIn">
               <div className="flex justify-between items-center mb-8 bg-gray-900 p-4 rounded-2xl border border-white/10">
                  <div className="flex items-center gap-3">
-                    <img src={settings.logoUrl} className="object-contain bg-black/20 rounded p-1" style={{ height: `${settings.logoSize || 50}px` }} alt="Logo"/>
+                    <img src={settings.logoUrl} className="object-contain bg-black/20 rounded p-1" style={{ height: `${settings.logoSize || 100}px` }} alt="Logo"/>
                     <span className="font-bold text-xl hidden md:block">لوحة التحكم</span>
                  </div>
                  <div className="flex gap-3">
@@ -829,7 +873,7 @@ const ContestApp = () => {
              <header className="sticky top-0 z-40 bg-black/80 backdrop-blur-lg border-b border-white/10">
                 <div className="container mx-auto px-4 py-3 flex justify-between items-center">
                    <div className="flex items-center gap-3" onClick={() => window.location.reload()}>
-                      <img src={settings.logoUrl} className="object-contain rounded-lg" style={{ height: `${settings.logoSize || 50}px` }} alt="Logo"/>
+                      <img src={settings.logoUrl} className="object-contain rounded-lg" style={{ height: `${settings.logoSize || 100}px` }} alt="Logo"/>
                    </div>
                    {user && <button onClick={() => navigate('/admin')} className="bg-white/10 px-3 py-1 rounded-full text-xs hover:bg-white/20 transition border border-white/10">⚙️ الإدارة</button>}
                 </div>
@@ -842,7 +886,7 @@ const ContestApp = () => {
                 
                 {(settings.stage === 'Voting' || settings.stage === 'Ended') && (
                   <>
-                    <LiveHeader />
+                    <LiveHeader settings={settings} />
                     <Leaderboard submissions={submissions.filter(s => s.status === 'Approved')} />
                     
                     <div className="flex items-center gap-2 mb-6 mt-10 border-b border-white/10 pb-4">

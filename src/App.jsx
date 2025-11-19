@@ -41,7 +41,8 @@ import {
   Lock,
   Zap,
   PauseCircle,
-  Trophy
+  Trophy,
+  Sparkles
 } from 'lucide-react';
 
 // =========================================================================
@@ -81,10 +82,9 @@ const PATHS = {
 // 2. CONSTANTS & STYLES
 // =========================================================================
 
-// تحديث الأيقونات لتناسب التصميم الجديد
 const STAGES = {
   Submission: { label: 'استقبال المشاركات', color: 'blue', icon: Clock },
-  Voting: { label: 'التصويت مفتوح', color: 'yellow', icon: Zap }, // أيقونة طاقة للتصويت
+  Voting: { label: 'التصويت مفتوح', color: 'yellow', icon: Zap },
   Paused: { label: 'متوقفة مؤقتاً', color: 'red', icon: PauseCircle },
   Ended: { label: 'إعلان النتائج', color: 'green', icon: Trophy },
 };
@@ -128,7 +128,7 @@ const DEFAULT_SETTINGS = {
     Paused: 'استراحة قصيرة.. سنعود حالاً',
     Ended: 'انتهت المسابقة! انتظروا النتائج'
   },
-  marqueeSize: 18,
+  marqueeSize: 20,
   termsText: 'الشروط والأحكام:\n- الالتزام بالآداب العامة.',
   whyText: 'لتعزيز المحتوى العربي الإبداعي.',
   startTime: '',
@@ -194,103 +194,90 @@ const InputField = ({ label, id, value, onChange, type = 'text', placeholder = '
 );
 
 // =========================================================================
-// *** NEW PROFESSIONAL ALERT BANNER ***
+// *** ULTIMATE ANIMATED ALERT BANNER ***
 // =========================================================================
 const AlertBanner = ({ settings }) => {
   const stage = settings.stage || 'Voting';
   const stageInfo = STAGES[stage];
-  const currentText = settings.stageTexts?.[stage] || 'أهلاً بكم في المسابقة';
+  const currentText = settings.stageTexts?.[stage] || 'أهلاً بكم';
 
-  // تكوين الأنماط بناءً على الحالة (Styles Config)
-  const getStyles = () => {
+  // إعدادات الألوان المتغيرة لكل مرحلة
+  const config = useMemo(() => {
     switch (stage) {
-      case 'Voting':
-        return {
-          containerClass: 'border-red-500/30 shadow-[0_0_40px_-10px_rgba(239,68,68,0.3)]',
-          bgGradient: `linear-gradient(135deg, ${settings.mainColor}dd 0%, #000 100%)`,
-          iconBg: 'bg-red-500/20 text-red-400',
-          animation: 'animate-pulse-glow'
-        };
-      case 'Submission':
-        return {
-          containerClass: 'border-blue-500/30 shadow-[0_0_40px_-10px_rgba(59,130,246,0.3)]',
-          bgGradient: 'linear-gradient(135deg, rgba(59,130,246,0.8) 0%, #000 100%)',
-          iconBg: 'bg-blue-500/20 text-blue-400',
-          animation: 'animate-flow'
-        };
-      case 'Paused':
-        return {
-          containerClass: 'border-orange-500/30',
-          bgGradient: 'repeating-linear-gradient(45deg, #1f1f1f, #1f1f1f 10px, #2a2a2a 10px, #2a2a2a 20px)', // Striped pattern
-          iconBg: 'bg-orange-500/20 text-orange-400',
-          animation: 'animate-none'
-        };
-      case 'Ended':
-        return {
-          containerClass: 'border-yellow-500/50 shadow-[0_0_50px_-15px_rgba(234,179,8,0.4)]',
-          bgGradient: 'linear-gradient(135deg, rgba(234,179,8,0.9) 0%, #000 100%)',
-          iconBg: 'bg-yellow-500/20 text-yellow-300',
-          animation: 'animate-shine-sweep'
-        };
-      default:
-        return {};
+      case 'Voting': // ناري ومشتعل
+        return { from: '#f59e0b', via: '#ef4444', to: '#ec4899', shadow: 'rgba(239, 68, 68, 0.5)' };
+      case 'Submission': // أزرق سماوي متموج
+        return { from: '#06b6d4', via: '#3b82f6', to: '#6366f1', shadow: 'rgba(59, 130, 246, 0.5)' };
+      case 'Ended': // ذهبي احتفالي
+        return { from: '#fbbf24', via: '#d97706', to: '#f59e0b', shadow: 'rgba(234, 179, 8, 0.5)' };
+      default: // رمادي/برتقالي للتوقف
+        return { from: '#4b5563', via: '#6b7280', to: '#9ca3af', shadow: 'rgba(107, 114, 128, 0.5)' };
     }
-  };
-
-  const styles = getStyles();
+  }, [stage]);
 
   return (
-    <div className={`relative w-full mb-10 rounded-2xl overflow-hidden border-t border-l border-r ${styles.containerClass} group transition-all duration-500 transform hover:scale-[1.01]`}>
-      <style>{`
-        @keyframes pulse-glow { 0%, 100% { opacity: 1; box-shadow: 0 0 20px ${settings.mainColor}40; } 50% { opacity: 0.9; box-shadow: 0 0 40px ${settings.mainColor}60; } }
-        @keyframes flow { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
-        @keyframes shine-sweep { 0% { transform: translateX(-100%) skewX(-15deg); } 100% { transform: translateX(200%) skewX(-15deg); } }
-        @keyframes float-icon { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
-        
-        .animate-pulse-glow { animation: pulse-glow 3s infinite; }
-        .animate-flow { background-size: 200% 200%; animation: flow 5s ease infinite; }
-        .animate-float { animation: float-icon 3s ease-in-out infinite; }
-      `}</style>
-
-      {/* الخلفية الديناميكية */}
+    <div className="relative w-full mb-10 p-[2px] rounded-2xl overflow-hidden group perspective-1000 transform transition-transform hover:scale-[1.02]">
+      
+      {/* 1. الخلفية الدوارة (The Moving Border Effect) */}
       <div 
-        className={`absolute inset-0 z-0 ${styles.animation}`}
-        style={{ background: styles.bgGradient }}
+        className="absolute inset-0 animate-spin-slow opacity-80"
+        style={{
+          background: `conic-gradient(from 0deg, transparent 0%, ${config.from} 10%, ${config.via} 50%, ${config.to} 90%, transparent 100%)`,
+          filter: 'blur(20px)',
+        }}
       />
       
-      {/* طبقة الزجاج */}
-      <div className="absolute inset-0 backdrop-blur-md bg-black/40 z-0" />
-
-      {/* تأثير اللمعان (للمنتهية) */}
-      {stage === 'Ended' && (
-        <div className="absolute inset-0 z-10 w-1/2 h-full bg-gradient-to-r from-transparent via-white/20 to-transparent animate-[shine-sweep_3s_infinite_linear]" />
-      )}
-
-      {/* المحتوى */}
-      <div className="relative z-20 flex items-center justify-between px-6 py-5 md:px-8">
+      {/* 2. طبقة البطاقة الداخلية */}
+      <div className="relative bg-black/80 backdrop-blur-xl rounded-2xl h-full w-full overflow-hidden border border-white/10">
         
-        {/* النص */}
-        <div className="flex-1 text-center md:text-right">
-          <div className="flex items-center justify-center md:justify-start gap-3 mb-1">
-            <span className={`text-xs font-bold uppercase tracking-widest px-2 py-0.5 rounded bg-black/30 border border-white/10 text-white/80`}>
-              {stageInfo.label}
-            </span>
-            {/* نقطة الحالة */}
-            <span className="flex h-2 w-2 relative">
-              <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${stage === 'Voting' ? 'bg-red-400' : 'bg-white'}`}></span>
-              <span className={`relative inline-flex rounded-full h-2 w-2 ${stage === 'Voting' ? 'bg-red-500' : 'bg-white'}`}></span>
-            </span>
-          </div>
-          
-          <h2 className="text-white font-bold leading-tight drop-shadow-lg" 
-              style={{ fontSize: `${settings.marqueeSize}px` }}>
-            {currentText}
-          </h2>
-        </div>
+        {/* 3. خلفية شبكية متحركة (Animated Mesh) */}
+        <div className="absolute inset-0 opacity-30 animate-pulse-slow"
+             style={{
+               background: `radial-gradient(circle at 50% 50%, ${config.via}20 0%, transparent 60%)`
+             }}
+        />
 
-        {/* الأيقونة العائمة */}
-        <div className={`hidden md:flex items-center justify-center w-14 h-14 rounded-2xl border border-white/10 shadow-lg animate-float ${styles.iconBg} backdrop-blur-xl ml-6`}>
-          <stageInfo.icon size={28} />
+        <style>{`
+          @keyframes spin-slow { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+          @keyframes ripple { 0% { transform: scale(0.8); opacity: 1; } 100% { transform: scale(2); opacity: 0; } }
+          @keyframes slide-text { 0% { transform: translateY(10px); opacity: 0; } 100% { transform: translateY(0); opacity: 1; } }
+          .animate-spin-slow { animation: spin-slow 8s linear infinite; }
+          .animate-ripple { animation: ripple 2s cubic-bezier(0, 0.2, 0.8, 1) infinite; }
+          .animate-slide-text { animation: slide-text 0.8s ease-out forwards; }
+        `}</style>
+
+        <div className="relative z-10 flex flex-col md:flex-row items-center justify-between p-6 gap-4">
+            
+            {/* الأيقونة مع تأثير الرادار */}
+            <div className="relative shrink-0">
+               <div className="absolute inset-0 rounded-full animate-ripple" style={{ border: `2px solid ${config.via}` }}></div>
+               <div className="absolute inset-0 rounded-full animate-ripple delay-75" style={{ border: `2px solid ${config.via}` }}></div>
+               <div className="w-16 h-16 rounded-full flex items-center justify-center bg-gradient-to-br from-white/10 to-white/5 border border-white/10 shadow-xl backdrop-blur-md">
+                 <stageInfo.icon className="w-8 h-8 text-white drop-shadow-lg" />
+               </div>
+            </div>
+
+            {/* النص */}
+            <div className="flex-1 text-center md:text-right animate-slide-text">
+               <div className="flex items-center justify-center md:justify-start gap-2 mb-1">
+                  <span className="w-2 h-2 rounded-full animate-ping" style={{ backgroundColor: config.via }}></span>
+                  <span className="text-xs font-bold uppercase tracking-[0.2em] text-white/60">{stageInfo.label}</span>
+               </div>
+               <h1 className="font-black text-white leading-tight drop-shadow-2xl"
+                   style={{ 
+                     fontSize: `${settings.marqueeSize || 22}px`,
+                     textShadow: `0 0 30px ${config.via}60`
+                   }}>
+                 {currentText}
+               </h1>
+            </div>
+
+            {/* زر إجراء (اختياري - يظهر كديكور) */}
+            {stage === 'Voting' && (
+               <div className="hidden md:block shrink-0">
+                  <Zap className="w-12 h-12 text-white/10 rotate-12" />
+               </div>
+            )}
         </div>
       </div>
     </div>
@@ -303,6 +290,7 @@ const LiveHeader = ({ settings }) => (
       <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ backgroundColor: settings?.mainColor || '#fe2c55' }}></span>
       <span className="relative inline-flex rounded-full h-4 w-4" style={{ backgroundColor: settings?.mainColor || '#fe2c55' }}></span>
     </span>
+    {/* توحيد اللون الزهري مع الشعار */}
     <h3 className="font-black tracking-wide text-2xl md:text-3xl" style={{ color: settings?.mainColor || '#fe2c55' }}>
       النتائج مباشرة
     </h3>

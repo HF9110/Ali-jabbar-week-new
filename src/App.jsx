@@ -38,8 +38,7 @@ import {
   Trash2,
   Filter,
   User,
-  Type,
-  MessageSquare
+  Lock
 } from 'lucide-react';
 
 // =========================================================================
@@ -119,7 +118,6 @@ const DEFAULT_SETTINGS = {
   logoSize: 100,
   stage: 'Voting',
   useGlassmorphism: true,
-  // نصوص التنبيه لكل حالة
   stageTexts: {
     Submission: 'باب المشاركة مفتوح الآن! أرسل إبداعك',
     Voting: 'استعدوا للتصويت قريباً 🔥',
@@ -191,32 +189,55 @@ const InputField = ({ label, id, value, onChange, type = 'text', placeholder = '
   </div>
 );
 
-// شريط التنبيه الذكي
+// شريط التنبيه المتطور (Advanced Animated Alert Banner)
 const AlertBanner = ({ settings }) => {
   const stageInfo = STAGES[settings.stage] || STAGES.Voting;
-  // جلب النص الخاص بالمرحلة الحالية
   const currentText = settings.stageTexts?.[settings.stage] || 'أهلاً بكم في المسابقة';
   
+  // تحديد كلاس الأنميشن بناءً على المرحلة
+  let animationClass = "";
+  let glowColor = settings.mainColor;
+
+  if (settings.stage === 'Voting') {
+    animationClass = "animate-heartbeat border-red-500/50 shadow-red-500/20";
+  } else if (settings.stage === 'Submission') {
+    animationClass = "animate-pulse-slow border-blue-500/50 shadow-blue-500/20";
+    glowColor = "#3b82f6";
+  } else if (settings.stage === 'Ended') {
+    animationClass = "animate-shimmer border-yellow-500/50 shadow-yellow-500/20";
+    glowColor = "#eab308";
+  } else {
+    animationClass = "opacity-80 border-gray-500/50"; // Paused
+    glowColor = "#6b7280";
+  }
+  
   return (
-    <div className="mb-4 relative overflow-hidden rounded-xl shadow-2xl border border-white/10 animate-fadeIn"
+    <div className={`mb-8 relative overflow-hidden rounded-xl shadow-2xl border-2 transition-all duration-500 ${animationClass}`}
          style={{ 
-           backgroundColor: stageInfo.color === 'yellow' ? settings.mainColor : 
-                            stageInfo.color === 'blue' ? '#2563eb' : 
-                            stageInfo.color === 'red' ? '#b91c1c' : '#059669' 
+           backgroundColor: 'rgba(0,0,0,0.4)',
+           boxShadow: `0 0 20px ${glowColor}20`
          }}>
       <style>{`
-        @keyframes pulse-text { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.9; transform: scale(1.02); } }
-        .animate-pulse-text { animation: pulse-text 3s ease-in-out infinite; }
+        @keyframes heartbeat { 0%, 100% { transform: scale(1); border-color: ${settings.mainColor}40; } 50% { transform: scale(1.01); border-color: ${settings.mainColor}; box-shadow: 0 0 25px ${settings.mainColor}40; } }
+        @keyframes pulse-slow { 0%, 100% { opacity: 1; } 50% { opacity: 0.8; } }
+        @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+        .animate-heartbeat { animation: heartbeat 2s infinite ease-in-out; }
+        .animate-pulse-slow { animation: pulse-slow 3s infinite; }
+        .animate-shimmer { background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent); background-size: 200% 100%; animation: shimmer 3s infinite linear; }
       `}</style>
-      <div className="flex items-center justify-center p-4 text-white text-center relative">
-        <div className="bg-white/20 p-1.5 rounded-full ml-3 shrink-0 hidden md:block absolute right-4">
-          <stageInfo.icon className="w-5 h-5" />
+      
+      {/* خلفية ملونة خفيفة */}
+      <div className="absolute inset-0 opacity-20" style={{ backgroundColor: glowColor }}></div>
+
+      <div className="flex items-center justify-center p-4 text-white text-center relative z-10">
+        {/* أيقونة المرحلة */}
+        <div className="bg-white/10 p-2 rounded-full ml-3 shrink-0 absolute right-4 hidden md:block border border-white/10">
+          <stageInfo.icon className="w-5 h-5" style={{ color: glowColor }} />
         </div>
-        <p className="font-bold animate-pulse-text tracking-wide" style={{ fontSize: `${settings.marqueeSize || 18}px` }}>
+        
+        <p className="font-bold tracking-wide drop-shadow-md" style={{ fontSize: `${settings.marqueeSize || 18}px` }}>
            {currentText}
         </p>
-        {/* تأثير لمعة خفيف */}
-        <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-r from-transparent via-white/10 to-transparent opacity-30"></div>
       </div>
     </div>
   );
@@ -228,7 +249,6 @@ const LiveHeader = ({ settings }) => (
       <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ backgroundColor: settings?.mainColor || '#fe2c55' }}></span>
       <span className="relative inline-flex rounded-full h-4 w-4" style={{ backgroundColor: settings?.mainColor || '#fe2c55' }}></span>
     </span>
-    {/* اللون الزهري (الرئيسي) كما طلب المستخدم */}
     <h3 className="font-black tracking-wide text-2xl md:text-3xl" style={{ color: settings?.mainColor || '#fe2c55' }}>
       النتائج مباشرة
     </h3>
@@ -532,7 +552,6 @@ const AdminSettingsPanel = ({ settings, onSaveSettings }) => {
     setLocalSettings({ ...localSettings, organizers: newOrgs });
   };
 
-  // دالة لتحديث نصوص التنبيه
   const handleStageTextChange = (stage, text) => {
     setLocalSettings({
       ...localSettings,
@@ -601,7 +620,6 @@ const AdminSettingsPanel = ({ settings, onSaveSettings }) => {
              ))}
           </div>
           
-          {/* حقول نصوص التنبيه */}
           <div className="space-y-2">
             <label className="text-sm text-white/70">نصوص شريط التنبيه لكل حالة:</label>
             {Object.keys(STAGES).map(key => (
@@ -746,13 +764,11 @@ const ContestApp = () => {
   const [cooldown, setCooldown] = useState(0);
 
   useEffect(() => {
-    // حقن الخط جذرياً
     const link = document.createElement('link');
     link.href = 'https://fonts.googleapis.com/css2?family=Cairo:wght@200;400;700;900&display=swap';
     link.rel = 'stylesheet';
     document.head.appendChild(link);
 
-    // إجبار الخط بالـ CSS
     const style = document.createElement('style');
     style.innerHTML = `
       body, button, input, select, textarea, h1, h2, h3, h4, h5, h6, p, span {
@@ -866,7 +882,7 @@ const ContestApp = () => {
               <AdminSettingsPanel settings={settings} onSaveSettings={handleSaveSettings} />
               <AdminSubmissionsPanel submissions={submissions} onUpdateStatus={handleStatus} onManualAdd={handleManualAdd} />
             </div>
-         ) : <div className="h-screen flex flex-col items-center justify-center gap-4"><AlertTriangle className="w-12 h-12 text-red-500"/><button onClick={() => setModals(p=>({...p, adminAuth: true}))} className="text-white underline">دخول المدير</button></div>} />
+         ) : <div className="h-screen flex flex-col items-center justify-center gap-4"><Lock className="w-12 h-12 text-red-500"/><button onClick={() => setModals(p=>({...p, adminAuth: true}))} className="text-white underline">تسجيل الدخول</button></div>} />
 
          <Route path="/" element={
            <>
@@ -875,7 +891,7 @@ const ContestApp = () => {
                    <div className="flex items-center gap-3" onClick={() => window.location.reload()}>
                       <img src={settings.logoUrl} className="object-contain rounded-lg" style={{ height: `${settings.logoSize || 100}px` }} alt="Logo"/>
                    </div>
-                   {user && <button onClick={() => navigate('/admin')} className="bg-white/10 px-3 py-1 rounded-full text-xs hover:bg-white/20 transition border border-white/10">⚙️ الإدارة</button>}
+                   {/* تم إزالة زر الإدارة من هنا بناءً على طلبك */}
                 </div>
              </header>
 
@@ -937,7 +953,6 @@ const ContestApp = () => {
                  ))}
                </div>
                <p className="text-xs text-white/20">&copy; 2025 {settings.title}. All rights reserved.</p>
-               <button onClick={() => setModals(p=>({...p, adminAuth: true}))} className="opacity-10 hover:opacity-50 mt-4 grayscale text-xs">Login</button>
              </footer>
            </>
          } />

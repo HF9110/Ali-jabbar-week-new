@@ -42,6 +42,8 @@ import {
   Zap,
   PauseCircle,
   Trophy,
+  Sparkles,
+  Medal,
   Star
 } from 'lucide-react';
 
@@ -83,10 +85,10 @@ const PATHS = {
 // =========================================================================
 
 const STAGES = {
-  Submission: { label: 'استقبال المشاركات', color: 'cyan', icon: Clock },
-  Voting: { label: 'التصويت مفتوح', color: 'pink', icon: Zap },
-  Paused: { label: 'متوقفة مؤقتاً', color: 'red', icon: PauseCircle },
-  Ended: { label: 'إعلان النتائج', color: 'green', icon: Trophy },
+  Submission: { label: 'استقبال المشاركات', color: 'cyan', icon: Clock, title: 'انضم للمنافسة الآن' },
+  Voting: { label: 'التصويت مفتوح', color: 'pink', icon: Zap, title: 'المنافسة مشتعلة' },
+  Paused: { label: 'متوقفة مؤقتاً', color: 'red', icon: PauseCircle, title: 'تنبيه هام' },
+  Ended: { label: 'إعلان النتائج', color: 'green', icon: Trophy, title: 'ألف مبروك للفائزين' },
 };
 
 const COUNTRIES = [
@@ -114,7 +116,7 @@ const COUNTRIES = [
 );
 
 const DEFAULT_SETTINGS = {
-  mainColor: '#fe2c55',
+  mainColor: '#ec4899', // Pink default
   highlightColor: '#25f4ee',
   appFont: 'Cairo',
   title: 'Ali Jabbar Week',
@@ -124,11 +126,11 @@ const DEFAULT_SETTINGS = {
   useGlassmorphism: true,
   stageTexts: {
     Submission: 'باب المشاركة مفتوح الآن! أرسل إبداعك',
-    Voting: 'استعدوا للتصويت قريباً 🔥',
-    Paused: 'استراحة قصيرة.. سنعود حالاً',
-    Ended: 'انتهت المسابقة! مبارك للفائزين'
+    Voting: 'صوت لمشتركك المفضل الآن 🔥',
+    Paused: 'سنعود قريباً...',
+    Ended: 'شكراً لكل من شارك وصوت في المسابقة'
   },
-  marqueeSize: 16,
+  marqueeSize: 16, // حجم النص الفرعي
   termsText: 'الشروط والأحكام:\n- الالتزام بالآداب العامة.',
   whyText: 'لتعزيز المحتوى العربي الإبداعي.',
   startTime: '',
@@ -194,92 +196,87 @@ const InputField = ({ label, id, value, onChange, type = 'text', placeholder = '
 );
 
 // =========================================================================
-// *** THE NEW ALERT BANNER ***
+// *** UPDATED ALERT BANNER (THE FOCAL POINT) ***
 // =========================================================================
 const AlertBanner = ({ settings }) => {
   const stage = settings.stage || 'Voting';
-  const currentText = settings.stageTexts?.[stage] || 'أهلاً بكم';
+  const stageInfo = STAGES[stage];
+  const subText = settings.stageTexts?.[stage] || 'أهلاً بكم';
 
-  // إعدادات الألوان والأنميشن حسب الطلب
+  // إعدادات الألوان بناءً على طلب المستخدم
   const config = useMemo(() => {
     switch (stage) {
       case 'Submission': // سمائي (Cyan)
         return { 
-          bg: 'linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%)',
-          shadow: 'rgba(6, 182, 212, 0.4)',
-          animate: 'animate-pulse-slow'
+            bg: 'linear-gradient(135deg, #06b6d4 0%, #0891b2 100%)', 
+            glow: '#22d3ee',
+            iconColor: 'text-cyan-100'
         };
-      case 'Voting': // زهري (Pink/Main)
+      case 'Voting': // زهري (Pink)
         return { 
-          bg: `linear-gradient(135deg, #ec4899 0%, ${settings.mainColor} 100%)`,
-          shadow: 'rgba(236, 72, 153, 0.4)',
-          animate: 'animate-heartbeat'
+            bg: 'linear-gradient(135deg, #db2777 0%, #be185d 100%)', 
+            glow: '#f472b6',
+            iconColor: 'text-pink-100'
         };
       case 'Ended': // أخضر (Green)
         return { 
-          bg: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-          shadow: 'rgba(16, 185, 129, 0.4)',
-          animate: 'animate-shimmer'
+            bg: 'linear-gradient(135deg, #059669 0%, #047857 100%)', 
+            glow: '#34d399',
+            iconColor: 'text-green-100'
         };
-      case 'Paused': // أحمر (Red)
+      default: // أحمر (Red/Paused)
         return { 
-          bg: 'linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)',
-          shadow: 'rgba(239, 68, 68, 0.4)',
-          animate: 'animate-none'
+            bg: 'linear-gradient(135deg, #dc2626 0%, #991b1b 100%)', 
+            glow: '#f87171',
+            iconColor: 'text-red-100'
         };
-      default:
-        return { bg: '#333', shadow: 'transparent' };
     }
-  }, [stage, settings.mainColor]);
+  }, [stage]);
 
   return (
-    <div className={`relative w-full mb-10 rounded-2xl overflow-hidden shadow-2xl transform transition-all hover:scale-[1.01] ${config.animate}`}
-         style={{ boxShadow: `0 10px 30px -5px ${config.shadow}` }}>
-      
-      <style>{`
-        @keyframes pulse-slow { 0%, 100% { opacity: 1; } 50% { opacity: 0.85; } }
-        @keyframes heartbeat { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.005); } }
-        @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+    <div className="relative w-full mb-12 mx-auto max-w-4xl transform hover:scale-[1.02] transition-transform duration-500">
+        {/* Glow Effect Behind */}
+        <div className="absolute -inset-1 blur-xl opacity-40 animate-pulse" style={{ backgroundColor: config.glow }}></div>
         
-        .animate-pulse-slow { animation: pulse-slow 4s infinite ease-in-out; }
-        .animate-heartbeat { animation: heartbeat 1.5s infinite ease-in-out; }
-        .animate-shimmer { position: relative; overflow: hidden; }
-        .animate-shimmer::after { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent); transform: skewX(-20deg); animation: shimmer 3s infinite; }
-      `}</style>
+        <div 
+            className="relative rounded-2xl overflow-hidden border border-white/20 shadow-2xl flex flex-col md:flex-row items-center justify-between px-8 py-6 z-10"
+            style={{ background: config.bg }}
+        >
+            {/* Background Pattern */}
+            <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
 
-      {/* الخلفية */}
-      <div className="absolute inset-0 opacity-90" style={{ background: config.bg }} />
-      
-      {/* نقش خفيف */}
-      <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')]"></div>
+            {/* Icon Area */}
+            <div className={`p-4 rounded-full bg-white/20 backdrop-blur-md border border-white/30 shadow-inner shrink-0 mb-4 md:mb-0 md:ml-6 ${config.iconColor} animate-bounce-slow`}>
+                <stageInfo.icon size={32} strokeWidth={2.5} />
+            </div>
 
-      {/* المحتوى */}
-      <div className="relative z-10 py-6 px-4 text-center">
-        {/* العنوان الكبير (عنوان المسابقة) */}
-        <h1 className="text-3xl md:text-4xl font-black text-white drop-shadow-lg mb-2 tracking-tight">
-          {settings.title}
-        </h1>
-        
-        {/* النص الفرعي (النص المخصص) */}
-        <p className="text-white/90 font-medium text-lg md:text-xl drop-shadow-md" 
-           style={{ fontSize: `${settings.marqueeSize}px` }}>
-          {currentText}
-        </p>
-      </div>
+            {/* Text Content */}
+            <div className="flex-1 text-center md:text-right space-y-1">
+                {/* العنوان الكبير الثابت */}
+                <h1 className="text-3xl md:text-4xl font-black text-white drop-shadow-md tracking-tight">
+                    {stageInfo.title}
+                </h1>
+                {/* النص الفرعي من لوحة التحكم */}
+                <p className="text-white/90 font-medium font-mono tracking-wide animate-pulse" style={{ fontSize: `${settings.marqueeSize}px` }}>
+                    {subText}
+                </p>
+            </div>
+        </div>
     </div>
   );
 };
 
 const LiveHeader = ({ settings }) => (
-  <div className="flex items-center gap-3 mb-6 animate-fadeIn px-2 mt-8">
-    <span className="relative flex h-4 w-4">
-      <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ backgroundColor: settings?.mainColor || '#fe2c55' }}></span>
-      <span className="relative inline-flex rounded-full h-4 w-4" style={{ backgroundColor: settings?.mainColor || '#fe2c55' }}></span>
-    </span>
-    {/* نفس لون شريط التنبيه (الزهري في حالة التصويت، أو اللون الرئيسي) */}
-    <h3 className="font-black tracking-wide text-2xl md:text-3xl" style={{ color: settings?.mainColor || '#fe2c55' }}>
-      النتائج مباشرة
-    </h3>
+  <div className="flex items-center justify-center gap-3 mb-8 animate-fadeIn mt-4">
+    <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-pink-500/10 border border-pink-500/30">
+        <span className="relative flex h-3 w-3">
+        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-pink-500 opacity-75"></span>
+        <span className="relative inline-flex rounded-full h-3 w-3 bg-pink-500"></span>
+        </span>
+        <h3 className="font-bold text-xl tracking-wide text-pink-500">
+        النتائج مباشرة
+        </h3>
+    </div>
   </div>
 );
 
@@ -342,11 +339,11 @@ const SubmissionForm = ({ settings }) => {
   return (
     <GlassCard className="max-w-xl mx-auto p-8 mt-10" isGlassmorphism={settings.useGlassmorphism}>
       <div className="text-center mb-8">
-        <div className="inline-block p-3 rounded-full bg-white/5 mb-4">
-          <Clock className="w-8 h-8 text-blue-400" />
+        <div className="inline-block p-4 rounded-full bg-cyan-500/10 mb-4 border border-cyan-500/30">
+          <Clock className="w-10 h-10 text-cyan-400" />
         </div>
         <h2 className="text-3xl font-bold text-white mb-2">شارك إبداعك</h2>
-        <p className="text-white/60">املأ الاستمارة بدقة للمشاركة</p>
+        <p className="text-white/60">املأ الاستمارة بدقة للمشاركة في المنافسة</p>
       </div>
 
       {status === 'success' && (
@@ -363,7 +360,7 @@ const SubmissionForm = ({ settings }) => {
           <select 
             value={form.country} 
             onChange={e => setForm({...form, country: e.target.value})}
-            className="w-full p-3 rounded-lg bg-gray-800/80 border border-white/10 text-white outline-none focus:ring-2 focus:ring-[var(--highlight-color)] appearance-none"
+            className="w-full p-3 rounded-lg bg-gray-800/80 border border-white/10 text-white outline-none focus:ring-2 focus:ring-[var(--highlight-color)] appearance-none cursor-pointer"
           >
             {COUNTRIES.filter(c => c.code !== 'ALL').map(c => <option key={c.code} value={c.name} className="bg-gray-900">{c.flag} {c.name}</option>)}
           </select>
@@ -377,7 +374,125 @@ const SubmissionForm = ({ settings }) => {
   );
 };
 
-const Leaderboard = ({ submissions, isEnded }) => {
+// --- COMPONENTS FOR ENDED STAGE (RESULTS) ---
+
+const CelebrationHeader = () => (
+  <div className="text-center mb-16 animate-fadeIn">
+    <style>{`
+      @keyframes fireworks { 0% { transform: translate(var(--x), var(--initialY)); width: var(--initialSize); opacity: 1; } 50% { width: 0.5rem; opacity: 1; } 100% { width: var(--finalSize); opacity: 0; } }
+      .firework, .firework::before, .firework::after {
+        position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 0.5vmin; aspect-ratio: 1; background: radial-gradient(circle, #ff0 0.2vmin, #0000 0) 50% 0% / 100% 50% no-repeat; animation: fireworks 2s infinite; pointer-events: none;
+      }
+    `}</style>
+    <div className="firework" style={{left: '20%', top: '30%'}}></div>
+    <div className="firework" style={{left: '80%', top: '30%', animationDelay: '0.5s'}}></div>
+    
+    <h2 className="text-4xl md:text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-yellow-100 to-yellow-500 drop-shadow-2xl mb-4">
+      🎉 النتائج النهائية 🎉
+    </h2>
+    <p className="text-white/70 text-lg">شكراً لجميع المبدعين الذين شاركوا معنا</p>
+  </div>
+);
+
+const WinnersPodium = ({ winners }) => {
+    if (winners.length === 0) return null;
+    const [first, second, third] = winners;
+
+    return (
+        <div className="flex justify-center items-end gap-4 md:gap-8 mb-20 min-h-[350px] px-4">
+            {/* المركز الثاني */}
+            {second && (
+                <div className="flex flex-col items-center w-1/3 md:w-1/4 animate-slideUp delay-100">
+                    <div className="relative mb-4">
+                        <div className="w-20 h-20 md:w-28 md:h-28 rounded-full border-4 border-gray-300 shadow-[0_0_20px_rgba(209,213,219,0.3)] overflow-hidden">
+                            <img src={second.profilePicUrl} className="w-full h-full object-cover" alt="" />
+                        </div>
+                        <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 bg-gray-300 text-gray-900 font-bold px-3 py-1 rounded-full border-2 border-gray-100 shadow-lg flex items-center gap-1">
+                            <span className="text-xs">#2</span>
+                        </div>
+                    </div>
+                    <div className="text-center mb-2">
+                         <h3 className="font-bold text-white truncate max-w-[100px] md:max-w-full">{second.participantName}</h3>
+                         <p className="text-gray-400 text-sm font-mono">{second.votes} صوت</p>
+                    </div>
+                    <div className="w-full h-32 bg-gradient-to-t from-gray-900 to-gray-700 rounded-t-2xl border-t border-gray-500 flex items-end justify-center pb-4 shadow-2xl">
+                        <span className="text-4xl opacity-20 font-black text-white">2</span>
+                    </div>
+                </div>
+            )}
+
+            {/* المركز الأول */}
+            {first && (
+                <div className="flex flex-col items-center w-1/3 md:w-1/3 z-10 animate-slideUp">
+                    <div className="relative mb-6">
+                        <Crown className="absolute -top-10 left-1/2 -translate-x-1/2 text-yellow-400 w-12 h-12 animate-bounce fill-yellow-400" />
+                        <div className="w-28 h-28 md:w-40 md:h-40 rounded-full border-4 border-yellow-400 shadow-[0_0_40px_rgba(250,204,21,0.5)] overflow-hidden ring-4 ring-yellow-400/20">
+                            <img src={first.profilePicUrl} className="w-full h-full object-cover" alt="" />
+                        </div>
+                        <div className="absolute -bottom-5 left-1/2 -translate-x-1/2 bg-gradient-to-r from-yellow-400 to-yellow-600 text-black font-black px-6 py-1.5 rounded-full border-2 border-yellow-200 shadow-xl flex items-center gap-1 text-lg">
+                            <span>#1</span>
+                        </div>
+                    </div>
+                    <div className="text-center mb-4">
+                         <h3 className="font-black text-2xl text-white truncate max-w-[120px] md:max-w-full">{first.participantName}</h3>
+                         <p className="text-yellow-400 font-bold text-lg font-mono">{first.votes} صوت</p>
+                    </div>
+                    <div className="w-full h-48 bg-gradient-to-t from-yellow-900/50 to-yellow-600 rounded-t-2xl border-t border-yellow-400 flex items-end justify-center pb-6 shadow-[0_0_50px_rgba(234,179,8,0.2)] relative overflow-hidden">
+                        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-30"></div>
+                        <span className="text-6xl opacity-30 font-black text-white">1</span>
+                    </div>
+                </div>
+            )}
+
+            {/* المركز الثالث */}
+            {third && (
+                <div className="flex flex-col items-center w-1/3 md:w-1/4 animate-slideUp delay-200">
+                    <div className="relative mb-4">
+                        <div className="w-20 h-20 md:w-28 md:h-28 rounded-full border-4 border-orange-700 shadow-[0_0_20px_rgba(194,65,12,0.3)] overflow-hidden">
+                            <img src={third.profilePicUrl} className="w-full h-full object-cover" alt="" />
+                        </div>
+                        <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 bg-orange-700 text-white font-bold px-3 py-1 rounded-full border-2 border-orange-500 shadow-lg flex items-center gap-1">
+                            <span className="text-xs">#3</span>
+                        </div>
+                    </div>
+                    <div className="text-center mb-2">
+                         <h3 className="font-bold text-white truncate max-w-[100px] md:max-w-full">{third.participantName}</h3>
+                         <p className="text-orange-400 text-sm font-mono">{third.votes} صوت</p>
+                    </div>
+                    <div className="w-full h-24 bg-gradient-to-t from-gray-900 to-orange-900/60 rounded-t-2xl border-t border-orange-700 flex items-end justify-center pb-4 shadow-2xl">
+                        <span className="text-4xl opacity-20 font-black text-white">3</span>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
+const ResultsTable = ({ submissions }) => {
+    return (
+        <div className="max-w-4xl mx-auto bg-gray-900/50 border border-white/10 rounded-2xl overflow-hidden backdrop-blur-md p-4">
+            <h3 className="text-white/70 font-bold mb-4 pr-2">باقي المبدعين</h3>
+            <div className="space-y-2">
+                {submissions.map((sub, idx) => (
+                    <div key={sub.id} className="flex items-center bg-white/5 hover:bg-white/10 transition p-3 rounded-xl border border-white/5">
+                        <div className="w-8 text-center font-mono text-white/40 font-bold">#{idx + 4}</div>
+                        <img src={sub.profilePicUrl} className="w-10 h-10 rounded-full object-cover mx-4 border border-white/10" alt="" />
+                        <div className="flex-1">
+                            <h4 className="font-bold text-white">{sub.participantName}</h4>
+                            <p className="text-xs text-white/40">{sub.flag} {sub.country}</p>
+                        </div>
+                        <div className="text-white font-mono font-bold bg-black/30 px-3 py-1 rounded-lg">
+                            {sub.votes}
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+};
+
+// --- STANDARD LEADERBOARD FOR VOTING STAGE ---
+const VotingLeaderboard = ({ submissions }) => {
   const sorted = [...submissions].sort((a, b) => b.votes - a.votes);
   const top3 = sorted.slice(0, 3);
   const rest = sorted.slice(3);
@@ -385,103 +500,71 @@ const Leaderboard = ({ submissions, isEnded }) => {
   if (sorted.length === 0) return null;
 
   return (
-    <div className="mb-12 animate-slideUp relative">
-      {/* Fireworks Effect for Ended Stage */}
-      {isEnded && (
-        <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
-          <div className="firework"></div>
-          <div className="firework"></div>
-          <div className="firework"></div>
-          <style>{`
-            @keyframes firework { 0% { transform: translate(var(--x), var(--initialY)); width: var(--initialSize); opacity: 1; } 50% { width: 0.5vmin; opacity: 1; } 100% { width: var(--finalSize); opacity: 0; } }
-            .firework, .firework::before, .firework::after { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 0.5vmin; aspect-ratio: 1; background: radial-gradient(circle, #ff0 0.2vmin, #0000 0) 50% 0% / 100% 50% no-repeat; animation: firework 2s infinite; }
-            .firework::before { content: ""; transform: translate(-50%, -50%) rotate(25deg) !important; } .firework::after { content: ""; transform: translate(-50%, -50%) rotate(-37deg) !important; }
-          `}</style>
-        </div>
-      )}
-
-      {/* Podium */}
-      <div className="flex justify-center items-end gap-4 mb-12 min-h-[260px] relative z-10">
+    <div className="mb-12 animate-slideUp">
+      <div className="flex justify-center items-end gap-4 mb-10 min-h-[220px]">
         {top3[1] && (
-          <div className="flex flex-col items-center w-1/3 md:w-auto animate-fadeIn delay-100">
+          <div className="flex flex-col items-center w-1/3 md:w-auto animate-fadeIn">
             <div className="relative">
-              <img src={top3[1].profilePicUrl} alt="2nd" className="w-20 h-20 md:w-24 md:h-24 rounded-full border-4 border-gray-300 shadow-xl object-cover bg-black" />
-              <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-gray-300 text-black text-sm font-bold px-3 py-1 rounded-full shadow-lg">#2</div>
+              <img src={top3[1].profilePicUrl} alt="2nd" className="w-16 h-16 md:w-20 md:h-20 rounded-full border-4 border-gray-400 shadow-lg object-cover bg-black" />
+              <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-gray-400 text-black text-xs font-bold px-2 py-0.5 rounded-full">#2</div>
             </div>
-            <div className="mt-4 text-center">
-              <p className="font-bold text-white text-sm md:text-base truncate max-w-[100px]">{top3[1].participantName}</p>
-              <p className="font-bold text-gray-400 text-sm">{top3[1].votes} صوت</p>
+            <div className="mt-3 text-center">
+              <p className="font-bold text-white text-xs md:text-sm truncate max-w-[100px]">{top3[1].participantName}</p>
+              <p className="font-bold text-gray-300 text-sm">{top3[1].votes}</p>
             </div>
-            <div className={`w-20 md:w-24 h-24 rounded-t-xl mt-2 ${isEnded ? 'bg-gradient-to-b from-gray-400 to-gray-800' : 'bg-gray-800/50 border-t border-gray-500/30'}`}></div>
+            <div className="w-16 md:w-20 h-20 bg-gray-700/30 rounded-t-lg border-t border-gray-500/30 mt-2"></div>
           </div>
         )}
 
         {top3[0] && (
           <div className="flex flex-col items-center z-10 w-1/3 md:w-auto animate-fadeIn">
             <div className="relative">
-              <Crown className="absolute -top-10 left-1/2 -translate-x-1/2 text-yellow-400 w-10 h-10 animate-bounce" />
-              <img src={top3[0].profilePicUrl} alt="1st" className="w-28 h-28 md:w-32 md:h-32 rounded-full border-4 border-yellow-400 shadow-[0_0_30px_rgba(250,204,21,0.4)] object-cover bg-black" />
-              <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 bg-gradient-to-r from-yellow-500 to-yellow-300 text-black text-base font-black px-4 py-1 rounded-full shadow-xl">#1</div>
+              <Crown className="absolute -top-8 left-1/2 -translate-x-1/2 text-yellow-400 w-8 h-8 animate-pulse" />
+              <img src={top3[0].profilePicUrl} alt="1st" className="w-24 h-24 md:w-28 md:h-28 rounded-full border-4 border-yellow-400 shadow-2xl shadow-yellow-400/20 object-cover bg-black" />
+              <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-yellow-400 text-black text-xs font-bold px-3 py-1 rounded-full">#1</div>
             </div>
-            <div className="mt-5 text-center">
-              <p className="font-bold text-white text-base md:text-xl truncate max-w-[140px]">{top3[0].participantName}</p>
-              <p className="font-black text-yellow-400 text-2xl">{top3[0].votes} صوت</p>
+            <div className="mt-3 text-center">
+              <p className="font-bold text-white text-sm md:text-lg truncate max-w-[120px]">{top3[0].participantName}</p>
+              <p className="font-black text-yellow-400 text-xl">{top3[0].votes}</p>
             </div>
-            <div className={`w-24 md:w-32 h-36 rounded-t-xl mt-2 relative overflow-hidden ${isEnded ? 'bg-gradient-to-b from-yellow-500 to-yellow-800' : 'bg-gradient-to-b from-yellow-500/20 to-transparent border-t border-yellow-500/30'}`}>
-               {isEnded && <div className="absolute inset-0 bg-white/20 animate-pulse"></div>}
+            <div className="w-20 md:w-24 h-28 bg-gradient-to-b from-yellow-500/20 to-transparent rounded-t-xl border-t border-yellow-500/30 mt-2 relative overflow-hidden">
+               <div className="absolute inset-0 bg-yellow-400/10 animate-pulse"></div>
             </div>
           </div>
         )}
 
         {top3[2] && (
-          <div className="flex flex-col items-center w-1/3 md:w-auto animate-fadeIn delay-200">
+          <div className="flex flex-col items-center w-1/3 md:w-auto animate-fadeIn">
             <div className="relative">
-              <img src={top3[2].profilePicUrl} alt="3rd" className="w-20 h-20 md:w-24 md:h-24 rounded-full border-4 border-orange-600 shadow-xl object-cover bg-black" />
-              <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-orange-600 text-white text-sm font-bold px-3 py-1 rounded-full shadow-lg">#3</div>
+              <img src={top3[2].profilePicUrl} alt="3rd" className="w-16 h-16 md:w-20 md:h-20 rounded-full border-4 border-orange-700 shadow-lg object-cover bg-black" />
+              <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-orange-700 text-white text-xs font-bold px-2 py-0.5 rounded-full">#3</div>
             </div>
-            <div className="mt-4 text-center">
-              <p className="font-bold text-white text-sm md:text-base truncate max-w-[100px]">{top3[2].participantName}</p>
-              <p className="font-bold text-orange-500 text-sm">{top3[2].votes} صوت</p>
+            <div className="mt-3 text-center">
+              <p className="font-bold text-white text-xs md:text-sm truncate max-w-[100px]">{top3[2].participantName}</p>
+              <p className="font-bold text-orange-400 text-sm">{top3[2].votes}</p>
             </div>
-            <div className={`w-20 md:w-24 h-16 rounded-t-xl mt-2 ${isEnded ? 'bg-gradient-to-b from-orange-600 to-orange-900' : 'bg-gray-800/50 border-t border-orange-700/30'}`}></div>
+            <div className="w-16 md:w-20 h-14 bg-gray-700/30 rounded-t-lg border-t border-orange-700/30 mt-2"></div>
           </div>
         )}
       </div>
 
-      {/* القائمة لباقي المشاركين (للنتائج النهائية فقط) */}
-      {isEnded && rest.length > 0 && (
-        <div className="max-w-3xl mx-auto bg-gray-900/80 backdrop-blur-md rounded-2xl overflow-hidden border border-white/10 animate-slideUp">
-          <div className="p-4 bg-white/5 border-b border-white/10 font-bold text-white flex justify-between">
-            <span>الترتيب</span>
-            <span>المشارك</span>
-            <span>الأصوات</span>
-          </div>
-          {rest.map((sub, i) => (
-            <div key={sub.id} className="flex items-center justify-between p-4 border-b border-white/5 hover:bg-white/5 transition">
-              <div className="flex items-center gap-4">
-                <span className="font-mono text-white/50 font-bold text-lg w-8">#{i + 4}</span>
-                <img src={sub.profilePicUrl} className="w-10 h-10 rounded-full object-cover" alt="" />
-                <div>
-                  <p className="font-bold text-white text-sm">{sub.participantName}</p>
-                  <p className="text-xs text-white/40">{sub.tiktokUser}</p>
-                </div>
-              </div>
-              <span className="font-bold text-white/80 bg-white/10 px-3 py-1 rounded-lg">{sub.votes}</span>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* شريط متحرك (للحالات غير المنتهية) */}
-      {!isEnded && rest.length > 0 && (
+      {rest.length > 0 && (
         <div className="relative bg-white/5 border-y border-white/10 py-3 overflow-hidden group">
           <div className="flex animate-scroll gap-8 w-max hover:pause">
-            {[...rest, ...rest].map((sub, i) => (
-              <div key={`${sub.id}-${i}`} className="flex items-center gap-3 px-4 border-l border-white/10 min-w-[200px]">
+            {rest.map((sub, i) => (
+              <div key={sub.id} className="flex items-center gap-3 px-4 border-l border-white/10 min-w-[200px]">
                 <span className="text-white/30 font-mono text-sm">#{i + 4}</span>
                 <img src={sub.profilePicUrl} className="w-8 h-8 rounded-full object-cover bg-gray-800" alt="" />
                 <span className="text-white font-bold text-sm">{sub.participantName}</span>
                 <span className="text-[var(--highlight-color)] font-bold">{sub.votes} صوت</span>
+              </div>
+            ))}
+            {rest.map((sub, i) => (
+              <div key={`dup-${sub.id}`} className="flex items-center gap-3 px-4 border-l border-white/10 min-w-[200px]">
+                 <span className="text-white/30 font-mono text-sm">#{i + 4}</span>
+                 <img src={sub.profilePicUrl} className="w-8 h-8 rounded-full object-cover bg-gray-800" alt="" />
+                 <span className="text-white font-bold text-sm">{sub.participantName}</span>
+                 <span className="text-[var(--highlight-color)] font-bold">{sub.votes} صوت</span>
               </div>
             ))}
           </div>
@@ -538,12 +621,19 @@ const VideoCard = ({ submission, settings, onVote, onClick }) => (
         </div>
       </div>
       
-      <button 
-        onClick={(e) => { e.stopPropagation(); onVote(submission); }}
-        className="w-full py-2.5 rounded-lg font-bold text-sm bg-white text-black hover:bg-gray-200 transition flex items-center justify-center gap-2 shadow-lg active:scale-95"
-      >
-        <Crown className="w-4 h-4 text-yellow-600" /> تصويت ({submission.votes})
-      </button>
+      {settings.stage !== 'Ended' && (
+          <button 
+            onClick={(e) => { e.stopPropagation(); onVote(submission); }}
+            className="w-full py-2.5 rounded-lg font-bold text-sm bg-white text-black hover:bg-gray-200 transition flex items-center justify-center gap-2 shadow-lg active:scale-95"
+          >
+            <Crown className="w-4 h-4 text-yellow-600" /> تصويت ({submission.votes})
+          </button>
+      )}
+      {settings.stage === 'Ended' && (
+          <div className="w-full py-2.5 rounded-lg font-bold text-sm bg-white/10 text-white text-center border border-white/10">
+             {submission.votes} صوت
+          </div>
+      )}
     </div>
   </div>
 );
@@ -571,13 +661,15 @@ const VideoModal = ({ isOpen, onClose, submission, settings, onVote }) => {
              <p className="text-white/50 text-sm uppercase tracking-widest mb-2">عدد الأصوات</p>
              <p className="text-5xl font-black text-[var(--highlight-color)]">{submission.votes}</p>
            </div>
-           <ShinyButton 
-             onClick={() => onVote(submission)}
-             className="w-full py-4 text-lg mt-6"
-             style={{ backgroundColor: settings.mainColor }}
-           >
-             تصويت للمشارك
-           </ShinyButton>
+           {settings.stage !== 'Ended' && (
+               <ShinyButton 
+                 onClick={() => onVote(submission)}
+                 className="w-full py-4 text-lg mt-6"
+                 style={{ backgroundColor: settings.mainColor }}
+               >
+                 تصويت للمشارك
+               </ShinyButton>
+           )}
         </div>
       </GlassCard>
     </div>
@@ -698,8 +790,8 @@ const AdminSettingsPanel = ({ settings, onSaveSettings }) => {
           
           <div className="mb-4 mt-4">
              <label className="block text-white mb-2 text-sm opacity-90">حجم خط التنبيه</label>
-             <input type="range" min="12" max="40" value={localSettings.marqueeSize || 16} onChange={(e) => setLocalSettings({...localSettings, marqueeSize: e.target.value})} className="w-full"/>
-             <div className="text-right text-xs text-white/50">{localSettings.marqueeSize || 16}px</div>
+             <input type="range" min="12" max="40" value={localSettings.marqueeSize || 18} onChange={(e) => setLocalSettings({...localSettings, marqueeSize: e.target.value})} className="w-full"/>
+             <div className="text-right text-xs text-white/50">{localSettings.marqueeSize || 18}px</div>
           </div>
 
           <h3 className="text-lg font-bold text-white border-b border-white/10 pb-2 mt-6">المنظمون</h3>
@@ -834,13 +926,6 @@ const ContestApp = () => {
       body, button, input, select, textarea, h1, h2, h3, h4, h5, h6, p, span {
         font-family: 'Cairo', sans-serif !important;
       }
-      @keyframes scroll { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
-      .animate-scroll { animation: scroll 30s linear infinite; }
-      .hover\\:pause:hover { animation-play-state: paused; }
-      ::-webkit-scrollbar { width: 6px; } 
-      ::-webkit-scrollbar-track { background: #000; } 
-      ::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }
-      ::-webkit-scrollbar-thumb:hover { background: var(--main-color); }
     `;
     document.head.appendChild(style);
 
@@ -919,8 +1004,6 @@ const ContestApp = () => {
 
   if (!settings) return <div className="h-screen bg-black flex items-center justify-center gap-3"><Loader className="animate-spin text-red-500"/><span className="text-white">جاري التحميل...</span></div>;
 
-  const isEnded = settings.stage === 'Ended';
-
   return (
     <div className="min-h-screen bg-[#050505] text-white font-sans selection:bg-[var(--highlight-color)] selection:text-black">
        <Routes>
@@ -956,41 +1039,37 @@ const ContestApp = () => {
 
                 {settings.stage === 'Submission' && <SubmissionForm settings={settings} />}
                 
-                {(settings.stage === 'Voting' || isEnded) && (
+                {settings.stage === 'Voting' && (
                   <>
                     <LiveHeader settings={settings} />
-                    <Leaderboard submissions={submissions.filter(s => s.status === 'Approved')} isEnded={isEnded} />
+                    <VotingLeaderboard submissions={submissions.filter(s => s.status === 'Approved')} />
                     
-                    {!isEnded && (
-                      <>
-                        <div className="flex items-center gap-2 mb-6 mt-10 border-b border-white/10 pb-4">
-                          <div className="h-8 w-1 bg-[var(--highlight-color)] rounded-full"></div>
-                          <h2 className="text-2xl font-bold">تصفح المشاركات</h2>
-                          <span className="bg-white/10 px-3 py-1 rounded-full text-xs text-white/60 mr-auto">
-                             {processedSubmissions.length} فيديو
-                          </span>
+                    <div className="flex items-center gap-2 mb-6 mt-10 border-b border-white/10 pb-4">
+                      <div className="h-8 w-1 bg-[var(--highlight-color)] rounded-full"></div>
+                      <h2 className="text-2xl font-bold">تصفح المشاركات</h2>
+                      <span className="bg-white/10 px-3 py-1 rounded-full text-xs text-white/60 mr-auto">
+                         {processedSubmissions.length} فيديو
+                      </span>
+                    </div>
+
+                    <SearchFilterBar onSearch={setSearchQuery} onFilter={setCountryFilter} />
+
+                    {processedSubmissions.length === 0 ? (
+                        <div className="text-center py-20 border border-dashed border-white/10 rounded-xl bg-white/5">
+                            <p className="text-white/40">لا توجد مشاركات مطابقة للبحث</p>
                         </div>
-
-                        <SearchFilterBar onSearch={setSearchQuery} onFilter={setCountryFilter} />
-
-                        {processedSubmissions.length === 0 ? (
-                            <div className="text-center py-20 border border-dashed border-white/10 rounded-xl bg-white/5">
-                                <p className="text-white/40">لا توجد مشاركات مطابقة للبحث</p>
-                            </div>
-                        ) : (
-                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-                            {processedSubmissions.map(sub => (
-                                <VideoCard 
-                                key={sub.id} 
-                                submission={sub} 
-                                settings={settings} 
-                                onVote={(s) => { if(cooldown > 0) return alert(`انتظر ${cooldown}s`); setModals(p=>({...p, voteConfirm: s})) }} 
-                                onClick={() => setModals(p=>({...p, videoPlayer: sub}))} 
-                                />
-                            ))}
-                            </div>
-                        )}
-                      </>
+                    ) : (
+                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+                        {processedSubmissions.map(sub => (
+                            <VideoCard 
+                            key={sub.id} 
+                            submission={sub} 
+                            settings={settings} 
+                            onVote={(s) => { if(cooldown > 0) return alert(`انتظر ${cooldown}s`); setModals(p=>({...p, voteConfirm: s})) }} 
+                            onClick={() => setModals(p=>({...p, videoPlayer: sub}))} 
+                            />
+                        ))}
+                        </div>
                     )}
                   </>
                 )}
@@ -1000,6 +1079,16 @@ const ContestApp = () => {
                         <div className="inline-block p-6 bg-white/5 rounded-full mb-6"><Clock className="w-16 h-16 text-white/30" /></div>
                         <h1 className="text-4xl font-bold mb-4 text-white">المسابقة متوقفة حالياً</h1>
                         <p className="text-white/50 text-lg">نعود قريباً للصيانة أو فرز النتائج</p>
+                    </div>
+                )}
+
+                {settings.stage === 'Ended' && (
+                    <div className="animate-slideUp">
+                        <CelebrationHeader />
+                        <WinnersPodium winners={processedSubmissions.slice(0, 3)} />
+                        {processedSubmissions.length > 3 && (
+                            <ResultsTable submissions={processedSubmissions.slice(3)} />
+                        )}
                     </div>
                 )}
              </main>

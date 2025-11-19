@@ -2,11 +2,9 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { initializeApp } from 'firebase/app';
 import {
   getAuth,
-  signInAnonymously,
-  signInWithCustomToken,
-  onAuthStateChanged,
   signInWithEmailAndPassword,
   signOut,
+  onAuthStateChanged,
 } from 'firebase/auth';
 import {
   getFirestore,
@@ -15,15 +13,13 @@ import {
   onSnapshot,
   setDoc,
   query,
-  where,
   updateDoc,
-  deleteDoc,
   addDoc,
   getDocs,
   limit,
   getDoc,
   serverTimestamp,
-  increment, // استخدام increment لضمان دقة التصويت
+  increment,
 } from 'firebase/firestore';
 import {
   ChevronDown,
@@ -39,7 +35,6 @@ import {
   Lock,
   Mail,
   Key,
-  BarChart2,
   CheckCircle,
   Clock,
   Info,
@@ -51,9 +46,7 @@ import {
 // =========================================================================
 
 const appId = 'ali-jabbar-week';
-const initialAuthToken = null;
 
-// دالة مساعدة لقراءة متغيرات البيئة بأمان لتجنب أخطاء import.meta في بعض البيئات
 const getEnvVar = (key, fallback) => {
   try {
     if (
@@ -64,7 +57,7 @@ const getEnvVar = (key, fallback) => {
       return import.meta.env[key];
     }
   } catch (e) {
-    // تجاهل الأخطاء في حال عدم دعم import.meta
+    // تجاهل الأخطاء
   }
   return fallback;
 };
@@ -118,7 +111,7 @@ const retryOperation = async (operation, maxRetries = 3, delay = 1000) => {
 };
 
 // =========================================================================
-// 2. CONSTANTS (STAGES, COUNTRIES, MOCK DATA)
+// 2. CONSTANTS & MOCK DATA
 // =========================================================================
 const STAGES = {
   Submission: { label: 'استقبال المشاركات', color: 'blue', icon: Clock },
@@ -250,61 +243,6 @@ const MOCK_SUBMISSIONS = [
     flag: '🇶🇦',
     submittedAt: new Date(Date.now() - 800000),
   },
-  {
-    id: '9',
-    participantName: 'هند الغامدي',
-    country: 'السعودية',
-    votes: 310,
-    status: 'Approved',
-    videoUrl: 'https://www.tiktok.com/@tiktok/video/7279148301138855211',
-    thumbnailUrl: 'https://placehold.co/600x900/fe2c55/ffffff?text=310',
-    flag: '🇸🇦',
-    submittedAt: new Date(Date.now() - 900000),
-  },
-  {
-    id: '10',
-    participantName: 'كريم أحمد',
-    country: 'مصر',
-    votes: 280,
-    status: 'Approved',
-    videoUrl: 'https://www.tiktok.com/@tiktok/video/7279148301138855211',
-    thumbnailUrl: 'https://placehold.co/600x900/25f4ee/000000?text=280',
-    flag: '🇪🇬',
-    submittedAt: new Date(Date.now() - 1000000),
-  },
-  {
-    id: '11',
-    participantName: 'لانا مراد',
-    country: 'لبنان',
-    votes: 250,
-    status: 'Approved',
-    videoUrl: 'https://www.tiktok.com/@tiktok/video/7279148301138855211',
-    thumbnailUrl: 'https://placehold.co/600x900/fe2c55/25f4ee?text=250',
-    flag: '🇱🇧',
-    submittedAt: new Date(Date.now() - 1100000),
-  },
-  {
-    id: '6',
-    participantName: 'مشارك جديد',
-    country: 'فلسطين',
-    votes: 0,
-    status: 'Pending',
-    videoUrl: 'https://www.tiktok.com/@tiktok/video/7279148301138855211',
-    thumbnailUrl: 'https://placehold.co/600x900/fbbf24/ffffff?text=Pending+1',
-    flag: '🇵🇸',
-    submittedAt: new Date(Date.now() - 600000),
-  },
-  {
-    id: '7',
-    participantName: 'تجربة رفض',
-    country: 'لبنان',
-    votes: 0,
-    status: 'Rejected',
-    videoUrl: 'https://www.tiktok.com/@tiktok/video/7279148301138855211',
-    thumbnailUrl: 'https://placehold.co/600x900/6b7280/ffffff?text=Rejected+1',
-    flag: '🇱🇧',
-    submittedAt: new Date(Date.now() - 700000),
-  },
 ];
 
 // =========================================================================
@@ -325,10 +263,8 @@ const useAuth = () => {
       auth,
       (user) => {
         if (user) {
-          // إذا كان هناك مستخدم مصادق عليه (المدير)
           setUserId(user.uid);
         } else {
-          // إذا لم يكن هناك مستخدم، نعتبره مجهولاً لتمكين القراءة العامة
           setUserId('public-read-only');
         }
       },
@@ -419,15 +355,22 @@ const AlertBanner = ({ settings }) => {
 const Modal = ({ isOpen, onClose, title, children }) => {
   if (!isOpen) return null;
 
+  const modalRef = useRef(null);
+  const handleOutsideClick = (e) => {
+    if (modalRef.current && e.target === modalRef.current) {
+      onClose();
+    }
+  };
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
-      onClick={onClose}
+      onClick={handleOutsideClick}
+      ref={modalRef}
     >
       <GlassCard
         isGlassmorphism
         className="w-full max-w-2xl max-h-[90vh] overflow-y-auto"
-        onClick={(e) => e.stopPropagation()}
       >
         <div className="flex justify-between items-center pb-3 border-b border-white/20">
           <h2 className="text-2xl font-bold text-white">{title}</h2>
@@ -450,8 +393,8 @@ const Modal = ({ isOpen, onClose, title, children }) => {
   );
 };
 
-/** Admin Login Modal */
-const AdminAuthModal = ({ isOpen, onClose, onAuthSuccess }) => {
+/** Admin Auth Form (Inline/Page component) */
+const AdminAuthForm = ({ onAuthSuccess, settings }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState(null);
@@ -463,7 +406,7 @@ const AdminAuthModal = ({ isOpen, onClose, onAuthSuccess }) => {
     setIsLoading(true);
 
     if (!auth) {
-      setError('Firebase is not initialized.');
+      setError('خطأ: Firebase غير مهيأ.');
       setIsLoading(false);
       return;
     }
@@ -480,72 +423,57 @@ const AdminAuthModal = ({ isOpen, onClose, onAuthSuccess }) => {
     }
   };
 
-  if (!isOpen) return null;
-
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
-      onClick={onClose}
+    <GlassCard
+      isGlassmorphism={settings.useGlassmorphism}
+      className="w-full max-w-lg mx-auto my-20 p-8"
+      color="bg-gray-900"
     >
-      <GlassCard
-        isGlassmorphism
-        className="w-full max-w-sm"
-        color="bg-gray-900"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h2 className="text-2xl font-bold text-white mb-6 text-center flex items-center justify-center">
-          <Lock className="w-6 h-6 ml-2" />
-          تسجيل دخول المدير
-        </h2>
+      <h2 className="text-3xl font-bold text-white mb-8 text-center flex items-center justify-center">
+        <Lock className="w-7 h-7 ml-3" />
+        الدخول إلى لوحة التحكم
+      </h2>
 
-        <form onSubmit={handleLogin} className="space-y-4">
-          <div className="relative">
-            <Mail className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-white/50" />
-            <input
-              type="email"
-              placeholder="البريد الإلكتروني"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full p-3 pr-10 rounded-lg bg-gray-800/80 border border-white/20 text-white focus:ring-highlight-color focus:border-highlight-color transition"
-              required
-            />
-          </div>
+      <form onSubmit={handleLogin} className="space-y-6">
+        <div className="relative">
+          <Mail className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-white/50" />
+          <input
+            type="email"
+            placeholder="البريد الإلكتروني"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="w-full p-4 pr-12 rounded-lg bg-gray-800/80 border border-white/20 text-white focus:ring-highlight-color focus:border-highlight-color transition"
+            required
+          />
+        </div>
 
-          <div className="relative">
-            <Key className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-white/50" />
-            <input
-              type="password"
-              placeholder="كلمة المرور"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full p-3 pr-10 rounded-lg bg-gray-800/80 border border-white/20 text-white focus:ring-highlight-color focus:border-highlight-color transition"
-              required
-            />
-          </div>
+        <div className="relative">
+          <Key className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-white/50" />
+          <input
+            type="password"
+            placeholder="كلمة المرور"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="w-full p-4 pr-12 rounded-lg bg-gray-800/80 border border-white/20 text-white focus:ring-highlight-color focus:border-highlight-color transition"
+            required
+          />
+        </div>
 
-          {error && <p className="text-red-400 text-sm text-center">{error}</p>}
+        {error && <p className="text-red-400 text-sm text-center font-bold">{error}</p>}
 
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="w-full p-3 rounded-lg font-bold text-lg text-gray-900 transition duration-300 disabled:opacity-50"
-            style={{ backgroundColor: `var(--main-color-css)` }}
-          >
-            {isLoading ? 'جاري الدخول...' : 'دخول'}
-          </button>
-
-          <button
-            onClick={onClose}
-            type="button"
-            className="w-full text-white/70 hover:text-white transition"
-          >
-            إلغاء
-          </button>
-        </form>
-      </GlassCard>
-    </div>
+        <button
+          type="submit"
+          disabled={isLoading}
+          className="w-full p-4 rounded-lg font-bold text-xl text-gray-900 transition duration-300 disabled:opacity-50 shadow-lg hover:opacity-90"
+          style={{ backgroundColor: settings.mainColor }}
+        >
+          {isLoading ? 'جاري الدخول...' : 'دخول'}
+        </button>
+      </form>
+    </GlassCard>
   );
 };
+
 
 const InputField = ({ label, id, value, onChange, type = 'text' }) => (
   <div className="mb-4">
@@ -892,16 +820,24 @@ const VideoModal = ({
   const videoId = submission.videoUrl.split('/').pop().split('?')[0];
   const tiktokEmbedUrl = `https://www.tiktok.com/embed/v2/${videoId}?lang=en-US`;
 
+  const modalRef = useRef(null);
+  const handleOutsideClick = (e) => {
+    if (modalRef.current && e.target === modalRef.current) {
+      onClose();
+    }
+  };
+
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm"
-      onClick={onClose}
+      onClick={handleOutsideClick}
+      ref={modalRef}
     >
       <GlassCard
         isGlassmorphism={settings.useGlassmorphism}
         color="bg-gray-900"
         className="w-full max-w-xl max-h-[95vh] overflow-y-auto"
-        onClick={(e) => e.stopPropagation()}
       >
         <div className="flex justify-end items-center mb-3">
           <button
@@ -1279,7 +1215,6 @@ const Home = ({
                   >
                     <ChevronLeft className="w-5 h-5" />
                   </button>
-                </div>
               )}
             </>
           )}
@@ -1816,7 +1751,7 @@ const SettingsPanel = ({
   );
 };
 
-const Header = ({ settings, currentStage }) => (
+const Header = ({ settings, currentStage, isMainAdminPath }) => (
   <header
     className="sticky top-0 z-40 p-4 border-b"
     style={{
@@ -1839,7 +1774,7 @@ const Header = ({ settings, currentStage }) => (
         </h1>
       </div>
       <nav className="flex items-center space-x-6 space-x-reverse text-white">
-        {(currentStage === 'Voting' || currentStage === 'Ended') && (
+        {(currentStage === 'Voting' || currentStage === 'Ended') && !isMainAdminPath && (
           <a
             href="#submission"
             className="font-semibold hover:opacity-80 transition py-2 px-4 rounded-full text-white"
@@ -1856,19 +1791,16 @@ const Header = ({ settings, currentStage }) => (
   </header>
 );
 
-const Footer = ({ settings, onSecretAdminAccess }) => {
-  // حالة للتحكم في فتح وإغلاق النوافذ
-  const [modal, setModal] = useState(null); // 'terms', 'why', 'organizers'
+const Footer = ({ settings }) => {
+  const [modal, setModal] = useState(null);
 
   return (
     <footer className="bg-gray-900/50 p-6 mt-10 border-t border-white/10">
       <div className="container mx-auto text-white text-center text-sm">
-        
         <h3 className="font-bold mb-4 text-lg" style={{ color: settings.highlightColor }}>
           روابط هامة
         </h3>
 
-        {/* الأزرار التفاعلية */}
         <div className="flex justify-center gap-8 text-sm font-semibold">
           <button 
             onClick={() => setModal('why')} 
@@ -1896,29 +1828,19 @@ const Footer = ({ settings, onSecretAdminAccess }) => {
         </div>
 
         <p className="mt-8 text-white/50 border-t border-white/10 pt-4">
-          <span 
-                onClick={onSecretAdminAccess} // ⬅️ التعديل هنا: إضافة دالة النقر السرية
-                className="cursor-pointer hover:text-white/80 transition"
-                title="اضغط 5 مرات للدخول للمدير"
-            >
-                &copy; {new Date().getFullYear()} {settings.title}. جميع الحقوق محفوظة.
-            </span>
+            {/* تم إلغاء خاصية النقر السري واستبدالها بمسار /admin */}
+            &copy; {new Date().getFullYear()} {settings.title}. جميع الحقوق محفوظة.
         </p>
       </div>
 
-      {/* --- النوافذ المنبثقة (Modals) --- */}
-
-      {/* نافذة "لماذا" */}
       <Modal isOpen={modal === 'why'} onClose={() => setModal(null)} title="لماذا هذه المسابقة؟">
         <p>{settings.whyText}</p>
       </Modal>
 
-      {/* نافذة "الشروط" */}
       <Modal isOpen={modal === 'terms'} onClose={() => setModal(null)} title="الشروط والأحكام">
         <p>{settings.termsText}</p>
       </Modal>
 
-      {/* نافذة "المنظمون" */}
       <Modal isOpen={modal === 'organizers'} onClose={() => setModal(null)} title="القائمون على المسابقة">
         <div className="space-y-4">
           {ORGANIZERS.map((org, index) => (
@@ -1948,14 +1870,11 @@ const App = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [adminMode, setAdminMode] = useState(false);
-  const [authModalOpen, setAuthModalOpen] = useState(false);
-  const [voteConfirmData, setVoteConfirmData] = useState(null);
   const { userId, isAuthReady } = useAuth();
-// ⬅️ إضافة حالة عد النقرات
-  const [clickCount, setClickCount] = useState(0); 
-// ⬅️
-
   const [cooldown, setCooldown] = useState(0);
+  // ⬅️ إضافة حالة لتحديد ما إذا كان المسار هو /admin
+  const [isMainAdminPath, setIsMainAdminPath] = useState(false); 
+
 
   useEffect(() => {
     if (settings) {
@@ -1972,34 +1891,16 @@ const App = () => {
     }
   }, [settings]);
 
-  // التعامل مع الدخول التلقائي كمدير عبر الرابط
+  // ⬅️ معالجة مسار URL لتفعيل وضع التحكم (Routing Simulation)
   useEffect(() => {
-    // 1. إذا كنت مديراً بالفعل، لا تفعل شيئاً
-    if (adminMode) return;
-
-    // 2. إذا كانت نافذة الدخول مفتوحة، انتظر المستخدم ولا تفعل شيئاً
-    if (authModalOpen) return;
-
-    const urlParams = new URLSearchParams(window.location.search);
-    const shouldBeAdmin = urlParams.has('admin') && urlParams.get('admin') === 'true';
-
-    // 3. إذا لم يكن الرابط يطلب الدخول كمدير، لا تفعل شيئاً
-    if (!shouldBeAdmin) return;
-
-    // 4. انتظر حتى نتأكد من حالة المصادقة (Firebase)
-    if (!isAuthReady) return;
-
-    const isLoggedIn = userId && userId !== 'public-read-only' && userId !== 'mock-user-id';
-
-    if (isLoggedIn) {
-      // إذا كان المستخدم مسجلاً بالفعل، فعّل وضع المدير
-      setAdminMode(true);
-      setAuthModalOpen(false);
+    // التحقق من أن المسار هو /admin أو /admin/ (لتفادي مشكلة router)
+    const path = window.location.pathname.toLowerCase().replace(/\/$/, '');
+    if (path.endsWith('/admin')) { 
+      setIsMainAdminPath(true);
     } else {
-      // إذا لم يكن مسجلاً، افتح نافذة الدخول (مرة واحدة فقط)
-      setAuthModalOpen(true);
+      setIsMainAdminPath(false);
     }
-  }, [isAuthReady, userId, adminMode, authModalOpen]);
+  }, []); 
 
   const initDataRef = useRef(false);
 
@@ -2091,18 +1992,19 @@ const App = () => {
     return () => clearInterval(timer);
   }, [cooldown]);
 
+  // ⬅️ تعديل: هذه الدالة الآن تفعل adminMode في الكود (وليست وظيفة نافذة)
   const handleAdminLoginSuccess = () => {
     setAdminMode(true);
-    setAuthModalOpen(false);
   };
 
+  // ⬅️ تعديل: هذه الدالة تعيد توجيه المستخدم بعد تسجيل الخروج
   const handleAdminLogout = () => {
     setAdminMode(false);
     if (auth) {
       signOut(auth);
     }
-    // إزالة البارامتر من الرابط لترتيب المظهر (اختياري)
-    window.history.replaceState({}, document.title, window.location.pathname);
+    // إعادة التوجيه إلى الصفحة الرئيسية
+    window.location.href = window.location.origin;
   };
 
   const handleSaveSettings = async (newSettings) => {
@@ -2150,23 +2052,18 @@ const App = () => {
     }
     setVoteConfirmData(submission);
   };
-// ⬅️ إضافة الدالة الجديدة هنا
-  const handleSecretAdminAccess = () => {
-    // زيادة العداد
-    setClickCount((prev) => prev + 1);
 
-    // إذا وصل العداد إلى 5، افتح نافذة الدخول
-    if (clickCount + 1 >= 5) {
-      setAuthModalOpen(true);
-      setClickCount(0); // إعادة تعيين العداد
+  // ⬅️ تفعيل وضع المدير إذا كان المسار /admin والمستخدم مسجل الدخول فعلاً
+  useEffect(() => {
+    const isLoggedIn = userId && userId !== 'public-read-only';
+    if (isMainAdminPath && isLoggedIn) {
+      setAdminMode(true);
+    } else if (isMainAdminPath && !isLoggedIn) {
+        // إذا كان على مسار /admin ولكنه غير مسجل، تأكد من إيقاف وضع المدير
+        setAdminMode(false);
     }
+  }, [isAuthReady, userId, isMainAdminPath]);
 
-    // لضمان إعادة تعيين العداد إذا لم يكمل 5 نقرات بسرعة (مؤقت 2 ثانية)
-    setTimeout(() => {
-      setClickCount(0);
-    }, 2000);
-  };
-// ⬅️
 
   const totalApproved = submissions.filter(
     (s) => s.status === 'Approved'
@@ -2193,18 +2090,27 @@ const App = () => {
       <Header
         settings={settings}
         currentStage={settings.stage}
-        isAdminAuthenticated={adminMode}
+        isMainAdminPath={isMainAdminPath}
       />
 
       <main>
-        {adminMode ? (
-          <SettingsPanel
-            settings={settings}
-            submissions={submissions}
-            onSaveSettings={handleSaveSettings}
-            onUpdateSubmissionStatus={handleUpdateSubmissionStatus}
-            onLogout={handleAdminLogout}
-          />
+        {isMainAdminPath ? (
+          adminMode ? (
+            <SettingsPanel
+              settings={settings}
+              submissions={submissions}
+              onSaveSettings={handleSaveSettings}
+              onUpdateSubmissionStatus={handleUpdateSubmissionStatus}
+              onLogout={handleAdminLogout}
+            />
+          ) : (
+            <div className="container mx-auto p-4 pt-10">
+              <AdminAuthForm
+                onAuthSuccess={handleAdminLoginSuccess}
+                settings={settings}
+              />
+            </div>
+          )
         ) : (
           <Home
             settings={settings}
@@ -2217,16 +2123,7 @@ const App = () => {
         )}
       </main>
 
-      <Footer 
-            settings={settings} 
-            onSecretAdminAccess={handleSecretAdminAccess} // ⬅️ تمرير الدالة
-        />
-
-      <AdminAuthModal
-        isOpen={authModalOpen && !adminMode}
-        onClose={() => setAuthModalOpen(false)}
-        onAuthSuccess={handleAdminLoginSuccess}
-      />
+      <Footer settings={settings} />
 
       <Modal
         isOpen={voteConfirmData !== null}

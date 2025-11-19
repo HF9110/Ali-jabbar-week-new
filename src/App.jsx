@@ -33,14 +33,12 @@ import {
   CheckCircle,
   Clock,
   LogOut,
-  Save,
   Plus,
   Edit3,
   Trash2,
   Filter,
-  Play,
   User,
-  Info
+  Calendar
 } from 'lucide-react';
 
 // =========================================================================
@@ -87,15 +85,16 @@ const STAGES = {
   Ended: { label: 'إعلان النتائج', color: 'green', icon: Crown },
 };
 
+// تعديل ترتيب الدول (العراق أولاً)
 const COUNTRIES = [
-  { name: 'الكل', code: 'ALL', flag: '🌍' },
+  { name: 'الكل', code: 'ALL', flag: '🌍' }, // للفلتر فقط
+  { name: 'العراق', code: 'IQ', flag: '🇮🇶' },
   { name: 'الأردن', code: 'JO', flag: '🇯🇴' },
   { name: 'الإمارات', code: 'AE', flag: '🇦🇪' },
   { name: 'البحرين', code: 'BH', flag: '🇧🇭' },
   { name: 'الجزائر', code: 'DZ', flag: '🇩🇿' },
   { name: 'السعودية', code: 'SA', flag: '🇸🇦' },
   { name: 'السودان', code: 'SD', flag: '🇸🇩' },
-  { name: 'العراق', code: 'IQ', flag: '🇮🇶' },
   { name: 'الكويت', code: 'KW', flag: '🇰🇼' },
   { name: 'المغرب', code: 'MA', flag: '🇲🇦' },
   { name: 'اليمن', code: 'YE', flag: '🇾🇪' },
@@ -107,7 +106,9 @@ const COUNTRIES = [
   { name: 'لبنان', code: 'LB', flag: '🇱🇧' },
   { name: 'ليبيا', code: 'LY', flag: '🇱🇾' },
   { name: 'مصر', code: 'EG', flag: '🇪🇬' },
-].sort((a, b) => a.name === 'الكل' ? -1 : a.name.localeCompare(b.name, 'ar'));
+].filter((c, index, self) => 
+  index === self.findIndex((t) => (t.code === c.code)) // منع التكرار إن وجد
+);
 
 const DEFAULT_SETTINGS = {
   mainColor: '#fe2c55',
@@ -115,11 +116,14 @@ const DEFAULT_SETTINGS = {
   appFont: 'Cairo',
   title: 'Ali Jabbar Week',
   logoUrl: 'https://placehold.co/200x60/transparent/white?text=LOGO',
+  logoSize: 50, // حجم الشعار الافتراضي
   stage: 'Voting',
   useGlassmorphism: true,
   marqueeText: 'التصويت مفتوح! شارك في تحديد أفضل تصميم عربي.',
   termsText: 'الشروط والأحكام:\n- الالتزام بالآداب العامة.',
   whyText: 'لتعزيز المحتوى العربي الإبداعي.',
+  startTime: '', // وقت البدء
+  endTime: '',   // وقت الانتهاء
   organizers: [],
 };
 
@@ -164,7 +168,6 @@ const Modal = ({ isOpen, onClose, title, children }) => {
   );
 };
 
-// تم التعديل: استخدام خلفية داكنة صريحة للحقول لتظهر فوق الخلفية السوداء
 const InputField = ({ label, id, value, onChange, type = 'text', placeholder = '', required = false }) => (
   <div className="mb-4 w-full">
     <label htmlFor={id} className="block text-white mb-2 font-medium text-sm opacity-90">
@@ -181,11 +184,10 @@ const InputField = ({ label, id, value, onChange, type = 'text', placeholder = '
   </div>
 );
 
-// هذا هو الكومبوننت الأصلي الذي كان مفقوداً
 const AlertBanner = ({ settings }) => {
   const stageInfo = STAGES[settings.stage] || STAGES.Voting;
   return (
-    <div className="mb-8 relative overflow-hidden rounded-xl shadow-2xl border border-white/10 animate-fadeIn"
+    <div className="mb-4 relative overflow-hidden rounded-xl shadow-2xl border border-white/10 animate-fadeIn"
          style={{ 
            backgroundColor: stageInfo.color === 'yellow' ? settings.mainColor : 
                             stageInfo.color === 'blue' ? '#2563eb' : 
@@ -195,14 +197,12 @@ const AlertBanner = ({ settings }) => {
         @keyframes marquee { 0% { transform: translateX(100%); } 100% { transform: translateX(-100%); } }
         .animate-marquee { animation: marquee 25s linear infinite; }
       `}</style>
-      <div className="flex items-center p-4 relative z-10 text-white">
-        <div className="bg-white/20 p-2 rounded-full ml-4 animate-pulse shrink-0">
-          <stageInfo.icon className="w-6 h-6" />
+      <div className="flex items-center p-3 relative z-10 text-white">
+        <div className="bg-white/20 p-1.5 rounded-full ml-3 animate-pulse shrink-0">
+          <stageInfo.icon className="w-5 h-5" />
         </div>
         <div className="flex-1 overflow-hidden flex items-center">
-          <p className="text-lg font-bold ml-4 whitespace-nowrap">{stageInfo.label}</p>
-          <div className="h-6 w-px bg-white/30 mx-4"></div>
-          <div className="whitespace-nowrap animate-marquee inline-block text-lg font-medium">
+          <div className="whitespace-nowrap animate-marquee inline-block text-base font-medium">
             {settings.marqueeText}
           </div>
         </div>
@@ -210,6 +210,16 @@ const AlertBanner = ({ settings }) => {
     </div>
   );
 };
+
+const LiveHeader = () => (
+  <div className="flex items-center gap-2 mb-6 animate-fadeIn px-2">
+    <span className="relative flex h-3 w-3">
+      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-pink-500 opacity-75"></span>
+      <span className="relative inline-flex rounded-full h-3 w-3 bg-pink-600"></span>
+    </span>
+    <h3 className="text-pink-500 font-bold tracking-wider text-sm uppercase">النتائج مباشرة</h3>
+  </div>
+);
 
 const ShinyButton = ({ children, onClick, disabled, className = '', style = {} }) => (
   <button
@@ -228,7 +238,13 @@ const ShinyButton = ({ children, onClick, disabled, className = '', style = {} }
 // =========================================================================
 
 const SubmissionForm = ({ settings }) => {
-  const [form, setForm] = useState({ tiktokUser: '', country: COUNTRIES[1].name, url: '' });
+  // تعيين العراق كافتراضي (رقم 1 في المصفوفة بعد الكل)
+  const [form, setForm] = useState({ 
+    displayName: '', 
+    tiktokUser: '', 
+    country: 'العراق', // الافتراضي
+    url: '' 
+  });
   const [status, setStatus] = useState('idle');
 
   const handleUserChange = (val) => {
@@ -238,18 +254,19 @@ const SubmissionForm = ({ settings }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.tiktokUser || !form.url || !form.tiktokUser.startsWith('@')) {
-      return alert('تأكد من كتابة اسم المستخدم مع @ ورابط الفيديو.');
+    if (!form.displayName || !form.tiktokUser || !form.url || !form.tiktokUser.startsWith('@')) {
+      return alert('يرجى تعبئة جميع الحقول بشكل صحيح.');
     }
     setStatus('submitting');
     try {
       const countryData = COUNTRIES.find(c => c.name === form.country);
-      const defaultProfilePic = `https://ui-avatars.com/api/?name=${form.tiktokUser.substring(1)}&background=random&color=fff&size=128`;
-      const defaultThumb = `https://placehold.co/600x900/333/fff?text=Video+Pending`;
+      // صورة افتراضية
+      const defaultProfilePic = `https://ui-avatars.com/api/?name=${form.displayName}&background=random&color=fff&size=128`;
+      const defaultThumb = `https://placehold.co/600x900/333/fff?text=Video`;
 
       await addDoc(collection(db, PATHS.SUBMISSIONS), {
-        tiktokUser: form.tiktokUser,
-        participantName: form.tiktokUser, // Backward compatibility
+        participantName: form.displayName, // الاسم الظاهر
+        tiktokUser: form.tiktokUser,       // المعرف مع @
         profilePicUrl: defaultProfilePic,
         country: form.country,
         flag: countryData.flag,
@@ -260,7 +277,7 @@ const SubmissionForm = ({ settings }) => {
         submittedAt: serverTimestamp(),
       });
       setStatus('success');
-      setForm({ tiktokUser: '', country: COUNTRIES[1].name, url: '' });
+      setForm({ displayName: '', tiktokUser: '', country: 'العراق', url: '' });
     } catch (err) {
       console.error(err);
       setStatus('error');
@@ -274,7 +291,7 @@ const SubmissionForm = ({ settings }) => {
           <Clock className="w-8 h-8 text-blue-400" />
         </div>
         <h2 className="text-3xl font-bold text-white mb-2">شارك إبداعك</h2>
-        <p className="text-white/60">أدخل بياناتك من تيك توك بدقة</p>
+        <p className="text-white/60">املأ الاستمارة بدقة للمشاركة</p>
       </div>
 
       {status === 'success' && (
@@ -284,16 +301,11 @@ const SubmissionForm = ({ settings }) => {
       )}
 
       <form onSubmit={handleSubmit} className="space-y-5">
-        <div className="flex items-center gap-3 mb-4">
-           <div className="w-14 h-14 rounded-full bg-black/40 flex items-center justify-center overflow-hidden border-2 border-white/10 shrink-0">
-              {form.tiktokUser.length > 2 ? (
-                <img src={`https://ui-avatars.com/api/?name=${form.tiktokUser.substring(1)}&background=random`} alt="Avatar" className="w-full h-full" />
-              ) : <User className="w-6 h-6 text-white/50" />}
-           </div>
-           <div className="flex-1">
-             <InputField label="اسم المستخدم في تيك توك" id="tiktok" value={form.tiktokUser} onChange={handleUserChange} placeholder="@username"/>
-           </div>
-        </div>
+        {/* الاسم الظاهر */}
+        <InputField label="اسم الحساب الظاهر" id="dname" value={form.displayName} onChange={v => setForm({...form, displayName: v})} placeholder="مثال: أحمد المصمم"/>
+
+        {/* اسم المستخدم مع @ */}
+        <InputField label="اسم المستخدم (مع @)" id="tiktok" value={form.tiktokUser} onChange={handleUserChange} placeholder="@username"/>
         
         <div className="mb-4">
           <label className="block text-white mb-2 text-sm opacity-90">البلد</label>
@@ -302,6 +314,7 @@ const SubmissionForm = ({ settings }) => {
             onChange={e => setForm({...form, country: e.target.value})}
             className="w-full p-3 rounded-lg bg-gray-800/80 border border-white/10 text-white outline-none focus:ring-2 focus:ring-[var(--highlight-color)] appearance-none"
           >
+            {/* استثناء خيار "الكل" من قائمة التسجيل */}
             {COUNTRIES.filter(c => c.code !== 'ALL').map(c => <option key={c.code} value={c.name} className="bg-gray-900">{c.flag} {c.name}</option>)}
           </select>
         </div>
@@ -334,7 +347,8 @@ const Leaderboard = ({ submissions }) => {
               <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-gray-400 text-black text-xs font-bold px-2 py-0.5 rounded-full">#2</div>
             </div>
             <div className="mt-3 text-center">
-              <p className="font-bold text-white text-xs md:text-sm truncate max-w-[80px]">{top3[1].tiktokUser}</p>
+              {/* هنا يعرض الاسم الظاهر فقط */}
+              <p className="font-bold text-white text-xs md:text-sm truncate max-w-[100px]">{top3[1].participantName}</p>
               <p className="font-bold text-gray-300 text-sm">{top3[1].votes}</p>
             </div>
             <div className="w-16 md:w-20 h-20 bg-gray-700/30 rounded-t-lg border-t border-gray-500/30 mt-2"></div>
@@ -349,7 +363,8 @@ const Leaderboard = ({ submissions }) => {
               <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-yellow-400 text-black text-xs font-bold px-3 py-1 rounded-full">#1</div>
             </div>
             <div className="mt-3 text-center">
-              <p className="font-bold text-white text-sm md:text-lg truncate max-w-[100px]">{top3[0].tiktokUser}</p>
+              {/* هنا يعرض الاسم الظاهر فقط */}
+              <p className="font-bold text-white text-sm md:text-lg truncate max-w-[120px]">{top3[0].participantName}</p>
               <p className="font-black text-yellow-400 text-xl">{top3[0].votes}</p>
             </div>
             <div className="w-20 md:w-24 h-28 bg-gradient-to-b from-yellow-500/20 to-transparent rounded-t-xl border-t border-yellow-500/30 mt-2 relative overflow-hidden">
@@ -365,7 +380,8 @@ const Leaderboard = ({ submissions }) => {
               <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-orange-700 text-white text-xs font-bold px-2 py-0.5 rounded-full">#3</div>
             </div>
             <div className="mt-3 text-center">
-              <p className="font-bold text-white text-xs md:text-sm truncate max-w-[80px]">{top3[2].tiktokUser}</p>
+              {/* هنا يعرض الاسم الظاهر فقط */}
+              <p className="font-bold text-white text-xs md:text-sm truncate max-w-[100px]">{top3[2].participantName}</p>
               <p className="font-bold text-orange-400 text-sm">{top3[2].votes}</p>
             </div>
             <div className="w-16 md:w-20 h-14 bg-gray-700/30 rounded-t-lg border-t border-orange-700/30 mt-2"></div>
@@ -381,7 +397,8 @@ const Leaderboard = ({ submissions }) => {
               <div key={sub.id} className="flex items-center gap-3 px-4 border-l border-white/10 min-w-[200px]">
                 <span className="text-white/30 font-mono text-sm">#{i + 4}</span>
                 <img src={sub.profilePicUrl} className="w-8 h-8 rounded-full object-cover bg-gray-800" alt="" />
-                <span className="text-white font-bold text-sm">{sub.tiktokUser}</span>
+                {/* الاسم الظاهر فقط في الشريط */}
+                <span className="text-white font-bold text-sm">{sub.participantName}</span>
                 <span className="text-[var(--highlight-color)] font-bold">{sub.votes} صوت</span>
               </div>
             ))}
@@ -390,7 +407,7 @@ const Leaderboard = ({ submissions }) => {
               <div key={`dup-${sub.id}`} className="flex items-center gap-3 px-4 border-l border-white/10 min-w-[200px]">
                  <span className="text-white/30 font-mono text-sm">#{i + 4}</span>
                  <img src={sub.profilePicUrl} className="w-8 h-8 rounded-full object-cover bg-gray-800" alt="" />
-                 <span className="text-white font-bold text-sm">{sub.tiktokUser}</span>
+                 <span className="text-white font-bold text-sm">{sub.participantName}</span>
                  <span className="text-[var(--highlight-color)] font-bold">{sub.votes} صوت</span>
               </div>
             ))}
@@ -401,7 +418,7 @@ const Leaderboard = ({ submissions }) => {
   );
 };
 
-const SearchFilterBar = ({ onSearch, onFilter, countries }) => {
+const SearchFilterBar = ({ onSearch, onFilter }) => {
   return (
     <div className="flex flex-col md:flex-row gap-4 mb-8 bg-black/40 p-4 rounded-2xl border border-white/10 backdrop-blur-md">
       <div className="flex-1 relative">
@@ -419,7 +436,8 @@ const SearchFilterBar = ({ onSearch, onFilter, countries }) => {
           onChange={(e) => onFilter(e.target.value)}
           className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pr-10 pl-4 text-white appearance-none focus:border-[var(--highlight-color)] outline-none cursor-pointer"
         >
-          {countries.map(c => <option key={c.code} value={c.name} className="bg-gray-900">{c.flag} {c.name}</option>)}
+          {/* الكل هو الافتراضي في البحث */}
+          {COUNTRIES.map(c => <option key={c.code} value={c.name} className="bg-gray-900">{c.flag} {c.name}</option>)}
         </select>
       </div>
     </div>
@@ -433,17 +451,20 @@ const VideoCard = ({ submission, settings, onVote, onClick }) => (
   >
     <img 
       src={submission.thumbnailUrl} 
-      alt={submission.tiktokUser} 
+      alt={submission.participantName} 
       className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-80 group-hover:opacity-100"
       onError={(e) => e.target.src = 'https://placehold.co/600x900/111/fff?text=No+Image'}
     />
     
     <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent flex flex-col justify-end p-4">
       <div className="flex items-center gap-2 mb-3">
-        <img src={submission.profilePicUrl} className="w-8 h-8 rounded-full border border-white/50 bg-black" alt="" />
+        <img src={submission.profilePicUrl} className="w-10 h-10 rounded-full border border-white/50 bg-black" alt="" />
         <div className="overflow-hidden">
-          <h3 className="font-bold text-white text-sm truncate shadow-sm">{submission.tiktokUser}</h3>
-          <p className="text-white/70 text-xs">{submission.flag} {submission.country}</p>
+          {/* الاسم الظاهر */}
+          <h3 className="font-bold text-white text-sm truncate shadow-sm">{submission.participantName}</h3>
+          {/* اليوزر نيم تحته */}
+          <p className="text-[var(--highlight-color)] text-xs truncate opacity-90">{submission.tiktokUser}</p>
+          <p className="text-white/60 text-[10px]">{submission.flag} {submission.country}</p>
         </div>
       </div>
       
@@ -472,8 +493,11 @@ const VideoModal = ({ isOpen, onClose, submission, settings, onVote }) => {
         <div className="w-full md:w-1/3 bg-gray-900 p-6 flex flex-col relative border-l border-white/10">
            <div className="flex flex-col items-center mb-8 mt-4">
              <img src={submission.profilePicUrl} className="w-20 h-20 rounded-full border-4 border-[var(--highlight-color)] mb-4 object-cover bg-black" alt="" />
-             <h2 className="text-xl font-bold text-white text-center">{submission.tiktokUser}</h2>
-             <p className="text-white/50 text-sm mt-1">{submission.flag} {submission.country}</p>
+             {/* الاسم الظاهر كبير */}
+             <h2 className="text-xl font-bold text-white text-center">{submission.participantName}</h2>
+             {/* اليوزر نيم تحته */}
+             <p className="text-[var(--highlight-color)] text-sm">{submission.tiktokUser}</p>
+             <p className="text-white/50 text-xs mt-1">{submission.flag} {submission.country}</p>
            </div>
            <div className="bg-white/5 p-6 rounded-2xl text-center mb-auto border border-white/5">
              <p className="text-white/50 text-sm uppercase tracking-widest mb-2">عدد الأصوات</p>
@@ -499,6 +523,15 @@ const VideoModal = ({ isOpen, onClose, submission, settings, onVote }) => {
 const AdminSettingsPanel = ({ settings, onSaveSettings }) => {
   const [localSettings, setLocalSettings] = useState(settings);
   const [isSaving, setIsSaving] = useState(false);
+  const [turkeyTime, setTurkeyTime] = useState('');
+
+  // ساعة تركيا
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setTurkeyTime(new Date().toLocaleTimeString('ar-SA', { timeZone: 'Europe/Istanbul' }));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   const handleOrgChange = (index, field, value) => {
     const newOrgs = [...(localSettings.organizers || [])];
@@ -514,14 +547,27 @@ const AdminSettingsPanel = ({ settings, onSaveSettings }) => {
 
   return (
     <GlassCard className="p-6 mb-8 animate-slideUp" isGlassmorphism>
-      <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-2">
-        <SettingsIcon className="text-[var(--highlight-color)]" /> إعدادات النظام
-      </h2>
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+            <SettingsIcon className="text-[var(--highlight-color)]" /> إعدادات النظام
+        </h2>
+        <div className="bg-white/10 px-4 py-2 rounded-lg flex items-center gap-2 text-sm">
+            <Clock size={16} className="text-[var(--highlight-color)]"/>
+            <span>توقيت تركيا: {turkeyTime}</span>
+        </div>
+      </div>
       
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div className="space-y-4">
           <h3 className="text-lg font-bold text-white border-b border-white/10 pb-2">الهوية البصرية</h3>
           <InputField label="رابط الشعار (Logo)" id="logo" value={localSettings.logoUrl} onChange={(v) => setLocalSettings({...localSettings, logoUrl: v})} />
+          
+          <div className="mb-4">
+             <label className="block text-white mb-2 text-sm opacity-90">حجم الشعار (بكسل)</label>
+             <input type="range" min="30" max="150" value={localSettings.logoSize || 50} onChange={(e) => setLocalSettings({...localSettings, logoSize: e.target.value})} className="w-full"/>
+             <div className="text-right text-xs text-white/50">{localSettings.logoSize || 50}px</div>
+          </div>
+
           <div className="flex gap-4">
              <div className="flex-1">
                 <label className="block text-white mb-2 text-sm">اللون الرئيسي</label>
@@ -539,6 +585,12 @@ const AdminSettingsPanel = ({ settings, onSaveSettings }) => {
              </div>
           </div>
           
+          <h3 className="text-lg font-bold text-white border-b border-white/10 pb-2 mt-6">التوقيت والمواعيد</h3>
+          <div className="flex gap-4">
+              <InputField label="وقت البدء" type="datetime-local" id="start" value={localSettings.startTime} onChange={(v) => setLocalSettings({...localSettings, startTime: v})} />
+              <InputField label="وقت الانتهاء" type="datetime-local" id="end" value={localSettings.endTime} onChange={(v) => setLocalSettings({...localSettings, endTime: v})} />
+          </div>
+
           <h3 className="text-lg font-bold text-white border-b border-white/10 pb-2 mt-6">شريط التنبيه</h3>
           <InputField label="نص الشريط المتحرك" id="marquee" value={localSettings.marqueeText} onChange={(v) => setLocalSettings({...localSettings, marqueeText: v})} />
         </div>
@@ -587,13 +639,13 @@ const AdminSubmissionsPanel = ({ submissions, onUpdateStatus, onManualAdd }) => 
   const [filter, setFilter] = useState('Pending');
   const [editMode, setEditMode] = useState(null);
   const [editData, setEditData] = useState({});
-
   const [isAddModalOpen, setAddModal] = useState(false);
-  const [newSub, setNewSub] = useState({ tiktokUser: '@', country: 'العراق', url: '' });
+  // نموذج الإضافة اليدوية في الأدمن
+  const [newSub, setNewSub] = useState({ displayName: '', tiktokUser: '@', country: 'العراق', url: '' });
 
   const startEdit = (sub) => { setEditMode(sub.id); setEditData({ ...sub }); };
   const saveEdit = async () => { await updateDoc(doc(db, PATHS.SUBMISSIONS, editMode), editData); setEditMode(null); };
-  const handleManualSubmit = async () => { await onManualAdd(newSub); setAddModal(false); setNewSub({ tiktokUser: '@', country: 'العراق', url: '' }); };
+  const handleManualSubmit = async () => { await onManualAdd(newSub); setAddModal(false); setNewSub({ displayName: '', tiktokUser: '@', country: 'العراق', url: '' }); };
 
   const filtered = submissions.filter(s => s.status === filter);
 
@@ -620,8 +672,8 @@ const AdminSubmissionsPanel = ({ submissions, onUpdateStatus, onManualAdd }) => 
           <div key={sub.id} className="bg-white/5 p-4 rounded-xl border border-white/5 flex flex-col md:flex-row gap-4 items-start md:items-center hover:border-white/10 transition">
             {editMode === sub.id ? (
               <div className="flex-1 grid grid-cols-2 gap-2 w-full">
-                 <input value={editData.thumbnailUrl} onChange={e => setEditData({...editData, thumbnailUrl: e.target.value})} placeholder="Thumbnail URL" className="col-span-2 bg-gray-800 border border-white/20 rounded p-2 text-white text-sm" />
-                 <input value={editData.profilePicUrl} onChange={e => setEditData({...editData, profilePicUrl: e.target.value})} placeholder="Profile URL" className="col-span-2 bg-gray-800 border border-white/20 rounded p-2 text-white text-sm" />
+                 <input value={editData.participantName} onChange={e => setEditData({...editData, participantName: e.target.value})} placeholder="الاسم الظاهر" className="bg-gray-800 border border-white/20 rounded p-2 text-white text-sm" />
+                 <input value={editData.tiktokUser} onChange={e => setEditData({...editData, tiktokUser: e.target.value})} placeholder="@username" className="bg-gray-800 border border-white/20 rounded p-2 text-white text-sm" />
                  <div className="col-span-2 flex gap-2 justify-end mt-2">
                    <button onClick={() => setEditMode(null)} className="px-3 py-1 text-xs bg-gray-700 rounded text-white">إلغاء</button>
                    <button onClick={saveEdit} className="px-3 py-1 text-xs bg-green-600 rounded text-white">حفظ</button>
@@ -631,9 +683,9 @@ const AdminSubmissionsPanel = ({ submissions, onUpdateStatus, onManualAdd }) => 
               <>
                 <img src={sub.thumbnailUrl} className="w-16 h-16 object-cover rounded-lg bg-black border border-white/10" alt="Thumb" onError={e => e.target.src='https://placehold.co/100x150/333/fff?text=?'} />
                 <div className="flex-1">
-                  <h4 className="font-bold text-white text-lg">{sub.tiktokUser}</h4>
-                  <p className="text-xs text-white/50">{sub.country} | الأصوات: {sub.votes}</p>
-                  <a href={sub.videoUrl} target="_blank" rel="noreferrer" className="text-[var(--highlight-color)] text-xs hover:underline block truncate max-w-[200px]">{sub.videoUrl}</a>
+                  <h4 className="font-bold text-white text-lg">{sub.participantName}</h4>
+                  <p className="text-xs text-[var(--highlight-color)]">{sub.tiktokUser}</p>
+                  <p className="text-xs text-white/50 mt-1">{sub.country} | الأصوات: {sub.votes}</p>
                 </div>
                 <div className="flex gap-2">
                    <button onClick={() => startEdit(sub)} className="p-2 bg-blue-600/20 text-blue-400 rounded hover:bg-blue-600 hover:text-white"><Edit3 size={16} /></button>
@@ -648,6 +700,7 @@ const AdminSubmissionsPanel = ({ submissions, onUpdateStatus, onManualAdd }) => 
       </div>
 
       <Modal isOpen={isAddModalOpen} onClose={() => setAddModal(false)} title="إضافة مشاركة يدوياً">
+        <InputField label="الاسم الظاهر" value={newSub.displayName} onChange={v => setNewSub({...newSub, displayName: v})} />
         <InputField label="اسم المستخدم @" value={newSub.tiktokUser} onChange={v => setNewSub({...newSub, tiktokUser: v})} />
         <InputField label="رابط الفيديو" value={newSub.url} onChange={v => setNewSub({...newSub, url: v})} />
         <div className="mb-4">
@@ -700,24 +753,29 @@ const ContestApp = () => {
 
   const processedSubmissions = useMemo(() => {
     let list = submissions.filter(s => s.status === 'Approved');
-    if (searchQuery) list = list.filter(s => s.tiktokUser.toLowerCase().includes(searchQuery.toLowerCase()));
+    // الفلتر بالاسم الظاهر أو اليوزرنيم
+    if (searchQuery) list = list.filter(s => 
+      s.tiktokUser.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (s.participantName && s.participantName.toLowerCase().includes(searchQuery.toLowerCase()))
+    );
     if (countryFilter !== 'الكل') list = list.filter(s => s.country === countryFilter);
     return list.sort((a, b) => b.votes - a.votes);
   }, [submissions, searchQuery, countryFilter]);
 
   const handleSaveSettings = async (newS) => await setDoc(doc(db, PATHS.SETTINGS), newS, { merge: true });
   const handleStatus = async (id, st) => {
-    if(st === 'Deleted') { /* delete logic */ } 
+    if(st === 'Deleted') { /* delete */ } 
     else await updateDoc(doc(db, PATHS.SUBMISSIONS, id), { status: st });
   };
   const handleManualAdd = async (data) => {
      const countryData = COUNTRIES.find(c => c.name === data.country);
      await addDoc(collection(db, PATHS.SUBMISSIONS), {
+       participantName: data.displayName,
        tiktokUser: data.tiktokUser,
        country: data.country,
        flag: countryData.flag,
        videoUrl: data.url,
-       profilePicUrl: `https://ui-avatars.com/api/?name=${data.tiktokUser.substring(1)}&background=random`,
+       profilePicUrl: `https://ui-avatars.com/api/?name=${data.displayName}&background=random`,
        thumbnailUrl: 'https://placehold.co/600x900/222/fff?text=Video',
        status: 'Approved',
        votes: 0,
@@ -762,7 +820,7 @@ const ContestApp = () => {
             <div className="container mx-auto px-4 py-8 animate-fadeIn">
               <div className="flex justify-between items-center mb-8 bg-gray-900 p-4 rounded-2xl border border-white/10">
                  <div className="flex items-center gap-3">
-                    <img src={settings.logoUrl} className="h-12 object-contain bg-black/20 rounded p-1" alt="Logo"/>
+                    <img src={settings.logoUrl} className="object-contain bg-black/20 rounded p-1" style={{ height: `${settings.logoSize || 50}px` }} alt="Logo"/>
                     <span className="font-bold text-xl hidden md:block">لوحة التحكم</span>
                  </div>
                  <div className="flex gap-3">
@@ -780,7 +838,7 @@ const ContestApp = () => {
              <header className="sticky top-0 z-40 bg-black/80 backdrop-blur-lg border-b border-white/10">
                 <div className="container mx-auto px-4 py-3 flex justify-between items-center">
                    <div className="flex items-center gap-3" onClick={() => window.location.reload()}>
-                      <img src={settings.logoUrl} className="h-10 md:h-12 object-contain rounded-lg" alt="Logo"/>
+                      <img src={settings.logoUrl} className="object-contain rounded-lg" style={{ height: `${settings.logoSize || 50}px` }} alt="Logo"/>
                    </div>
                    {user && <button onClick={() => navigate('/admin')} className="bg-white/10 px-3 py-1 rounded-full text-xs hover:bg-white/20 transition border border-white/10">⚙️ الإدارة</button>}
                 </div>
@@ -793,6 +851,7 @@ const ContestApp = () => {
                 
                 {(settings.stage === 'Voting' || settings.stage === 'Ended') && (
                   <>
+                    <LiveHeader />
                     <Leaderboard submissions={submissions.filter(s => s.status === 'Approved')} />
                     
                     <div className="flex items-center gap-2 mb-6 mt-10 border-b border-white/10 pb-4">
@@ -803,7 +862,7 @@ const ContestApp = () => {
                       </span>
                     </div>
 
-                    <SearchFilterBar onSearch={setSearchQuery} onFilter={setCountryFilter} countries={COUNTRIES} />
+                    <SearchFilterBar onSearch={setSearchQuery} onFilter={setCountryFilter} />
 
                     {processedSubmissions.length === 0 ? (
                         <div className="text-center py-20 border border-dashed border-white/10 rounded-xl bg-white/5">
@@ -853,7 +912,8 @@ const ContestApp = () => {
        <Modal isOpen={!!modals.voteConfirm} onClose={() => setModals(p=>({...p, voteConfirm: null}))} title="تأكيد التصويت">
           <div className="text-center py-4">
              <img src={modals.voteConfirm?.profilePicUrl} className="w-20 h-20 rounded-full mx-auto mb-4 border-2 border-[var(--highlight-color)] object-cover bg-black" alt=""/>
-             <p className="text-lg mb-6">هل تود التصويت لـ <span className="font-bold text-[var(--highlight-color)]">{modals.voteConfirm?.tiktokUser}</span>؟</p>
+             <p className="text-lg mb-1">هل تود التصويت لـ <span className="font-bold text-white">{modals.voteConfirm?.participantName}</span>؟</p>
+             <p className="text-sm text-[var(--highlight-color)] mb-6">{modals.voteConfirm?.tiktokUser}</p>
              <ShinyButton onClick={confirmVote} style={{backgroundColor: settings.mainColor}} className="w-full text-white">تأكيد التصويت</ShinyButton>
           </div>
        </Modal>

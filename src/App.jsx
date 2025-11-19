@@ -3,7 +3,6 @@ import {
   BrowserRouter,
   Routes,
   Route,
-  useLocation,
   useNavigate,
 } from 'react-router-dom';
 import { initializeApp } from 'firebase/app';
@@ -42,18 +41,21 @@ import {
   Lock,
   Mail,
   Key,
-  BarChart2,
   CheckCircle,
   Clock,
   Info,
   LogOut,
+  FileText,
+  Users,
+  Save,
+  Type
 } from 'lucide-react';
 
 // =========================================================================
-// 1. FIREBASE & INITIALIZATION
+// 1. FIREBASE CONFIGURATION & INITIALIZATION
 // =========================================================================
 
-const appId = 'ali-jabbar-week';
+const APP_ID = 'ali-jabbar-week';
 
 const userFirebaseConfig = {
   apiKey: "AIzaSyDUxC_2orwmSLL9iEBIkeohZKfH36MjZ4Y",
@@ -65,51 +67,44 @@ const userFirebaseConfig = {
   measurementId: "G-8XSRK7TE1K",
 };
 
-const VITE_FIREBASE_API_KEY_PRESENT = userFirebaseConfig.apiKey !== '';
-
 let isFirebaseInitialized = false;
 let firebaseApp, db, auth;
 
-if (VITE_FIREBASE_API_KEY_PRESENT) {
-  try {
-    const firebaseConfig = userFirebaseConfig;
-    firebaseApp = initializeApp(firebaseConfig);
-    db = getFirestore(firebaseApp);
-    auth = getAuth(firebaseApp);
-    isFirebaseInitialized = true;
-  } catch (e) {
-    console.error('Firebase Initialization Failed:', e);
-    isFirebaseInitialized = false;
-  }
-} else {
-  console.warn('Firebase API Key not found. Running in MOCK mode.');
+try {
+  firebaseApp = initializeApp(userFirebaseConfig);
+  db = getFirestore(firebaseApp);
+  auth = getAuth(firebaseApp);
+  isFirebaseInitialized = true;
+  console.log("✅ Firebase Initialized Successfully");
+} catch (e) {
+  console.error('❌ Firebase Initialization Failed:', e);
 }
 
-const PUBLIC_SETTINGS_PATH = `artifacts/${appId}/public/data/settings/config`;
-const PUBLIC_SUBMISSIONS_COLLECTION = `artifacts/${appId}/public/data/submissions`;
+const PATHS = {
+  SETTINGS: `artifacts/${APP_ID}/public/data/settings/config`,
+  SUBMISSIONS: `artifacts/${APP_ID}/public/data/submissions`,
+};
 
+// دالة مساعدة لإعادة المحاولة في حالة ضعف النت
 const retryOperation = async (operation, maxRetries = 3, delay = 1000) => {
   for (let i = 0; i < maxRetries; i++) {
     try {
       return await operation();
     } catch (error) {
-      if (i === maxRetries - 1) {
-        throw error;
-      }
-      await new Promise((resolve) =>
-        setTimeout(resolve, delay * Math.pow(2, i))
-      );
+      if (i === maxRetries - 1) throw error;
+      await new Promise((resolve) => setTimeout(resolve, delay * Math.pow(2, i)));
     }
   }
 };
 
 // =========================================================================
-// 2. CONSTANTS
+// 2. CONSTANTS & DATA MODELS
 // =========================================================================
+
 const STAGES = {
   Submission: { label: 'استقبال المشاركات', color: 'blue', icon: Clock },
   Voting: { label: 'التصويت مفتوح', color: 'yellow', icon: CheckCircle },
-  Paused: { label: 'متوقفة مؤقتاً', color: 'red', icon: X },
+  Paused: { label: 'متوقفة مؤقتاً', color: 'red', icon: AlertTriangle },
   Ended: { label: 'إعلان النتائج', color: 'green', icon: Crown },
 };
 
@@ -120,14 +115,11 @@ const COUNTRIES = [
   { name: 'الجزائر', code: 'DZ', flag: '🇩🇿' },
   { name: 'السعودية', code: 'SA', flag: '🇸🇦' },
   { name: 'السودان', code: 'SD', flag: '🇸🇩' },
-  { name: 'الصومال', code: 'SO', flag: '🇸🇴' },
   { name: 'العراق', code: 'IQ', flag: '🇮🇶' },
   { name: 'الكويت', code: 'KW', flag: '🇰🇼' },
   { name: 'المغرب', code: 'MA', flag: '🇲🇦' },
   { name: 'اليمن', code: 'YE', flag: '🇾🇪' },
   { name: 'تونس', code: 'TN', flag: '🇹🇳' },
-  { name: 'جزر القمر', code: 'KM', flag: '🇰🇲' },
-  { name: 'جيبوتي', code: 'DJ', flag: '🇩🇯' },
   { name: 'سوريا', code: 'SY', flag: '🇸🇾' },
   { name: 'عُمان', code: 'OM', flag: '🇴🇲' },
   { name: 'فلسطين', code: 'PS', flag: '🇵🇸' },
@@ -135,7 +127,6 @@ const COUNTRIES = [
   { name: 'لبنان', code: 'LB', flag: '🇱🇧' },
   { name: 'ليبيا', code: 'LY', flag: '🇱🇾' },
   { name: 'مصر', code: 'EG', flag: '🇪🇬' },
-  { name: 'موريتانيا', code: 'MR', flag: '🇲🇷' },
 ].sort((a, b) => a.name.localeCompare(b.name, 'ar'));
 
 const ORGANIZERS = [
@@ -162,91 +153,45 @@ const DEFAULT_SETTINGS = {
   marqueeText: 'التصويت مفتوح! شارك في تحديد أفضل تصميم عربي.',
   stage: 'Voting',
   useGlassmorphism: true,
-  endedAt: null,
-  termsText:
-    'الشروط والأحكام:\n- يجب أن يكون التصميم أصلياً.\n- يجب ألا ينتهك حقوق الملكية الفكرية.\n- يجب أن يكون المحتوى مناسباً للعرض العام.',
-  whyText:
-    'لماذا هذه المسابقة؟\nلتعزيز المحتوى العربي الإبداعي على منصة تيك توك ودعم المواهب الشابة في مجال صناعة الفيديو القصير.\nنشجع على الإبداع والابتكار!',
+  termsText: 'الشروط والأحكام:\n- يجب أن يكون التصميم أصلياً.\n- الالتزام بالآداب العامة.',
+  whyText: 'لتعزيز المحتوى العربي الإبداعي ودعم المواهب.',
 };
 
-const MOCK_SUBMISSIONS = [
-  {
-    id: '1',
-    participantName: 'نورة القحطاني',
-    country: 'السعودية',
-    votes: 890,
-    status: 'Approved',
-    videoUrl: 'https://www.tiktok.com/@tiktok/video/7279148301138855211',
-    thumbnailUrl: 'https://placehold.co/600x900/fe2c55/25f4ee?text=SA',
-    flag: '🇸🇦',
-    submittedAt: new Date(Date.now() - 100000),
-  },
-  {
-    id: '2',
-    participantName: 'خالد المصري',
-    country: 'مصر',
-    votes: 750,
-    status: 'Approved',
-    videoUrl: 'https://www.tiktok.com/@tiktok/video/7279148301138855211',
-    thumbnailUrl: 'https://placehold.co/600x900/25f4ee/fe2c55?text=EG',
-    flag: '🇪🇬',
-    submittedAt: new Date(Date.now() - 200000),
-  },
-  {
-    id: '3',
-    participantName: 'علي الكويتي',
-    country: 'الكويت',
-    votes: 580,
-    status: 'Approved',
-    videoUrl: 'https://www.tiktok.com/@tiktok/video/7279148301138855211',
-    thumbnailUrl: 'https://placehold.co/600x900/25f4ee/000000?text=KW',
-    flag: '🇰🇼',
-    submittedAt: new Date(Date.now() - 400000),
-  },
-];
-
 // =========================================================================
-// 3. UTILITIES & COMPONENTS
+// 3. UTILITY HOOKS & HELPERS
 // =========================================================================
 
 const useAuth = () => {
-  const [userId, setUserId] = useState(null);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!isFirebaseInitialized || !auth) {
-      setUserId('mock-user-id');
-      setIsLoggedIn(false);
+    if (!isFirebaseInitialized) {
+      setLoading(false);
       return;
     }
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
-        setUserId(user.uid);
-        setIsLoggedIn(true);
-      } else {
-        setUserId('public-read-only');
-        setIsLoggedIn(false);
-      }
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      setLoading(false);
     });
     return () => unsubscribe();
   }, []);
 
-  return { userId, isAuthReady: userId !== null, isLoggedIn };
+  return { user, loading, isLoggedIn: !!user };
 };
 
-const GlassCard = ({
-  children,
-  className = '',
-  isGlassmorphism = true,
-  color = 'bg-gray-700',
-  onClick,
-}) => {
+// =========================================================================
+// 4. UI COMPONENTS (Cards, Modals, Inputs)
+// =========================================================================
+
+const GlassCard = ({ children, className = '', isGlassmorphism = true, color = 'bg-gray-900', onClick }) => {
   const glassClasses = isGlassmorphism
-    ? 'bg-opacity-50 backdrop-blur-md shadow-xl border border-white/10'
-    : 'shadow-2xl';
+    ? 'bg-opacity-60 backdrop-blur-xl shadow-2xl border border-white/10'
+    : 'bg-opacity-100 shadow-xl border border-gray-800';
+  
   return (
     <div 
-      className={`p-4 rounded-xl ${color} ${glassClasses} ${className}`}
+      className={`p-5 rounded-2xl transition-all duration-300 ${color} ${glassClasses} ${className}`}
       onClick={onClick}
     >
       {children}
@@ -254,480 +199,878 @@ const GlassCard = ({
   );
 };
 
-const AlertBanner = ({ settings }) => {
-  const { stage, logoUrl, marqueeText, highlightColor, mainColor } = settings;
-  const stageInfo = STAGES[stage];
-  const pulseColor = highlightColor;
-  const bannerBgColor = stage === 'Voting' ? mainColor : stage === 'Submission' ? '#2563eb' : '#b91c1c';
-  const iconBorderColor = stage === 'Voting' ? highlightColor : stage === 'Submission' ? '#93c5fd' : '#fca5a5';
-
-  return (
-    <div
-      className={`p-3 text-white border-r-4 rounded-lg flex items-center mb-6 shadow-2xl overflow-hidden`}
-      style={{
-        '--highlight-color-css': highlightColor,
-        '--pulse-shadow': `0 0 10px 2px ${pulseColor}`,
-        backgroundColor: bannerBgColor,
-        borderColor: iconBorderColor,
-      }}
-    >
-      <style>{`
-        @keyframes pulse-effect {
-            0%, 100% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.7); }
-            50% { box-shadow: var(--pulse-shadow); }
-        }
-        .pulse-animation { animation: pulse-effect 2s infinite ease-in-out; }
-      `}</style>
-      <div className={`pulse-animation p-1 rounded-full border-2 mr-4`} style={{ borderColor: iconBorderColor, maxHeight: '40px', maxWidth: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <stageInfo.icon className="w-5 h-5" />
-      </div>
-      <span className="font-bold ml-2 text-xl whitespace-nowrap">{stageInfo.label}</span>
-      <span className="mr-auto text-lg truncate ml-4">{marqueeText}</span>
-      <img src={logoUrl} alt="Logo" className="h-8 w-auto mr-2 rounded-lg" onError={(e) => (e.target.style.display = 'none')} />
-    </div>
-  );
-};
-
 const Modal = ({ isOpen, onClose, title, children }) => {
   if (!isOpen) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onClick={onClose}>
-      <GlassCard isGlassmorphism className="w-full max-w-2xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-        <div className="flex justify-between items-center pb-3 border-b border-white/20">
-          <h2 className="text-2xl font-bold text-white">{title}</h2>
-          <button onClick={onClose} className="text-white hover:text-highlight-color transition">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm animate-fadeIn" onClick={onClose}>
+      <GlassCard 
+        className="w-full max-w-2xl max-h-[90vh] overflow-y-auto relative flex flex-col !p-0" 
+        color="bg-gray-900" 
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex justify-between items-center p-5 border-b border-white/10 bg-white/5 sticky top-0 backdrop-blur-md z-10">
+          <h2 className="text-xl font-bold text-white">{title}</h2>
+          <button onClick={onClose} className="text-white/70 hover:text-red-500 transition p-1 rounded-full hover:bg-white/10">
             <X className="w-6 h-6" />
           </button>
         </div>
-        <div className="pt-4 text-white text-lg leading-relaxed space-y-4">
-          {typeof children === 'string' ? children.split('\n').map((paragraph, index) => <p key={index}>{paragraph}</p>) : children}
+        <div className="p-6 text-white space-y-4 text-lg leading-relaxed">
+          {children}
         </div>
       </GlassCard>
     </div>
   );
 };
 
-const AdminAuthModal = ({ isOpen, onClose, onAuthSuccess }) => {
+const InputField = ({ label, id, value, onChange, type = 'text', placeholder = '' }) => (
+  <div className="mb-4 w-full">
+    <label htmlFor={id} className="block text-white mb-2 font-medium text-sm opacity-90">
+      {label}
+    </label>
+    <input
+      type={type}
+      id={id}
+      value={value || ''}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={placeholder}
+      className="w-full p-3 rounded-lg bg-black/40 border border-white/10 text-white placeholder-gray-500 focus:ring-2 focus:ring-highlight-color focus:border-transparent transition duration-200 outline-none"
+    />
+  </div>
+);
+
+const AlertBanner = ({ settings }) => {
+  const stageInfo = STAGES[settings.stage];
+  return (
+    <div className="mb-8 relative overflow-hidden rounded-xl shadow-2xl border border-white/10"
+         style={{ 
+           backgroundColor: stageInfo.color === 'yellow' ? settings.mainColor : 
+                            stageInfo.color === 'blue' ? '#2563eb' : 
+                            stageInfo.color === 'red' ? '#b91c1c' : '#059669' 
+         }}>
+      <style>{`
+        @keyframes marquee { 0% { transform: translateX(100%); } 100% { transform: translateX(-100%); } }
+        .animate-marquee { animation: marquee 25s linear infinite; }
+      `}</style>
+      <div className="flex items-center p-4 relative z-10 text-white">
+        <div className="bg-white/20 p-2 rounded-full ml-4 animate-pulse shrink-0">
+          <stageInfo.icon className="w-6 h-6" />
+        </div>
+        <div className="flex-1 overflow-hidden flex items-center">
+          <p className="text-lg font-bold ml-4 whitespace-nowrap">{stageInfo.label}</p>
+          <div className="h-6 w-px bg-white/30 mx-4"></div>
+          <div className="whitespace-nowrap animate-marquee inline-block text-lg">
+            {settings.marqueeText}
+          </div>
+        </div>
+        {settings.logoUrl && <img src={settings.logoUrl} alt="Logo" className="h-10 w-10 rounded-lg ml-4 object-cover bg-white" />}
+      </div>
+    </div>
+  );
+};
+
+// =========================================================================
+// 5. ADMIN PANEL COMPONENTS (THE FIXED VERSION)
+// =========================================================================
+
+const AdminAuthModal = ({ isOpen, onClose, onSuccess }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const handleLogin = async (e) => {
     e.preventDefault();
-    setError(null);
-    setIsLoading(true);
-    if (!isFirebaseInitialized || !auth) {
-      setError('خطأ: Firebase غير مهيأ.');
-      setIsLoading(false);
+    setLoading(true);
+    setError('');
+    if (!isFirebaseInitialized) {
+      setError('Firebase is not initialized.');
+      setLoading(false);
       return;
     }
     try {
-      await retryOperation(() => signInWithEmailAndPassword(auth, email, password));
-      onAuthSuccess();
-    } catch (e) {
-      setError('فشل تسجيل الدخول.');
+      await signInWithEmailAndPassword(auth, email, password);
+      onSuccess();
+    } catch (err) {
+      setError('فشل الدخول. تأكد من البريد الإلكتروني وكلمة المرور.');
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
   if (!isOpen) return null;
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-      <GlassCard isGlassmorphism className="w-full max-w-sm" color="bg-gray-900" onClick={(e) => e.stopPropagation()}>
-        <h2 className="text-2xl font-bold text-white mb-6 text-center flex items-center justify-center">
-          <Lock className="w-6 h-6 ml-2" /> تسجيل دخول المدير
-        </h2>
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/90 backdrop-blur-md p-4">
+      <GlassCard className="w-full max-w-md p-8 border-highlight-color" color="bg-gray-900">
+        <div className="flex justify-center mb-6">
+          <div className="p-4 rounded-full bg-white/5">
+            <Lock className="w-8 h-8 text-highlight-color" />
+          </div>
+        </div>
+        <h2 className="text-2xl font-bold text-white text-center mb-6">تسجيل دخول المدير</h2>
         <form onSubmit={handleLogin} className="space-y-4">
-          <input type="email" placeholder="البريد الإلكتروني" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full p-3 rounded-lg bg-gray-800/80 border border-white/20 text-white" required />
-          <input type="password" placeholder="كلمة المرور" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full p-3 rounded-lg bg-gray-800/80 border border-white/20 text-white" required />
-          {error && <p className="text-red-400 text-sm text-center">{error}</p>}
-          <button type="submit" disabled={isLoading} className="w-full p-3 rounded-lg font-bold text-lg text-gray-900 transition" style={{ backgroundColor: `var(--main-color-css)` }}>{isLoading ? 'جاري الدخول...' : 'دخول'}</button>
-          <button onClick={onClose} type="button" className="w-full text-white/70 hover:text-white transition">إلغاء</button>
+          <div className="relative">
+            <Mail className="absolute right-3 top-3.5 text-gray-400 w-5 h-5" />
+            <input type="email" placeholder="admin@example.com" className="w-full p-3 pr-10 rounded bg-black/50 text-white border border-white/10 focus:border-highlight-color outline-none" value={email} onChange={e => setEmail(e.target.value)} required />
+          </div>
+          <div className="relative">
+            <Key className="absolute right-3 top-3.5 text-gray-400 w-5 h-5" />
+            <input type="password" placeholder="********" className="w-full p-3 pr-10 rounded bg-black/50 text-white border border-white/10 focus:border-highlight-color outline-none" value={password} onChange={e => setPassword(e.target.value)} required />
+          </div>
+          {error && <p className="text-red-400 text-sm text-center bg-red-900/20 p-2 rounded">{error}</p>}
+          <button type="submit" disabled={loading} className="w-full bg-highlight-color hover:brightness-110 text-black p-3 rounded font-bold transition mt-4" style={{ backgroundColor: 'var(--main-color-css)' }}>
+            {loading ? 'جاري التحقق...' : 'دخول'}
+          </button>
+          <button type="button" onClick={onClose} className="w-full text-gray-400 hover:text-white text-sm mt-2">إلغاء</button>
         </form>
       </GlassCard>
     </div>
   );
 };
 
-const InputField = ({ label, id, value, onChange, type = 'text' }) => (
-  <div className="mb-4">
-    <label htmlFor={id} className="block text-white mb-2 font-medium">{label}</label>
-    <input
-      type={type}
-      id={id}
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      className="w-full p-3 rounded-lg bg-gray-800/80 border border-white/20 text-white focus:ring-highlight-color focus:border-highlight-color transition duration-300"
-      required
-    />
-  </div>
-);
-
-const SubmissionForm = ({ settings, userId }) => {
-  const [formData, setFormData] = useState({
-    participantName: '',
-    country: COUNTRIES[0].name,
-    videoUrl: '',
-  });
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [successMessage, setSuccessMessage] = useState(null);
-  const [confirmModalOpen, setConfirmModalOpen] = useState(false);
-  const [error, setError] = useState(null);
-
-  const validateForm = () => {
-    if (!formData.participantName || !formData.country || !formData.videoUrl) {
-      setError('الرجاء ملء جميع الحقول.');
-      return false;
-    }
-    setError(null);
-    return true;
-  };
-
-  const handleSubmit = () => {
-    if (!validateForm()) return;
-    setConfirmModalOpen(true);
-  };
-
-  const submitConfirmed = async () => {
-    setConfirmModalOpen(false);
-    setIsSubmitting(true);
-    try {
-      const countryData = COUNTRIES.find((c) => c.name === formData.country);
-      const newSubmission = {
-        ...formData,
-        userId: userId,
-        status: 'Pending',
-        votes: 0,
-        flag: countryData.flag,
-        submittedAt: serverTimestamp(),
-        thumbnailUrl: `https://placehold.co/600x900/${Math.floor(Math.random() * 16777215).toString(16)}/ffffff?text=${formData.country}`,
-      };
-      await retryOperation(() => addDoc(collection(db, PUBLIC_SUBMISSIONS_COLLECTION), newSubmission));
-      setSuccessMessage('تم الإرسال بنجاح!');
-      setFormData({ participantName: '', country: COUNTRIES[0].name, videoUrl: '' });
-    } catch (e) {
-      setError(`حدث خطأ: ${e.message}`);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  return (
-    <GlassCard isGlassmorphism={settings.useGlassmorphism} color="bg-gray-900" className="max-w-xl mx-auto mt-10">
-      <h1 className="text-3xl font-bold text-center mb-6" style={{ color: `var(--main-color-css)` }}>{STAGES[settings.stage].label}</h1>
-      {successMessage && <div className="bg-green-600/70 p-4 rounded-lg mb-4 text-white text-center">{successMessage}</div>}
-      {error && <div className="bg-red-600/70 p-4 rounded-lg mb-4 text-white text-center">{error}</div>}
-      <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }} className="space-y-4">
-        <InputField label="الاسم" id="name" value={formData.participantName} onChange={(val) => setFormData({ ...formData, participantName: val })} />
-        <div className="mb-4">
-          <label className="block text-white mb-2 font-medium">البلد</label>
-          <div className="relative">
-            <select value={formData.country} onChange={(e) => setFormData({ ...formData, country: e.target.value })} className="appearance-none w-full p-3 rounded-lg bg-gray-800/80 border border-white/20 text-white focus:ring-highlight-color" style={{ backgroundImage: 'none' }}>
-              {COUNTRIES.map((c) => <option key={c.code} value={c.name}>{c.flag} {c.name}</option>)}
-            </select>
-            <ChevronDown className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-white pointer-events-none" />
-          </div>
-        </div>
-        <InputField label="رابط الفيديو (TikTok)" id="videoUrl" value={formData.videoUrl} onChange={(val) => setFormData({ ...formData, videoUrl: val })} />
-        <button type="submit" disabled={isSubmitting} className="w-full p-3 rounded-lg font-bold text-lg text-gray-900 transition" style={{ backgroundColor: `var(--main-color-css)` }}>{isSubmitting ? 'جاري الإرسال...' : 'المشاركة'}</button>
-      </form>
-      <Modal isOpen={confirmModalOpen} onClose={() => setConfirmModalOpen(false)} title="تأكيد المشاركة">
-        <p className="text-white text-center mb-4">هل أنت متأكد من الإرسال؟</p>
-        <div className="flex justify-around">
-          <button onClick={() => setConfirmModalOpen(false)} className="py-2 px-6 rounded-lg bg-red-600 text-white">تراجع</button>
-          <button onClick={submitConfirmed} className="py-2 px-6 rounded-lg text-gray-900 font-bold" style={{ backgroundColor: `var(--main-color-css)` }}>تأكيد</button>
-        </div>
-      </Modal>
-    </GlassCard>
-  );
-};
-
-const ContestCard = ({ submission, settings, onVote, onOpenVideo }) => {
-  const { participantName, country, flag, thumbnailUrl } = submission;
-  return (
-    <GlassCard isGlassmorphism={settings.useGlassmorphism} color="bg-gray-900" className="flex flex-col h-full overflow-hidden hover:shadow-highlight transition duration-300 cursor-pointer">
-      <div className="relative overflow-hidden w-full aspect-[2/3] rounded-lg mb-3" onClick={() => onOpenVideo(submission)}>
-        <img src={thumbnailUrl} alt={participantName} className="w-full h-full object-cover hover:scale-105 transition" onError={(e) => (e.target.src = 'https://placehold.co/600x900/6b7280/ffffff?text=Video')} />
-      </div>
-      <div className="flex flex-col flex-grow justify-between text-white p-2">
-        <div className="flex justify-between items-start mb-2">
-          <p className="text-lg font-bold truncate">{participantName}</p>
-          <p className="text-sm flex items-center">{flag} {country}</p>
-        </div>
-        <button onClick={() => onVote(submission)} className="w-full p-3 rounded-lg font-bold text-gray-900 transition hover:scale-[1.02]" style={{ backgroundColor: `var(--main-color-css)` }}>صوت</button>
-      </div>
-    </GlassCard>
-  );
-};
-
-const StatsCard = ({ submission, settings }) => {
-  const { participantName, flag, country, votes, thumbnailUrl } = submission;
-  return (
-    <div className="relative w-full h-40 group [perspective:1000px] cursor-pointer">
-      <style>{`.flip-container { transition: transform 0.6s; transform-style: preserve-3d; } .flip-container.flipped { transform: rotateY(180deg); } .front, .back { backface-visibility: hidden; position: absolute; top: 0; left: 0; width: 100%; height: 100%; } .back { transform: rotateY(180deg); }`}</style>
-      <div className="flip-container h-full group-hover:flipped">
-        <div className="front">
-          <GlassCard isGlassmorphism={settings.useGlassmorphism} color="bg-gray-800" className="h-full p-2 flex flex-col items-center justify-center overflow-hidden">
-            <img src={thumbnailUrl} alt={participantName} className="w-12 h-12 object-cover rounded-full mb-1 border-2" style={{ borderColor: `var(--highlight-color-css)` }} />
-            <p className="text-xl font-extrabold text-white" style={{ color: `var(--highlight-color-css)` }}>{votes.toLocaleString()}</p>
-            <p className="text-xs text-white truncate">{participantName}</p>
-          </GlassCard>
-        </div>
-        <div className="back">
-          <GlassCard isGlassmorphism={settings.useGlassmorphism} color="bg-gray-800" className="h-full p-2 flex flex-col items-center justify-center text-center">
-            <p className="text-xs text-white/70">إجمالي الأصوات:</p>
-            <p className="text-2xl font-extrabold" style={{ color: `var(--highlight-color-css)` }}>{votes.toLocaleString()}</p>
-          </GlassCard>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-const LiveResultsView = ({ approvedSubmissions, settings }) => {
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const perSlide = 4;
-  const rankedSubmissions = useMemo(() => [...approvedSubmissions].sort((a, b) => b.votes - a.votes), [approvedSubmissions]);
-  const topThree = rankedSubmissions.slice(0, 3);
-  const remainingSubmissions = rankedSubmissions.slice(3);
-  const numSlides = Math.ceil(remainingSubmissions.length / perSlide);
-
-  useEffect(() => {
-    if (numSlides <= 1) return;
-    const autoSlideTimer = setInterval(() => setCurrentIndex((prev) => (prev + 1) % numSlides), 5000);
-    return () => clearInterval(autoSlideTimer);
-  }, [numSlides]);
-
-  if (rankedSubmissions.length === 0) return null;
-
-  return (
-    <GlassCard isGlassmorphism={settings.useGlassmorphism} color="bg-gray-800" className="p-4 mb-6 shadow-2xl">
-      <h2 className="text-2xl font-extrabold text-white mb-4 border-b border-white/20 pb-2" style={{ color: `var(--highlight-color-css)` }}>النتائج المباشرة</h2>
-      <div className="flex justify-around gap-2 mb-6">
-        {topThree.map((sub, index) => (
-          <div key={sub.id} className="w-1/3 flex flex-col items-center p-3 text-center rounded-lg" style={{ border: `2px solid ${index === 0 ? settings.highlightColor : settings.mainColor}` }}>
-            <img src={sub.thumbnailUrl} className="w-12 h-12 rounded-full mb-2" alt="" />
-            <p className="text-lg font-bold text-white">{sub.votes}</p>
-            <p className="text-sm text-white">{sub.participantName}</p>
-          </div>
-        ))}
-      </div>
-      {remainingSubmissions.length > 0 && (
-        <div className="grid grid-cols-4 gap-4">
-          {remainingSubmissions.slice(currentIndex * perSlide, currentIndex * perSlide + perSlide).map((sub) => (
-            <StatsCard key={sub.id} submission={sub} settings={settings} />
-          ))}
-        </div>
-      )}
-    </GlassCard>
-  );
-};
-
-const Home = ({ settings, allSubmissions, totalApproved, onVote, cooldown, setVoteConfirmData }) => {
-  const [searchTerm, setSearchTerm] = useState('');
-  const approvedSubmissions = useMemo(() => [...allSubmissions].filter((sub) => sub.status === 'Approved').sort((a, b) => b.votes - a.votes), [allSubmissions]);
-  const filteredSubmissions = useMemo(() => {
-    if (!searchTerm) return approvedSubmissions;
-    return approvedSubmissions.filter((sub) => sub.participantName.includes(searchTerm) || sub.country.includes(searchTerm));
-  }, [approvedSubmissions, searchTerm]);
-
-  if (settings.stage === 'Submission') return <SubmissionForm settings={settings} userId={null} />;
-  if (settings.stage === 'Paused') return <GlassCard color="bg-gray-900" className="mt-10 p-8 text-center text-white"><AlertTriangle className="mx-auto mb-4 text-red-500" size={48} /><h2>المسابقة متوقفة</h2></GlassCard>;
-
-  return (
-    <div className="container mx-auto p-4">
-      <AlertBanner settings={settings} />
-      <LiveResultsView approvedSubmissions={approvedSubmissions} settings={settings} />
-      <div className="mb-6 relative">
-        <input type="text" placeholder="بحث..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full p-3 pr-10 rounded-lg bg-gray-900 border border-white/10 text-white" />
-        <Search className="absolute right-3 top-3.5 text-white/50" />
-      </div>
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
-        {filteredSubmissions.map((sub) => (
-          <ContestCard key={sub.id} submission={sub} settings={settings} onVote={setVoteConfirmData} onOpenVideo={() => {}} />
-        ))}
-      </div>
-    </div>
-  );
-};
-
 const AdminSettingsPanel = ({ settings, onSaveSettings }) => {
-  // ✅ FIX: Using local state for inputs to prevent freezing/losing focus
+  // 🛑 CRITICAL FIX: Local state management allows typing without re-renders/freezing
   const [localSettings, setLocalSettings] = useState(settings);
   const [isDirty, setIsDirty] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
-  // Sync only when settings change externally and user isn't typing
+  // Sync local state only when global settings change AND user is not typing (clean load)
   useEffect(() => {
-    if (!isDirty && settings) {
+    if (settings && !isDirty) {
       setLocalSettings(settings);
     }
   }, [settings, isDirty]);
 
   const handleChange = (field, value) => {
     setIsDirty(true);
-    setLocalSettings(prev => ({ ...prev, [field]: value }));
+    setLocalSettings((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleSave = () => {
-    onSaveSettings(localSettings);
-    setIsDirty(false); // Reset dirty flag after save
+  const handleSave = async () => {
+    setIsSaving(true);
+    await onSaveSettings(localSettings);
+    setIsDirty(false); // Reset dirty flag after successful save
+    setIsSaving(false);
   };
 
-  return (
-    <GlassCard isGlassmorphism color="bg-gray-900" className="p-6">
-      <h3 className="text-xl font-bold text-white mb-4">الإعدادات العامة</h3>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div>
-          <InputField label="عنوان المسابقة" id="title" value={localSettings.title} onChange={(val) => handleChange('title', val)} />
-          <InputField label="رابط الشعار" id="logo" value={localSettings.logoUrl} onChange={(val) => handleChange('logoUrl', val)} />
-          <div className="mb-4">
-            <label className="block text-white mb-2">اللون الأساسي</label>
-            <input type="color" value={localSettings.mainColor} onChange={(e) => handleChange('mainColor', e.target.value)} className="w-full h-10" />
-          </div>
-        </div>
-        <div>
-          <div className="mb-4">
-            <label className="block text-white mb-2">المرحلة</label>
-            <select value={localSettings.stage} onChange={(e) => handleChange('stage', e.target.value)} className="w-full p-3 bg-gray-800 text-white rounded">
-              {Object.keys(STAGES).map(k => <option key={k} value={k}>{STAGES[k].label}</option>)}
-            </select>
-          </div>
-          <InputField label="نص الشريط" id="marquee" value={localSettings.marqueeText} onChange={(val) => handleChange('marqueeText', val)} />
-        </div>
-      </div>
-      <button onClick={handleSave} className="w-full mt-4 p-3 font-bold rounded text-gray-900" style={{ backgroundColor: localSettings.mainColor }}>حفظ الإعدادات</button>
-    </GlassCard>
+  const SectionTitle = ({ icon: Icon, title }) => (
+    <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2 border-b border-white/10 pb-2 mt-6 first:mt-0">
+      <Icon className="w-5 h-5 text-highlight-color" /> {title}
+    </h3>
   );
-};
-
-const AdminSubmissionsPanel = ({ submissions, onUpdateSubmissionStatus }) => {
-  const [filter, setFilter] = useState('Pending');
-  const filtered = submissions.filter(s => s.status === filter);
 
   return (
-    <GlassCard isGlassmorphism color="bg-gray-900" className="p-6 mt-6">
-      <h3 className="text-xl font-bold text-white mb-4">إدارة المشاركات</h3>
-      <div className="flex gap-4 mb-4 border-b border-white/20 pb-2">
-        {['Pending', 'Approved', 'Rejected'].map(s => (
-          <button key={s} onClick={() => setFilter(s)} className={`text-white ${filter === s ? 'font-bold underline' : 'opacity-50'}`}>{s}</button>
-        ))}
+    <GlassCard className="p-6 mb-8 animate-slideUp" isGlassmorphism>
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-2xl font-bold text-white">⚙️ إعدادات النظام</h2>
+        {isDirty && <span className="text-yellow-400 text-sm animate-pulse bg-yellow-400/10 px-3 py-1 rounded-full">● تغييرات غير محفوظة</span>}
       </div>
-      <div className="space-y-2 max-h-96 overflow-y-auto">
-        {filtered.map(sub => (
-          <div key={sub.id} className="flex justify-between items-center bg-white/5 p-2 rounded">
-            <span className="text-white">{sub.participantName} ({sub.votes})</span>
-            <div className="flex gap-2">
-               <button onClick={() => onUpdateSubmissionStatus(sub.id, 'Approved')} className="text-green-500">قبول</button>
-               <button onClick={() => onUpdateSubmissionStatus(sub.id, 'Rejected')} className="text-red-500">رفض</button>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* العمود الأول: الهوية */}
+        <div>
+          <SectionTitle icon={SettingsIcon} title="الهوية البصرية" />
+          <InputField label="عنوان المسابقة" id="title" value={localSettings.title} onChange={(v) => handleChange('title', v)} />
+          <InputField label="رابط الشعار (Logo URL)" id="logo" value={localSettings.logoUrl} onChange={(v) => handleChange('logoUrl', v)} />
+          <InputField label="نوع الخط (Google Font Name)" id="font" value={localSettings.appFont} onChange={(v) => handleChange('appFont', v)} placeholder="e.g. Cairo, Tajawal" />
+          
+          <div className="flex gap-4 mb-4">
+             <div className="flex-1">
+               <label className="block text-white mb-2 text-sm">اللون الأساسي</label>
+               <div className="flex items-center gap-2 bg-black/30 p-2 rounded-lg border border-white/10">
+                 <input type="color" value={localSettings.mainColor} onChange={(e) => handleChange('mainColor', e.target.value)} className="h-8 w-8 rounded cursor-pointer border-0 bg-transparent" />
+                 <span className="text-xs text-white/70 font-mono">{localSettings.mainColor}</span>
+               </div>
+             </div>
+             <div className="flex-1">
+               <label className="block text-white mb-2 text-sm">لون التوهج</label>
+               <div className="flex items-center gap-2 bg-black/30 p-2 rounded-lg border border-white/10">
+                 <input type="color" value={localSettings.highlightColor} onChange={(e) => handleChange('highlightColor', e.target.value)} className="h-8 w-8 rounded cursor-pointer border-0 bg-transparent" />
+                 <span className="text-xs text-white/70 font-mono">{localSettings.highlightColor}</span>
+               </div>
+             </div>
+          </div>
+          
+          <div className="flex items-center gap-3 mt-4 bg-black/30 p-3 rounded-lg border border-white/10">
+            <input 
+              type="checkbox" 
+              id="glass" 
+              checked={localSettings.useGlassmorphism} 
+              onChange={(e) => handleChange('useGlassmorphism', e.target.checked)}
+              className="w-5 h-5 rounded border-gray-500 text-blue-600 focus:ring-blue-500 cursor-pointer"
+            />
+            <label htmlFor="glass" className="text-white select-none cursor-pointer text-sm">تفعيل تأثير الزجاج (Glassmorphism)</label>
+          </div>
+        </div>
+
+        {/* العمود الثاني: المحتوى */}
+        <div>
+          <SectionTitle icon={Clock} title="المرحلة والمحتوى" />
+          <div className="mb-6">
+            <label className="block text-white mb-2 text-sm">المرحلة الحالية</label>
+            <div className="grid grid-cols-2 gap-2">
+              {Object.entries(STAGES).map(([key, info]) => (
+                <button
+                  key={key}
+                  onClick={() => handleChange('stage', key)}
+                  className={`p-2 rounded-lg text-sm font-bold transition-all duration-200 flex items-center justify-center gap-2 border border-transparent
+                    ${localSettings.stage === key ? 'shadow-lg scale-[1.02] border-white/20' : 'opacity-60 hover:opacity-100 bg-gray-800'}
+                  `}
+                  style={{ backgroundColor: localSettings.stage === key ? localSettings.mainColor : '' }}
+                >
+                  <info.icon className="w-4 h-4" /> {info.label}
+                </button>
+              ))}
             </div>
           </div>
-        ))}
+
+          <InputField label="نص الشريط المتحرك" id="marquee" value={localSettings.marqueeText} onChange={(v) => handleChange('marqueeText', v)} />
+          
+          <div className="space-y-4">
+             <div>
+               <label className="block text-white mb-2 text-sm">لماذا هذه المسابقة؟</label>
+               <textarea 
+                 rows="3" 
+                 value={localSettings.whyText} 
+                 onChange={(e) => handleChange('whyText', e.target.value)}
+                 className="w-full p-3 rounded-lg bg-black/40 border border-white/10 text-white text-sm focus:ring-2 focus:ring-highlight-color outline-none"
+               />
+             </div>
+             <div>
+               <label className="block text-white mb-2 text-sm">الشروط والأحكام</label>
+               <textarea 
+                 rows="3" 
+                 value={localSettings.termsText} 
+                 onChange={(e) => handleChange('termsText', e.target.value)}
+                 className="w-full p-3 rounded-lg bg-black/40 border border-white/10 text-white text-sm focus:ring-2 focus:ring-highlight-color outline-none"
+               />
+             </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-8 pt-6 border-t border-white/10 flex justify-end sticky bottom-0 bg-gray-900/90 p-2 -mx-2 rounded-b-lg backdrop-blur-sm">
+        <button
+          onClick={handleSave}
+          disabled={isSaving}
+          className="flex items-center gap-2 px-8 py-3 rounded-lg font-bold text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:scale-105 active:scale-95 shadow-lg w-full md:w-auto justify-center"
+          style={{ backgroundColor: localSettings.mainColor }}
+        >
+          {isSaving ? <Loader className="animate-spin w-5 h-5" /> : <Save className="w-5 h-5" />}
+          {isSaving ? 'جاري الحفظ...' : 'حفظ التغييرات'}
+        </button>
       </div>
     </GlassCard>
   );
 };
 
-const ContestApp = ({ isAdminRoute }) => {
-  const [settings, setSettings] = useState(null);
-  const [submissions, setSubmissions] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [authModalOpen, setAuthModalOpen] = useState(false);
-  const [voteConfirmData, setVoteConfirmData] = useState(null);
-  const { isLoggedIn } = useAuth();
-  const [cooldown, setCooldown] = useState(0);
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    if (settings) {
-      document.documentElement.style.setProperty('--main-color-css', settings.mainColor);
-      document.documentElement.style.setProperty('--highlight-color-css', settings.highlightColor);
-    }
-  }, [settings]);
-
-  useEffect(() => {
-    if (!isFirebaseInitialized) {
-        setSettings(DEFAULT_SETTINGS);
-        setSubmissions(MOCK_SUBMISSIONS);
-        setLoading(false);
-        return;
-    }
-    const unsubSettings = onSnapshot(doc(db, PUBLIC_SETTINGS_PATH), (snap) => {
-      if (snap.exists()) setSettings(snap.data());
-      else setDoc(doc(db, PUBLIC_SETTINGS_PATH), DEFAULT_SETTINGS);
-      setLoading(false);
-    });
-    const unsubSubs = onSnapshot(collection(db, PUBLIC_SUBMISSIONS_COLLECTION), (snap) => {
-      setSubmissions(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-    });
-    return () => { unsubSettings(); unsubSubs(); };
-  }, []);
-
-  const handleSaveSettings = async (newSettings) => {
-    try {
-      // FIX: Using merge: true ensures we don't overwrite the whole document if fields are missing
-      await setDoc(doc(db, PUBLIC_SETTINGS_PATH), newSettings, { merge: true });
-      alert('تم الحفظ!');
-    } catch (e) { alert('خطأ في الحفظ'); }
-  };
-
-  const handleVote = async (sub) => {
-    if (cooldown > 0) return;
-    try {
-      await updateDoc(doc(db, PUBLIC_SUBMISSIONS_COLLECTION, sub.id), { votes: increment(1) });
-      setCooldown(10);
-      setVoteConfirmData(null);
-    } catch (e) { console.error(e); }
-  };
-
-  useEffect(() => {
-     if (cooldown > 0) {
-         const t = setInterval(() => setCooldown(c => c - 1), 1000);
-         return () => clearInterval(t);
-     }
-  }, [cooldown]);
-
-  if (loading) return <div className="h-screen bg-black flex items-center justify-center text-white">Loading...</div>;
+const AdminSubmissionsPanel = ({ submissions, onUpdateStatus }) => {
+  const [filter, setFilter] = useState('Pending');
+  const filteredSubs = useMemo(() => {
+      let list = submissions.filter(s => s.status === filter);
+      if (filter === 'Approved') list.sort((a, b) => b.votes - a.votes);
+      return list;
+  }, [submissions, filter]);
 
   return (
-    <div className="min-h-screen bg-black font-sans">
-      <header className="p-4 flex justify-between items-center bg-black/50 sticky top-0 z-40 border-b border-white/10">
-        <h1 className="text-white text-xl font-bold cursor-pointer" onClick={() => navigate('/')}>{settings?.title}</h1>
-        {isAdminRoute && isLoggedIn && <button onClick={() => { signOut(auth); navigate('/'); }} className="text-red-500">خروج</button>}
-        {!isLoggedIn && <button onClick={() => setAuthModalOpen(true)} className="text-white/50"><Lock size={16} /></button>}
-      </header>
-      
-      <main className="pb-20">
-        {isAdminRoute && isLoggedIn ? (
-          <div className="container mx-auto p-4">
-             <AdminSettingsPanel settings={settings} onSaveSettings={handleSaveSettings} />
-             <AdminSubmissionsPanel submissions={submissions} onUpdateSubmissionStatus={(id, status) => updateDoc(doc(db, PUBLIC_SUBMISSIONS_COLLECTION, id), { status })} />
-          </div>
+    <GlassCard isGlassmorphism className="p-6">
+      <div className="flex justify-between items-center mb-6">
+        <h3 className="text-xl font-bold text-white">إدارة المشاركات</h3>
+        <div className="flex bg-black/30 rounded-lg p-1">
+          {['Pending', 'Approved', 'Rejected'].map(status => (
+            <button
+              key={status}
+              onClick={() => setFilter(status)}
+              className={`px-4 py-2 rounded-md text-sm font-bold transition ${filter === status ? 'bg-gray-700 text-white shadow' : 'text-white/50 hover:text-white'}`}
+            >
+              {status === 'Pending' ? 'قيد الانتظار' : status === 'Approved' ? 'المقبولة' : 'المرفوضة'} 
+              <span className="ml-1 text-xs opacity-70 bg-black/20 px-1.5 rounded-full">{submissions.filter(s => s.status === status).length}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="space-y-2 max-h-[600px] overflow-y-auto custom-scrollbar pr-2">
+        {filteredSubs.length === 0 ? (
+           <div className="text-center py-12 text-white/30 border-2 border-dashed border-white/10 rounded-xl">
+             <FileText className="w-12 h-12 mx-auto mb-2 opacity-50" />
+             <p>لا توجد مشاركات في هذه القائمة</p>
+           </div>
         ) : (
-          <Home settings={settings} allSubmissions={submissions} onVote={setVoteConfirmData} />
+           filteredSubs.map(sub => (
+             <div key={sub.id} className="flex flex-col md:flex-row items-center gap-4 bg-white/5 p-4 rounded-xl border border-white/5 hover:border-white/10 transition hover:bg-white/10">
+                <img src={sub.thumbnailUrl} alt="" className="w-16 h-16 rounded-lg object-cover bg-black" />
+                
+                <div className="flex-1 text-center md:text-right w-full">
+                  <div className="flex items-center justify-center md:justify-start gap-2">
+                     <h4 className="font-bold text-white text-lg">{sub.participantName}</h4>
+                     <span className="text-xs bg-white/10 px-2 py-0.5 rounded text-white/70">{sub.country} {sub.flag}</span>
+                  </div>
+                  <a href={sub.videoUrl} target="_blank" rel="noreferrer" className="text-highlight-color text-sm hover:underline truncate block max-w-md mx-auto md:mx-0">
+                    {sub.videoUrl}
+                  </a>
+                  <p className="text-xs text-white/40 mt-1">{new Date(sub.submittedAt?.toDate?.() || Date.now()).toLocaleString('ar-EG')}</p>
+                </div>
+
+                <div className="flex items-center gap-4 shrink-0">
+                   {filter === 'Approved' && (
+                     <div className="text-center bg-black/30 px-4 py-2 rounded-lg">
+                       <span className="block text-xs text-white/50">الأصوات</span>
+                       <span className="font-bold text-xl text-highlight-color">{sub.votes}</span>
+                     </div>
+                   )}
+                   
+                   <div className="flex gap-2">
+                     {filter !== 'Approved' && (
+                       <button onClick={() => onUpdateStatus(sub.id, 'Approved')} className="p-2 bg-green-600/20 text-green-400 hover:bg-green-600 hover:text-white rounded-lg transition" title="قبول">
+                         <CheckCircle size={20} />
+                       </button>
+                     )}
+                     {filter !== 'Rejected' && (
+                       <button onClick={() => onUpdateStatus(sub.id, 'Rejected')} className="p-2 bg-red-600/20 text-red-400 hover:bg-red-600 hover:text-white rounded-lg transition" title="رفض">
+                         <X size={20} />
+                       </button>
+                     )}
+                     {filter !== 'Pending' && (
+                        <button onClick={() => onUpdateStatus(sub.id, 'Pending')} className="p-2 bg-yellow-600/20 text-yellow-400 hover:bg-yellow-600 hover:text-white rounded-lg transition" title="إعادة للانتظار">
+                          <Clock size={20} />
+                        </button>
+                     )}
+                   </div>
+                </div>
+             </div>
+           ))
         )}
-      </main>
+      </div>
+    </GlassCard>
+  );
+};
+
+// =========================================================================
+// 6. PUBLIC PAGE COMPONENTS
+// =========================================================================
+
+const SubmissionForm = ({ settings }) => {
+  // ✅ FIX: Local state for form inputs ensures they are writable
+  const [form, setForm] = useState({ name: '', country: COUNTRIES[0].name, url: '' });
+  const [status, setStatus] = useState('idle'); // idle, submitting, success, error
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!form.name || !form.url) return alert('الرجاء ملء جميع الحقول');
+    
+    setStatus('submitting');
+    try {
+      const countryData = COUNTRIES.find(c => c.name === form.country);
+      await addDoc(collection(db, PATHS.SUBMISSIONS), {
+        participantName: form.name,
+        country: form.country,
+        flag: countryData.flag,
+        videoUrl: form.url,
+        status: 'Pending',
+        votes: 0,
+        submittedAt: serverTimestamp(),
+        thumbnailUrl: `https://placehold.co/600x900/222/fff?text=${encodeURIComponent(form.country)}`,
+      });
+      setStatus('success');
+      setForm({ name: '', country: COUNTRIES[0].name, url: '' });
+    } catch (err) {
+      console.error(err);
+      setStatus('error');
+    }
+  };
+
+  return (
+    <GlassCard className="max-w-xl mx-auto p-8 mt-10" isGlassmorphism={settings.useGlassmorphism}>
+      <div className="text-center mb-8">
+        <div className="inline-block p-3 rounded-full bg-white/5 mb-4">
+          <Clock className="w-8 h-8 text-blue-400" />
+        </div>
+        <h2 className="text-3xl font-bold text-white mb-2">استمارة المشاركة</h2>
+        <p className="text-white/60">أرسل إبداعك الآن للمنافسة</p>
+      </div>
+
+      {status === 'success' && (
+        <div className="bg-green-500/20 border border-green-500 text-green-200 p-4 rounded-lg mb-6 text-center flex items-center justify-center gap-2 animate-fadeIn">
+          <CheckCircle className="w-5 h-5" /> تم استلام مشاركتك بنجاح! سيتم مراجعتها قريباً.
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} className="space-y-5">
+        <InputField 
+          label="الاسم الكامل / اللقب" 
+          id="sub-name" 
+          value={form.name} 
+          onChange={v => setForm({...form, name: v})} 
+          placeholder="مثال: أحمد العلي" 
+        />
+        
+        <div className="mb-4">
+          <label className="block text-white mb-2 text-sm opacity-90">البلد</label>
+          <div className="relative">
+            <select 
+              value={form.country} 
+              onChange={e => setForm({...form, country: e.target.value})}
+              className="w-full p-3 pl-10 rounded-lg bg-black/40 border border-white/10 text-white appearance-none focus:ring-2 focus:ring-highlight-color outline-none"
+            >
+              {COUNTRIES.map(c => <option key={c.code} value={c.name}>{c.flag} {c.name}</option>)}
+            </select>
+            <ChevronDown className="absolute left-3 top-3.5 w-5 h-5 text-white/50 pointer-events-none" />
+          </div>
+        </div>
+
+        <InputField 
+          label="رابط الفيديو (TikTok)" 
+          id="sub-url" 
+          value={form.url} 
+          onChange={v => setForm({...form, url: v})} 
+          placeholder="https://www.tiktok.com/..." 
+        />
+
+        <button 
+          type="submit" 
+          disabled={status === 'submitting'}
+          className="w-full py-4 rounded-xl font-bold text-lg transition-all transform hover:-translate-y-1 hover:shadow-xl disabled:opacity-50 disabled:translate-y-0 text-white mt-4"
+          style={{ backgroundColor: settings.mainColor }}
+        >
+          {status === 'submitting' ? <Loader className="animate-spin inline mx-auto" /> : 'إرسال المشاركة 🚀'}
+        </button>
+      </form>
+    </GlassCard>
+  );
+};
+
+const VideoCard = ({ submission, settings, onVote, onClick }) => {
+  return (
+    <div 
+      onClick={onClick}
+      className="group relative aspect-[9/16] rounded-2xl overflow-hidden cursor-pointer transform transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl hover:shadow-highlight-color/20 border border-white/5 bg-gray-800"
+    >
+      <img 
+        src={submission.thumbnailUrl} 
+        alt={submission.participantName} 
+        className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity duration-500"
+        onError={(e) => e.target.src = 'https://placehold.co/600x900/333/fff?text=No+Image'}
+      />
       
-      <footer className="fixed bottom-0 w-full bg-gray-900 p-4 text-center text-white/50 text-xs border-t border-white/10">© {settings?.title}</footer>
-      
-      <AdminAuthModal isOpen={authModalOpen} onClose={() => setAuthModalOpen(false)} onAuthSuccess={() => { setAuthModalOpen(false); navigate('/admin'); }} />
-      
-      <Modal isOpen={!!voteConfirmData} onClose={() => setVoteConfirmData(null)} title="تأكيد التصويت">
-         <p className="text-white text-center mb-4">تصويت لـ {voteConfirmData?.participantName}؟</p>
-         <button onClick={() => handleVote(voteConfirmData)} className="w-full p-3 rounded font-bold text-gray-900" style={{ backgroundColor: settings?.mainColor }}>تأكيد</button>
-      </Modal>
+      <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent flex flex-col justify-end p-4">
+        <div className="flex justify-between items-end mb-3">
+          <div className="overflow-hidden">
+            <h3 className="font-bold text-white text-lg truncate shadow-sm">{submission.participantName}</h3>
+            <p className="text-white/70 text-sm flex items-center gap-1">{submission.flag} {submission.country}</p>
+          </div>
+          <div className="text-center bg-white/10 backdrop-blur-md p-2 rounded-lg border border-white/10 shrink-0">
+            <p className="text-[10px] text-white/60 uppercase">Votes</p>
+            <p className="font-bold text-white text-xl leading-none" style={{ color: settings.highlightColor }}>{submission.votes}</p>
+          </div>
+        </div>
+        
+        <button 
+          onClick={(e) => { e.stopPropagation(); onVote(submission); }}
+          className="w-full py-3 rounded-xl font-bold text-sm bg-white text-black hover:bg-gray-200 transition flex items-center justify-center gap-2 shadow-lg active:scale-95"
+        >
+          <Crown className="w-4 h-4 text-yellow-600" /> تصويت
+        </button>
+      </div>
     </div>
   );
 };
 
-const App = () => (
-  <BrowserRouter>
-    <Routes>
-      <Route path="/" element={<ContestApp isAdminRoute={false} />} />
-      <Route path="/admin" element={<ContestApp isAdminRoute={true} />} />
-    </Routes>
-  </BrowserRouter>
-);
+const VideoModal = ({ isOpen, onClose, submission, settings, onVote }) => {
+  if (!isOpen || !submission) return null;
+  const videoId = submission.videoUrl.split('/').pop().split('?')[0];
+  const embedUrl = `https://www.tiktok.com/embed/v2/${videoId}?lang=ar`;
 
-export default App;
+  return (
+    <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md" onClick={onClose}>
+      <GlassCard className="w-full max-w-4xl h-[90vh] flex flex-col md:flex-row overflow-hidden !p-0" onClick={e => e.stopPropagation()}>
+        {/* Video Player */}
+        <div className="w-full md:w-2/3 bg-black flex items-center justify-center relative">
+           <iframe src={embedUrl} className="w-full h-full" title="Video" allowFullScreen></iframe>
+           <button onClick={onClose} className="absolute top-4 right-4 bg-black/50 p-2 rounded-full text-white hover:bg-red-600 transition md:hidden">
+             <X />
+           </button>
+        </div>
+
+        {/* Sidebar Info */}
+        <div className="w-full md:w-1/3 bg-gray-900 p-6 flex flex-col relative">
+           <button onClick={onClose} className="absolute top-4 right-4 text-white/50 hover:text-white hidden md:block"><X /></button>
+           
+           <div className="mt-8 text-center">
+             <div className="w-20 h-20 mx-auto rounded-full border-4 border-highlight-color p-1 mb-4">
+               <img src={submission.thumbnailUrl} className="w-full h-full rounded-full object-cover" alt="" />
+             </div>
+             <h2 className="text-2xl font-bold text-white">{submission.participantName}</h2>
+             <p className="text-white/50 flex items-center justify-center gap-2 mt-1">{submission.flag} {submission.country}</p>
+           </div>
+
+           <div className="mt-8 grid grid-cols-2 gap-4">
+              <div className="bg-white/5 p-4 rounded-xl text-center">
+                <p className="text-white/50 text-xs">الحالة</p>
+                <p className="text-green-400 font-bold">نشط</p>
+              </div>
+              <div className="bg-white/5 p-4 rounded-xl text-center border border-highlight-color/30">
+                <p className="text-white/50 text-xs">الأصوات</p>
+                <p className="text-highlight-color font-bold text-2xl">{submission.votes}</p>
+              </div>
+           </div>
+
+           <div className="mt-auto pt-6">
+             <button 
+               onClick={() => onVote(submission)}
+               className="w-full py-4 rounded-xl font-bold text-lg transition hover:scale-105 active:scale-95 shadow-lg mb-2 text-white"
+               style={{ backgroundColor: settings.mainColor }}
+             >
+               تصويت لهذا المشارك
+             </button>
+             <p className="text-center text-xs text-white/30">يمكنك التصويت مرة كل 30 ثانية</p>
+           </div>
+        </div>
+      </GlassCard>
+    </div>
+  );
+};
+
+const LiveResultsTicker = ({ submissions, settings }) => {
+  const topList = useMemo(() => [...submissions].sort((a,b) => b.votes - a.votes).slice(0, 10), [submissions]);
+  if (topList.length === 0) return null;
+
+  return (
+    <div className="mb-10">
+      <h3 className="text-white/50 text-sm font-bold mb-4 uppercase tracking-wider flex items-center gap-2">
+        <div className="w-2 h-2 bg-red-500 rounded-full animate-ping"></div> النتائج المباشرة
+      </h3>
+      <div className="flex gap-4 overflow-x-auto pb-4 snap-x hide-scrollbar">
+        {topList.map((sub, idx) => (
+          <div key={sub.id} className="min-w-[160px] snap-start bg-gray-900/50 border border-white/5 p-3 rounded-xl flex flex-col items-center relative group">
+             <div className="absolute top-2 right-2 text-xs font-bold text-white/20 group-hover:text-highlight-color">#{idx + 1}</div>
+             <img src={sub.thumbnailUrl} className="w-12 h-12 rounded-full border-2 border-white/10 mb-2 group-hover:border-highlight-color transition" alt="" />
+             <p className="font-bold text-white text-sm truncate w-full text-center">{sub.participantName}</p>
+             <p className="font-black text-lg text-highlight-color">{sub.votes}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+// =========================================================================
+// 7. MAIN CONTROLLER (ContestApp)
+// =========================================================================
+
+const ContestApp = () => {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  
+  // Global State
+  const [settings, setSettings] = useState(null);
+  const [submissions, setSubmissions] = useState([]);
+  const [loadingData, setLoadingData] = useState(true);
+  
+  // Modals State
+  const [modals, setModals] = useState({
+    adminAuth: false,
+    voteConfirm: null,
+    videoPlayer: null,
+    info: null, // for footer links (why, terms, organizers)
+  });
+
+  // Cooldown System
+  const [cooldown, setCooldown] = useState(0);
+  
+  // Admin Secret Trigger
+  const secretClickRef = useRef(0);
+  const secretTimerRef = useRef(null);
+
+  // --- 1. Fetch Data ---
+  useEffect(() => {
+    if (!isFirebaseInitialized) {
+      setSettings(DEFAULT_SETTINGS);
+      setLoadingData(false);
+      return;
+    }
+
+    // Realtime Settings
+    const unsubSettings = onSnapshot(doc(db, PATHS.SETTINGS), (docSnap) => {
+      if (docSnap.exists()) setSettings(docSnap.data());
+      else setDoc(doc(db, PATHS.SETTINGS), DEFAULT_SETTINGS);
+      setLoadingData(false);
+    });
+
+    // Realtime Submissions
+    const unsubSubs = onSnapshot(collection(db, PATHS.SUBMISSIONS), (snap) => {
+      const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      setSubmissions(list);
+    });
+
+    return () => { unsubSettings(); unsubSubs(); };
+  }, []);
+
+  // --- 2. Dynamic Styles ---
+  useEffect(() => {
+    if (settings) {
+      document.documentElement.style.setProperty('--main-color-css', settings.mainColor);
+      document.documentElement.style.setProperty('--highlight-color-css', settings.highlightColor);
+      document.documentElement.style.fontFamily = `"${settings.appFont}", sans-serif`;
+    }
+  }, [settings]);
+
+  // --- 3. Actions ---
+  const handleSaveSettings = async (newSettings) => {
+    try {
+      // ✅ FIX: merge: true saves partial updates without overwriting
+      await setDoc(doc(db, PATHS.SETTINGS), newSettings, { merge: true });
+      alert("✅ تم حفظ الإعدادات بنجاح");
+    } catch (e) {
+      alert("❌ خطأ في الحفظ: " + e.message);
+    }
+  };
+
+  const handleUpdateStatus = async (id, status) => {
+    await updateDoc(doc(db, PATHS.SUBMISSIONS, id), { status });
+  };
+
+  const handleVoteRequest = (sub) => {
+    if (cooldown > 0) return alert(`يرجى الانتظار ${cooldown} ثانية`);
+    setModals(prev => ({ ...prev, voteConfirm: sub }));
+  };
+
+  const confirmVote = async () => {
+    const sub = modals.voteConfirm;
+    if (!sub) return;
+    
+    try {
+      await updateDoc(doc(db, PATHS.SUBMISSIONS, sub.id), { votes: increment(1) });
+      setCooldown(30); // 30 seconds cooldown
+      setModals(prev => ({ ...prev, voteConfirm: null }));
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  // Cooldown Timer
+  useEffect(() => {
+    if (cooldown > 0) {
+      const timer = setInterval(() => setCooldown(c => c - 1), 1000);
+      return () => clearInterval(timer);
+    }
+  }, [cooldown]);
+
+  // Secret Admin Clicker
+  const handleSecretClick = () => {
+    clearTimeout(secretTimerRef.current);
+    secretClickRef.current += 1;
+    if (secretClickRef.current === 5) {
+      if (user) navigate('/admin');
+      else setModals(prev => ({ ...prev, adminAuth: true }));
+      secretClickRef.current = 0;
+    }
+    secretTimerRef.current = setTimeout(() => secretClickRef.current = 0, 2000);
+  };
+
+  // --- Loading State ---
+  if (loadingData || !settings) return (
+    <div className="h-screen bg-black flex flex-col items-center justify-center text-white gap-4">
+      <Loader className="w-10 h-10 animate-spin text-red-500" />
+      <p className="animate-pulse">جارِ تحميل النظام...</p>
+    </div>
+  );
+
+  return (
+    <div className="min-h-screen bg-[#050505] text-white font-sans selection:bg-highlight-color selection:text-black">
+      {/* Global Styles for CSS Variables */}
+      <style>{`
+        :root { --highlight-color: ${settings.highlightColor}; }
+        .text-highlight-color { color: var(--highlight-color); }
+        .border-highlight-color { border-color: var(--highlight-color); }
+        .bg-highlight-color { background-color: var(--highlight-color); }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { bg: #111; }
+        ::-webkit-scrollbar-thumb { bg: #333; rounded: 4px; }
+        ::-webkit-scrollbar-thumb:hover { bg: #555; }
+      `}</style>
+
+      <Routes>
+        {/* --- ADMIN ROUTE --- */}
+        <Route path="/admin" element={
+           user ? (
+             <div className="container mx-auto px-4 py-8">
+               <div className="flex justify-between items-center mb-8 bg-gray-900 p-4 rounded-2xl border border-white/10">
+                 <h1 className="text-2xl font-bold flex items-center gap-2">
+                   <SettingsIcon className="text-highlight-color" /> لوحة التحكم
+                 </h1>
+                 <div className="flex gap-3">
+                   <button onClick={() => navigate('/')} className="px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-sm transition">الموقع</button>
+                   <button onClick={() => signOut(auth).then(() => navigate('/'))} className="px-4 py-2 rounded-lg bg-red-600/20 text-red-400 hover:bg-red-600 hover:text-white text-sm transition flex items-center gap-2">
+                     <LogOut size={16} /> خروج
+                   </button>
+                 </div>
+               </div>
+               
+               <AdminSettingsPanel settings={settings} onSaveSettings={handleSaveSettings} />
+               <AdminSubmissionsPanel submissions={submissions} onUpdateStatus={handleUpdateStatus} />
+             </div>
+           ) : (
+             <div className="h-screen flex flex-col items-center justify-center gap-4">
+               <AlertTriangle className="w-16 h-16 text-red-500 mb-4" />
+               <h2 className="text-2xl font-bold">منطقة محظورة</h2>
+               <button onClick={() => setModals(p => ({...p, adminAuth: true}))} className="text-blue-400 hover:underline">تسجيل الدخول</button>
+             </div>
+           )
+        } />
+
+        {/* --- PUBLIC ROUTE --- */}
+        <Route path="/" element={
+          <>
+            {/* Header */}
+            <header className="sticky top-0 z-40 bg-black/80 backdrop-blur-lg border-b border-white/10">
+               <div className="container mx-auto px-4 py-3 flex justify-between items-center">
+                 <div className="flex items-center gap-3 cursor-pointer" onClick={() => window.location.reload()}>
+                   {settings.logoUrl && <img src={settings.logoUrl} className="h-10 w-10 rounded-lg object-cover" alt="Logo" />}
+                   <h1 className="text-xl font-black tracking-tight">{settings.title}</h1>
+                 </div>
+                 {user && (
+                   <button onClick={() => navigate('/admin')} className="bg-white/10 hover:bg-white/20 px-4 py-2 rounded-full text-xs font-bold transition flex items-center gap-2">
+                     <SettingsIcon size={14} /> الإدارة
+                   </button>
+                 )}
+               </div>
+            </header>
+
+            <main className="container mx-auto px-4 py-8 min-h-[80vh]">
+               <AlertBanner settings={settings} />
+
+               {/* Stage: Submission */}
+               {settings.stage === 'Submission' && (
+                 <SubmissionForm settings={settings} />
+               )}
+
+               {/* Stage: Voting/Ended */}
+               {(settings.stage === 'Voting' || settings.stage === 'Ended') && (
+                 <div className="animate-slideUp">
+                    <LiveResultsTicker submissions={submissions.filter(s => s.status === 'Approved')} settings={settings} />
+                    
+                    <div className="flex items-center justify-between mb-6 mt-12 border-b border-white/10 pb-4">
+                      <h2 className="text-2xl font-bold flex items-center gap-2">
+                        <Crown className="text-yellow-500" /> المشاركات
+                      </h2>
+                      <span className="bg-white/10 px-3 py-1 rounded-full text-xs text-white/60">
+                        {submissions.filter(s => s.status === 'Approved').length} فيديو
+                      </span>
+                    </div>
+
+                    {submissions.filter(s => s.status === 'Approved').length === 0 ? (
+                      <div className="text-center py-20 bg-white/5 rounded-2xl border border-dashed border-white/10">
+                        <p className="text-white/40">لا توجد مشاركات معتمدة حتى الآن</p>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+                        {submissions
+                          .filter(s => s.status === 'Approved')
+                          .sort((a,b) => b.votes - a.votes)
+                          .map(sub => (
+                            <VideoCard 
+                              key={sub.id} 
+                              submission={sub} 
+                              settings={settings} 
+                              onVote={handleVoteRequest} 
+                              onClick={() => setModals(p => ({...p, videoPlayer: sub}))}
+                            />
+                          ))
+                        }
+                      </div>
+                    )}
+                 </div>
+               )}
+
+               {/* Stage: Paused */}
+               {settings.stage === 'Paused' && (
+                 <div className="text-center py-32">
+                   <div className="inline-block p-6 bg-white/5 rounded-full mb-6">
+                     <Clock className="w-16 h-16 text-white/30" />
+                   </div>
+                   <h2 className="text-4xl font-bold mb-4">نعود قريباً</h2>
+                   <p className="text-white/50 text-lg">المسابقة متوقفة مؤقتاً للصيانة أو الفرز</p>
+                 </div>
+               )}
+            </main>
+
+            {/* Footer */}
+            <footer className="border-t border-white/10 bg-black py-12 mt-20">
+              <div className="container mx-auto px-4 text-center">
+                <div className="flex justify-center gap-8 mb-8 text-sm font-bold text-white/60">
+                  <button onClick={() => setModals(p => ({...p, info: 'why'}))} className="hover:text-highlight-color transition">عن المسابقة</button>
+                  <button onClick={() => setModals(p => ({...p, info: 'terms'}))} className="hover:text-highlight-color transition">الشروط</button>
+                  <button onClick={() => setModals(p => ({...p, info: 'organizers'}))} className="hover:text-highlight-color transition">المنظمون</button>
+                </div>
+                <p onClick={handleSecretClick} className="text-white/20 text-xs cursor-pointer hover:text-white/40 transition select-none">
+                  &copy; 2025 {settings.title}. All rights reserved.
+                </p>
+              </div>
+            </footer>
+          </>
+        } />
+      </Routes>
+
+      {/* --- GLOBAL MODALS --- */}
+      
+      <AdminAuthModal 
+        isOpen={modals.adminAuth} 
+        onClose={() => setModals(p => ({...p, adminAuth: false}))} 
+        onSuccess={() => { setModals(p => ({...p, adminAuth: false})); navigate('/admin'); }} 
+      />
+
+      <Modal isOpen={!!modals.voteConfirm} onClose={() => setModals(p => ({...p, voteConfirm: null}))} title="تأكيد التصويت">
+        <div className="text-center">
+          <p className="text-lg mb-6">هل تريد منح صوتك للمشارك <br/><span className="font-bold text-highlight-color text-xl">{modals.voteConfirm?.participantName}</span>؟</p>
+          <div className="flex gap-4">
+             <button onClick={() => setModals(p => ({...p, voteConfirm: null}))} className="flex-1 py-3 rounded-xl bg-white/10 hover:bg-white/20 font-bold">إلغاء</button>
+             <button onClick={confirmVote} className="flex-1 py-3 rounded-xl text-black font-bold hover:brightness-110" style={{ backgroundColor: settings.mainColor }}>تأكيد التصويت</button>
+          </div>
+        </div>
+      </Modal>
+
+      <VideoModal 
+        isOpen={!!modals.videoPlayer} 
+        submission={modals.videoPlayer} 
+        settings={settings} 
+        onClose={() => setModals(p => ({...p, videoPlayer: null}))} 
+        onVote={handleVoteRequest} 
+      />
+
+      <Modal isOpen={!!modals.info} onClose={() => setModals(p => ({...p, info: null}))} title={
+        modals.info === 'why' ? 'لماذا المسابقة؟' : modals.info === 'terms' ? 'الشروط والأحكام' : 'المنظمون'
+      }>
+        {modals.info === 'why' && settings.whyText}
+        {modals.info === 'terms' && settings.termsText}
+        {modals.info === 'organizers' && (
+          <div className="grid gap-4">
+            {ORGANIZERS.map((org, i) => (
+              <div key={i} className="flex items-center gap-4 bg-white/5 p-3 rounded-xl">
+                <img src={org.imageUrl} alt="" className="w-14 h-14 rounded-full object-cover bg-black border-2 border-white/10" />
+                <div>
+                  <h4 className="font-bold text-lg">{org.name}</h4>
+                  <p className="text-white/50 text-sm">{org.role}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </Modal>
+
+    </div>
+  );
+};
+
+// =========================================================================
+// 8. ROOT WRAPPER
+// =========================================================================
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <ContestApp />
+    </BrowserRouter>
+  );
+}

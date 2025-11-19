@@ -42,9 +42,7 @@ import {
   Zap,
   PauseCircle,
   Trophy,
-  Sparkles,
-  Medal,
-  Star
+  Sparkles
 } from 'lucide-react';
 
 // =========================================================================
@@ -196,67 +194,94 @@ const InputField = ({ label, id, value, onChange, type = 'text', placeholder = '
 );
 
 // =========================================================================
-// *** ULTIMATE ALERT BANNER (WITH FLASH ANIMATION) ***
+// *** ULTIMATE ALERT BANNER WITH FLASH & RIPPLE ***
 // =========================================================================
 const AlertBanner = ({ settings }) => {
   const stage = settings.stage || 'Voting';
   const stageInfo = STAGES[stage];
   const subText = settings.stageTexts?.[stage] || 'أهلاً بكم';
 
-  // إعدادات الألوان
+  // 1. تكوين الألوان بدقة حسب الطلب
   const config = useMemo(() => {
     switch (stage) {
-      case 'Submission': 
-        return { bg: 'linear-gradient(135deg, #06b6d4 0%, #0891b2 100%)', glow: '#22d3ee', iconColor: 'text-cyan-100' };
-      case 'Voting': 
-        return { bg: 'linear-gradient(135deg, #db2777 0%, #be185d 100%)', glow: '#f472b6', iconColor: 'text-pink-100' };
-      case 'Ended': 
-        return { bg: 'linear-gradient(135deg, #059669 0%, #047857 100%)', glow: '#34d399', iconColor: 'text-green-100' };
-      default: 
-        return { bg: 'linear-gradient(135deg, #dc2626 0%, #991b1b 100%)', glow: '#f87171', iconColor: 'text-red-100' };
+      case 'Submission': // سمائي
+        return { 
+            bg: 'linear-gradient(135deg, #0891b2 0%, #06b6d4 100%)', 
+            glow: '#22d3ee',
+            border: 'border-cyan-500/40',
+            ripple: 'border-cyan-400'
+        };
+      case 'Voting': // زهري
+        return { 
+            bg: 'linear-gradient(135deg, #be185d 0%, #db2777 100%)', 
+            glow: '#f472b6',
+            border: 'border-pink-500/40',
+            ripple: 'border-pink-400'
+        };
+      case 'Ended': // أخضر
+        return { 
+            bg: 'linear-gradient(135deg, #047857 0%, #059669 100%)', 
+            glow: '#34d399',
+            border: 'border-green-500/40',
+            ripple: 'border-green-400'
+        };
+      default: // أحمر (متوقف)
+        return { 
+            bg: 'linear-gradient(135deg, #991b1b 0%, #dc2626 100%)', 
+            glow: '#f87171',
+            border: 'border-red-500/40',
+            ripple: 'border-red-400'
+        };
     }
   }, [stage]);
 
   return (
-    <div className="relative w-full mb-12 mx-auto max-w-4xl transform hover:scale-[1.02] transition-transform duration-500 overflow-hidden rounded-2xl shadow-2xl border border-white/20">
+    <div className={`relative w-full mb-12 mx-auto max-w-4xl transform hover:scale-[1.02] transition-transform duration-500 overflow-hidden rounded-2xl shadow-2xl border-2 ${config.border}`}>
         <style>{`
-            @keyframes flash-move {
-                0% { left: -100%; }
-                50% { left: 100%; }
-                100% { left: 100%; }
+            @keyframes flash-sheen {
+                0% { transform: translateX(-150%) skewX(-20deg); }
+                50% { transform: translateX(250%) skewX(-20deg); }
+                100% { transform: translateX(250%) skewX(-20deg); }
             }
-            .animate-flash {
-                animation: flash-move 3s infinite linear;
+            @keyframes ripple-out {
+                0% { transform: scale(0.8); opacity: 1; }
+                100% { transform: scale(2.2); opacity: 0; }
             }
+            .animate-sheen { animation: flash-sheen 4s infinite ease-in-out; }
+            .animate-ripple { animation: ripple-out 2s cubic-bezier(0, 0.2, 0.8, 1) infinite; }
         `}</style>
 
-        {/* الخلفية الأساسية */}
+        {/* الخلفية الملونة */}
         <div className="absolute inset-0 z-0" style={{ background: config.bg }}></div>
         
-        {/* طبقة الوميض الضوئي المتحرك */}
-        <div className="absolute inset-0 z-10 overflow-hidden pointer-events-none">
-            <div className="absolute top-0 bottom-0 w-1/2 bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12 animate-flash" style={{ filter: 'blur(5px)' }}></div>
+        {/* طبقة الوميض الضوئي المتحرك (The Flash) */}
+        <div className="absolute inset-0 z-10 pointer-events-none">
+            <div className="absolute inset-0 w-1/2 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-sheen" style={{ filter: 'blur(10px)' }}></div>
         </div>
 
         {/* توهج خلفي */}
-        <div className="absolute -inset-1 blur-xl opacity-40 animate-pulse z-0" style={{ backgroundColor: config.glow }}></div>
+        <div className="absolute -inset-1 blur-xl opacity-50 animate-pulse z-0" style={{ backgroundColor: config.glow }}></div>
         
         {/* المحتوى */}
         <div className="relative z-20 flex flex-col md:flex-row items-center justify-between px-8 py-6">
             {/* النمط الخلفي */}
-            <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] pointer-events-none"></div>
+            <div className="absolute inset-0 opacity-15 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] pointer-events-none"></div>
 
-            {/* الأيقونة */}
-            <div className={`p-4 rounded-full bg-white/20 backdrop-blur-md border border-white/30 shadow-inner shrink-0 mb-4 md:mb-0 md:ml-6 ${config.iconColor} animate-bounce-slow`}>
-                <stageInfo.icon size={32} strokeWidth={2.5} />
+            {/* الأيقونة المتحركة مع الرادار (Ripple) */}
+            <div className="relative shrink-0 mb-4 md:mb-0 md:ml-6">
+                <div className={`absolute inset-0 rounded-full border-2 ${config.ripple} animate-ripple`}></div>
+                <div className={`absolute inset-0 rounded-full border-2 ${config.ripple} animate-ripple delay-150`}></div>
+                <div className="relative w-14 h-14 rounded-full flex items-center justify-center bg-white/20 backdrop-blur-md border border-white/40 shadow-lg">
+                    <stageInfo.icon size={28} className="text-white drop-shadow-md" />
+                </div>
             </div>
 
             {/* النصوص */}
             <div className="flex-1 text-center md:text-right space-y-1">
-                <h1 className="text-3xl md:text-4xl font-black text-white drop-shadow-md tracking-tight relative">
+                <h1 className="text-3xl md:text-4xl font-black text-white drop-shadow-lg tracking-tight relative">
                     {stageInfo.title}
                 </h1>
-                <p className="text-white/90 font-medium font-mono tracking-wide" style={{ fontSize: `${settings.marqueeSize}px` }}>
+                <p className="text-white/90 font-bold font-mono tracking-wide drop-shadow-md" style={{ fontSize: `${settings.marqueeSize}px` }}>
                     {subText}
                 </p>
             </div>
@@ -387,7 +412,6 @@ const CelebrationHeader = () => (
     <div className="firework" style={{left: '80%', top: '30%', animationDelay: '0.5s'}}></div>
     <div className="firework" style={{left: '50%', top: '10%', animationDelay: '1s'}}></div>
     
-    {/* تم حذف العنوان الكبير "النتائج النهائية" حسب الطلب */}
     <p className="text-white/70 text-xl font-bold tracking-wide">شكراً لجميع المبدعين الذين شاركوا معنا</p>
   </div>
 );
@@ -1039,7 +1063,9 @@ const ContestApp = () => {
                 
                 {(settings.stage === 'Voting' || settings.stage === 'Ended') && (
                   <>
-                    <LiveHeader settings={settings} />
+                    {/* إظهار عنوان النتائج المباشرة فقط في حالة التصويت */}
+                    {settings.stage === 'Voting' && <LiveHeader settings={settings} />}
+                    
                     {settings.stage === 'Voting' ? (
                         <VotingLeaderboard submissions={submissions.filter(s => s.status === 'Approved')} />
                     ) : (

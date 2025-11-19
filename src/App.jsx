@@ -116,7 +116,7 @@ const COUNTRIES = [
 );
 
 const DEFAULT_SETTINGS = {
-  mainColor: '#ec4899', // Pink default
+  mainColor: '#ec4899',
   highlightColor: '#25f4ee',
   appFont: 'Cairo',
   title: 'Ali Jabbar Week',
@@ -130,7 +130,7 @@ const DEFAULT_SETTINGS = {
     Paused: 'سنعود قريباً...',
     Ended: 'شكراً لكل من شارك وصوت في المسابقة'
   },
-  marqueeSize: 16, // حجم النص الفرعي
+  marqueeSize: 16,
   termsText: 'الشروط والأحكام:\n- الالتزام بالآداب العامة.',
   whyText: 'لتعزيز المحتوى العربي الإبداعي.',
   startTime: '',
@@ -196,68 +196,67 @@ const InputField = ({ label, id, value, onChange, type = 'text', placeholder = '
 );
 
 // =========================================================================
-// *** UPDATED ALERT BANNER (THE FOCAL POINT) ***
+// *** ULTIMATE ALERT BANNER (WITH FLASH ANIMATION) ***
 // =========================================================================
 const AlertBanner = ({ settings }) => {
   const stage = settings.stage || 'Voting';
   const stageInfo = STAGES[stage];
   const subText = settings.stageTexts?.[stage] || 'أهلاً بكم';
 
-  // إعدادات الألوان بناءً على طلب المستخدم
+  // إعدادات الألوان
   const config = useMemo(() => {
     switch (stage) {
-      case 'Submission': // سمائي (Cyan)
-        return { 
-            bg: 'linear-gradient(135deg, #06b6d4 0%, #0891b2 100%)', 
-            glow: '#22d3ee',
-            iconColor: 'text-cyan-100'
-        };
-      case 'Voting': // زهري (Pink)
-        return { 
-            bg: 'linear-gradient(135deg, #db2777 0%, #be185d 100%)', 
-            glow: '#f472b6',
-            iconColor: 'text-pink-100'
-        };
-      case 'Ended': // أخضر (Green)
-        return { 
-            bg: 'linear-gradient(135deg, #059669 0%, #047857 100%)', 
-            glow: '#34d399',
-            iconColor: 'text-green-100'
-        };
-      default: // أحمر (Red/Paused)
-        return { 
-            bg: 'linear-gradient(135deg, #dc2626 0%, #991b1b 100%)', 
-            glow: '#f87171',
-            iconColor: 'text-red-100'
-        };
+      case 'Submission': 
+        return { bg: 'linear-gradient(135deg, #06b6d4 0%, #0891b2 100%)', glow: '#22d3ee', iconColor: 'text-cyan-100' };
+      case 'Voting': 
+        return { bg: 'linear-gradient(135deg, #db2777 0%, #be185d 100%)', glow: '#f472b6', iconColor: 'text-pink-100' };
+      case 'Ended': 
+        return { bg: 'linear-gradient(135deg, #059669 0%, #047857 100%)', glow: '#34d399', iconColor: 'text-green-100' };
+      default: 
+        return { bg: 'linear-gradient(135deg, #dc2626 0%, #991b1b 100%)', glow: '#f87171', iconColor: 'text-red-100' };
     }
   }, [stage]);
 
   return (
-    <div className="relative w-full mb-12 mx-auto max-w-4xl transform hover:scale-[1.02] transition-transform duration-500">
-        {/* Glow Effect Behind */}
-        <div className="absolute -inset-1 blur-xl opacity-40 animate-pulse" style={{ backgroundColor: config.glow }}></div>
-        
-        <div 
-            className="relative rounded-2xl overflow-hidden border border-white/20 shadow-2xl flex flex-col md:flex-row items-center justify-between px-8 py-6 z-10"
-            style={{ background: config.bg }}
-        >
-            {/* Background Pattern */}
-            <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
+    <div className="relative w-full mb-12 mx-auto max-w-4xl transform hover:scale-[1.02] transition-transform duration-500 overflow-hidden rounded-2xl shadow-2xl border border-white/20">
+        <style>{`
+            @keyframes flash-move {
+                0% { left: -100%; }
+                50% { left: 100%; }
+                100% { left: 100%; }
+            }
+            .animate-flash {
+                animation: flash-move 3s infinite linear;
+            }
+        `}</style>
 
-            {/* Icon Area */}
+        {/* الخلفية الأساسية */}
+        <div className="absolute inset-0 z-0" style={{ background: config.bg }}></div>
+        
+        {/* طبقة الوميض الضوئي المتحرك */}
+        <div className="absolute inset-0 z-10 overflow-hidden pointer-events-none">
+            <div className="absolute top-0 bottom-0 w-1/2 bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12 animate-flash" style={{ filter: 'blur(5px)' }}></div>
+        </div>
+
+        {/* توهج خلفي */}
+        <div className="absolute -inset-1 blur-xl opacity-40 animate-pulse z-0" style={{ backgroundColor: config.glow }}></div>
+        
+        {/* المحتوى */}
+        <div className="relative z-20 flex flex-col md:flex-row items-center justify-between px-8 py-6">
+            {/* النمط الخلفي */}
+            <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] pointer-events-none"></div>
+
+            {/* الأيقونة */}
             <div className={`p-4 rounded-full bg-white/20 backdrop-blur-md border border-white/30 shadow-inner shrink-0 mb-4 md:mb-0 md:ml-6 ${config.iconColor} animate-bounce-slow`}>
                 <stageInfo.icon size={32} strokeWidth={2.5} />
             </div>
 
-            {/* Text Content */}
+            {/* النصوص */}
             <div className="flex-1 text-center md:text-right space-y-1">
-                {/* العنوان الكبير الثابت */}
-                <h1 className="text-3xl md:text-4xl font-black text-white drop-shadow-md tracking-tight">
+                <h1 className="text-3xl md:text-4xl font-black text-white drop-shadow-md tracking-tight relative">
                     {stageInfo.title}
                 </h1>
-                {/* النص الفرعي من لوحة التحكم */}
-                <p className="text-white/90 font-medium font-mono tracking-wide animate-pulse" style={{ fontSize: `${settings.marqueeSize}px` }}>
+                <p className="text-white/90 font-medium font-mono tracking-wide" style={{ fontSize: `${settings.marqueeSize}px` }}>
                     {subText}
                 </p>
             </div>
@@ -377,7 +376,7 @@ const SubmissionForm = ({ settings }) => {
 // --- COMPONENTS FOR ENDED STAGE (RESULTS) ---
 
 const CelebrationHeader = () => (
-  <div className="text-center mb-16 animate-fadeIn">
+  <div className="text-center mb-16 animate-fadeIn relative z-10">
     <style>{`
       @keyframes fireworks { 0% { transform: translate(var(--x), var(--initialY)); width: var(--initialSize); opacity: 1; } 50% { width: 0.5rem; opacity: 1; } 100% { width: var(--finalSize); opacity: 0; } }
       .firework, .firework::before, .firework::after {
@@ -386,11 +385,10 @@ const CelebrationHeader = () => (
     `}</style>
     <div className="firework" style={{left: '20%', top: '30%'}}></div>
     <div className="firework" style={{left: '80%', top: '30%', animationDelay: '0.5s'}}></div>
+    <div className="firework" style={{left: '50%', top: '10%', animationDelay: '1s'}}></div>
     
-    <h2 className="text-4xl md:text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-yellow-100 to-yellow-500 drop-shadow-2xl mb-4">
-      🎉 النتائج النهائية 🎉
-    </h2>
-    <p className="text-white/70 text-lg">شكراً لجميع المبدعين الذين شاركوا معنا</p>
+    {/* تم حذف العنوان الكبير "النتائج النهائية" حسب الطلب */}
+    <p className="text-white/70 text-xl font-bold tracking-wide">شكراً لجميع المبدعين الذين شاركوا معنا</p>
   </div>
 );
 
@@ -1039,37 +1037,51 @@ const ContestApp = () => {
 
                 {settings.stage === 'Submission' && <SubmissionForm settings={settings} />}
                 
-                {settings.stage === 'Voting' && (
+                {(settings.stage === 'Voting' || settings.stage === 'Ended') && (
                   <>
                     <LiveHeader settings={settings} />
-                    <VotingLeaderboard submissions={submissions.filter(s => s.status === 'Approved')} />
-                    
-                    <div className="flex items-center gap-2 mb-6 mt-10 border-b border-white/10 pb-4">
-                      <div className="h-8 w-1 bg-[var(--highlight-color)] rounded-full"></div>
-                      <h2 className="text-2xl font-bold">تصفح المشاركات</h2>
-                      <span className="bg-white/10 px-3 py-1 rounded-full text-xs text-white/60 mr-auto">
-                         {processedSubmissions.length} فيديو
-                      </span>
-                    </div>
-
-                    <SearchFilterBar onSearch={setSearchQuery} onFilter={setCountryFilter} />
-
-                    {processedSubmissions.length === 0 ? (
-                        <div className="text-center py-20 border border-dashed border-white/10 rounded-xl bg-white/5">
-                            <p className="text-white/40">لا توجد مشاركات مطابقة للبحث</p>
-                        </div>
+                    {settings.stage === 'Voting' ? (
+                        <VotingLeaderboard submissions={submissions.filter(s => s.status === 'Approved')} />
                     ) : (
-                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-                        {processedSubmissions.map(sub => (
-                            <VideoCard 
-                            key={sub.id} 
-                            submission={sub} 
-                            settings={settings} 
-                            onVote={(s) => { if(cooldown > 0) return alert(`انتظر ${cooldown}s`); setModals(p=>({...p, voteConfirm: s})) }} 
-                            onClick={() => setModals(p=>({...p, videoPlayer: sub}))} 
-                            />
-                        ))}
+                        <div className="animate-slideUp">
+                            <CelebrationHeader />
+                            <WinnersPodium winners={processedSubmissions.slice(0, 3)} />
+                            {processedSubmissions.length > 3 && (
+                                <ResultsTable submissions={processedSubmissions.slice(3)} />
+                            )}
                         </div>
+                    )}
+                    
+                    {settings.stage === 'Voting' && (
+                        <>
+                            <div className="flex items-center gap-2 mb-6 mt-10 border-b border-white/10 pb-4">
+                                <div className="h-8 w-1 bg-[var(--highlight-color)] rounded-full"></div>
+                                <h2 className="text-2xl font-bold">تصفح المشاركات</h2>
+                                <span className="bg-white/10 px-3 py-1 rounded-full text-xs text-white/60 mr-auto">
+                                    {processedSubmissions.length} فيديو
+                                </span>
+                            </div>
+
+                            <SearchFilterBar onSearch={setSearchQuery} onFilter={setCountryFilter} />
+
+                            {processedSubmissions.length === 0 ? (
+                                <div className="text-center py-20 border border-dashed border-white/10 rounded-xl bg-white/5">
+                                    <p className="text-white/40">لا توجد مشاركات مطابقة للبحث</p>
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+                                {processedSubmissions.map(sub => (
+                                    <VideoCard 
+                                    key={sub.id} 
+                                    submission={sub} 
+                                    settings={settings} 
+                                    onVote={(s) => { if(cooldown > 0) return alert(`انتظر ${cooldown}s`); setModals(p=>({...p, voteConfirm: s})) }} 
+                                    onClick={() => setModals(p=>({...p, videoPlayer: sub}))} 
+                                    />
+                                ))}
+                                </div>
+                            )}
+                        </>
                     )}
                   </>
                 )}
@@ -1079,16 +1091,6 @@ const ContestApp = () => {
                         <div className="inline-block p-6 bg-white/5 rounded-full mb-6"><Clock className="w-16 h-16 text-white/30" /></div>
                         <h1 className="text-4xl font-bold mb-4 text-white">المسابقة متوقفة حالياً</h1>
                         <p className="text-white/50 text-lg">نعود قريباً للصيانة أو فرز النتائج</p>
-                    </div>
-                )}
-
-                {settings.stage === 'Ended' && (
-                    <div className="animate-slideUp">
-                        <CelebrationHeader />
-                        <WinnersPodium winners={processedSubmissions.slice(0, 3)} />
-                        {processedSubmissions.length > 3 && (
-                            <ResultsTable submissions={processedSubmissions.slice(3)} />
-                        )}
                     </div>
                 )}
              </main>

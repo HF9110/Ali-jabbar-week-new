@@ -55,44 +55,32 @@ import {
 
 const appId = 'ali-jabbar-week';
 
-const getEnvVar = (key, fallback) => {
-  try {
-    if (
-      typeof import.meta !== 'undefined' &&
-      import.meta.env &&
-      import.meta.env[key]
-    ) {
-      return import.meta.env[key];
-    }
-  } catch (e) {
-    // تجاهل الأخطاء
-  }
-  return fallback;
-};
-
-// المفتاح الاحتياطي فارغ للأمان. يجب ضبط المفتاح في بيئة النشر (Vercel/Netlify).
-const VITE_FIREBASE_API_KEY = getEnvVar('VITE_FIREBASE_API_KEY', ''); 
-
+// 🛑🛑🛑 تنبيه: تم وضع المفتاح مباشرة هنا بناءً على طلبك لضمان عمله 🛑🛑🛑
+// ⚠️ الطريقة الصحيحة والأكثر أماناً هي استخدام متغيرات البيئة (VITE_FIREBASE_API_KEY)
 const userFirebaseConfig = {
-  apiKey: VITE_FIREBASE_API_KEY,
-  authDomain: 'ali-jabbar-week.firebaseapp.com',
-  projectId: 'ali-jabbar-week',
-  storageBucket: 'ali-jabbar-week.firebasestorage.app',
-  messagingSenderId: '642187294882',
-  appId: '1:642187294882:web:fe30f0016e5803a5e1bffb',
-  measurementId: 'G-8XSRK7TE1K',
+  apiKey: "AIzaSyDUxC_2orwmSLL9iEBIkeohZKfH36MjZ4Y", // ⬅️ المفتاح المحدث
+  authDomain: "ali-jabbar-week.firebaseapp.com",
+  projectId: "ali-jabbar-week",
+  storageBucket: "ali-jabbar-week.firebasestorage.app",
+  messagingSenderId: "642187294882",
+  appId: "1:642187294882:web:fe30f0016e5803a5e1bffb",
+  measurementId: "G-8XSRK7TE1K",
 };
+
+// ⬅️ تم تبسيط منطق القراءة ليعتمد على المفتاح الموجود أعلاه الآن
+const VITE_FIREBASE_API_KEY_PRESENT = userFirebaseConfig.apiKey !== '';
 
 let isFirebaseInitialized = false; 
 let firebaseApp, db, auth;
 
-if (VITE_FIREBASE_API_KEY) {
+if (VITE_FIREBASE_API_KEY_PRESENT) {
   try {
     const firebaseConfig = userFirebaseConfig;
     firebaseApp = initializeApp(firebaseConfig);
     db = getFirestore(firebaseApp);
     auth = getAuth(firebaseApp);
     isFirebaseInitialized = true; 
+    console.log("Firebase initialized successfully with hardcoded key."); // رسالة تأكيد
   } catch (e) {
     console.error('Firebase Initialization Failed:', e);
     isFirebaseInitialized = false;
@@ -470,7 +458,7 @@ const AdminAuthModal = ({ isOpen, onClose, onAuthSuccess }) => {
 
     // ⬅️ رسالة خطأ واضحة عند فشل التهيئة
     if (!isFirebaseInitialized || !auth) {
-      setError('Firebase is not initialized. الرجاء التأكد من مفتاح API وإعادة المحاولة.');
+      setError('خطأ: Firebase is not initialized. الرجاء التأكد من مفتاح API وإعادة المحاولة.');
       setIsLoading(false);
       return;
     }
@@ -603,8 +591,8 @@ const SubmissionForm = ({ settings, userId }) => {
     setConfirmModalOpen(false);
     setIsSubmitting(true);
     try {
-      if (!db && isFirebaseInitialized) {
-        setError('خطأ: قاعدة البيانات غير مهيأة.');
+      if (!isFirebaseInitialized || !db) {
+        setError('خطأ: قاعدة البيانات غير مهيأة. تأكد من إعدادات Firebase.');
         setIsSubmitting(false);
         return;
       }

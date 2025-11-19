@@ -201,7 +201,6 @@ const AlertBanner = ({ settings }) => {
   const stageInfo = STAGES[stage];
   const subText = settings.stageTexts?.[stage] || 'أهلاً بكم';
 
-  // 1. تكوين الألوان بدقة حسب الطلب
   const config = useMemo(() => {
     switch (stage) {
       case 'Submission': // سمائي
@@ -252,23 +251,17 @@ const AlertBanner = ({ settings }) => {
             .animate-ripple { animation: ripple-out 2s cubic-bezier(0, 0.2, 0.8, 1) infinite; }
         `}</style>
 
-        {/* الخلفية الملونة */}
         <div className="absolute inset-0 z-0" style={{ background: config.bg }}></div>
         
-        {/* طبقة الوميض الضوئي المتحرك (The Flash) */}
         <div className="absolute inset-0 z-10 pointer-events-none">
             <div className="absolute inset-0 w-1/2 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-sheen" style={{ filter: 'blur(10px)' }}></div>
         </div>
 
-        {/* توهج خلفي */}
         <div className="absolute -inset-1 blur-xl opacity-50 animate-pulse z-0" style={{ backgroundColor: config.glow }}></div>
         
-        {/* المحتوى */}
         <div className="relative z-20 flex flex-col md:flex-row items-center justify-between px-8 py-6">
-            {/* النمط الخلفي */}
             <div className="absolute inset-0 opacity-15 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] pointer-events-none"></div>
 
-            {/* الأيقونة المتحركة مع الرادار (Ripple) */}
             <div className="relative shrink-0 mb-4 md:mb-0 md:ml-6">
                 <div className={`absolute inset-0 rounded-full border-2 ${config.ripple} animate-ripple`}></div>
                 <div className={`absolute inset-0 rounded-full border-2 ${config.ripple} animate-ripple delay-150`}></div>
@@ -277,7 +270,6 @@ const AlertBanner = ({ settings }) => {
                 </div>
             </div>
 
-            {/* النصوص */}
             <div className="flex-1 text-center md:text-right space-y-1">
                 <h1 className="text-3xl md:text-4xl font-black text-white drop-shadow-lg tracking-tight relative">
                     {stageInfo.title}
@@ -296,17 +288,15 @@ const LiveHeader = ({ settings }) => (
       <div 
       className="flex items-center gap-2 px-4 py-2 rounded-full border"
       style={{ 
-        backgroundColor: 'rgba(254, 44, 85, 0.1)', // خلفية زهرية شفافة
-        borderColor: 'rgba(254, 44, 85, 0.3)'      // حدود زهرية شفافة
+        backgroundColor: 'rgba(254, 44, 85, 0.1)', 
+        borderColor: 'rgba(254, 44, 85, 0.3)' 
       }}
     >
         <span className="relative flex h-3 w-3">
-          {/* النقطة النابضة بلون تيك توك */}
           <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ backgroundColor: '#fe2c55' }}></span>
           <span className="relative inline-flex rounded-full h-3 w-3" style={{ backgroundColor: '#fe2c55' }}></span>
         </span>
         
-        {/* النص بلون تيك توك */}
         <h3 className="font-bold text-xl tracking-wide" style={{ color: '#fe2c55' }}>
         النتائج مباشرة
         </h3>
@@ -631,7 +621,10 @@ const SearchFilterBar = ({ onSearch, onFilter }) => {
   );
 };
 
-const VideoCard = ({ submission, settings, onVote, onClick }) => (
+// =========================================================================
+// *** MODIFIED: VideoCard WITH COOLDOWN ***
+// =========================================================================
+const VideoCard = ({ submission, settings, onVote, onClick, cooldown }) => (
   <div 
     onClick={onClick}
     className="group relative aspect-[9/16] rounded-2xl overflow-hidden cursor-pointer transform transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl hover:shadow-[var(--highlight-color)]/20 border border-white/10 bg-gray-800"
@@ -655,10 +648,18 @@ const VideoCard = ({ submission, settings, onVote, onClick }) => (
       
       {settings.stage !== 'Ended' && (
           <button 
-            onClick={(e) => { e.stopPropagation(); onVote(submission); }}
-            className="w-full py-2.5 rounded-lg font-bold text-sm bg-white text-black hover:bg-gray-200 transition flex items-center justify-center gap-2 shadow-lg active:scale-95"
+            onClick={(e) => { e.stopPropagation(); if(cooldown === 0) onVote(submission); }}
+            disabled={cooldown > 0}
+            className={`w-full py-2.5 rounded-lg font-bold text-sm transition flex items-center justify-center gap-2 shadow-lg active:scale-95 
+              ${cooldown > 0 
+                ? 'bg-gray-600 text-gray-300 cursor-not-allowed opacity-80' 
+                : 'bg-white text-black hover:bg-gray-200'}`}
           >
-            <Crown className="w-4 h-4 text-yellow-600" /> تصويت ({submission.votes})
+            {cooldown > 0 ? (
+              <span>انتظر {cooldown} ثانية</span>
+            ) : (
+              <><Crown className="w-4 h-4 text-yellow-600" /> تصويت ({submission.votes})</>
+            )}
           </button>
       )}
       {settings.stage === 'Ended' && (
@@ -670,7 +671,10 @@ const VideoCard = ({ submission, settings, onVote, onClick }) => (
   </div>
 );
 
-const VideoModal = ({ isOpen, onClose, submission, settings, onVote }) => {
+// =========================================================================
+// *** MODIFIED: VideoModal WITH COOLDOWN ***
+// =========================================================================
+const VideoModal = ({ isOpen, onClose, submission, settings, onVote, cooldown }) => {
   if (!isOpen || !submission) return null;
   const videoId = submission.videoUrl.split('/').pop().split('?')[0];
   const embedUrl = `https://www.tiktok.com/embed/v2/${videoId}`;
@@ -695,11 +699,12 @@ const VideoModal = ({ isOpen, onClose, submission, settings, onVote }) => {
            </div>
            {settings.stage !== 'Ended' && (
                <ShinyButton 
-                 onClick={() => onVote(submission)}
-                 className="w-full py-4 text-lg mt-6"
-                 style={{ backgroundColor: settings.mainColor }}
+                 onClick={() => { if(cooldown === 0) onVote(submission); }}
+                 disabled={cooldown > 0}
+                 className={`w-full py-4 text-lg mt-6 ${cooldown > 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
+                 style={{ backgroundColor: cooldown > 0 ? '#4b5563' : settings.mainColor }}
                >
-                 تصويت للمشارك
+                 {cooldown > 0 ? `انتظر ${cooldown} ثانية للتصويت` : 'تصويت للمشارك'}
                </ShinyButton>
            )}
         </div>
@@ -1111,7 +1116,8 @@ const ContestApp = () => {
                                     key={sub.id} 
                                     submission={sub} 
                                     settings={settings} 
-                                    onVote={(s) => { if(cooldown > 0) return alert(`انتظر ${cooldown}s`); setModals(p=>({...p, voteConfirm: s})) }} 
+                                    cooldown={cooldown} 
+                                    onVote={(s) => { if(cooldown > 0) return; setModals(p=>({...p, voteConfirm: s})) }} 
                                     onClick={() => setModals(p=>({...p, videoPlayer: sub}))} 
                                     />
                                 ))}
@@ -1155,7 +1161,14 @@ const ContestApp = () => {
           </div>
        </Modal>
 
-       <VideoModal isOpen={!!modals.videoPlayer} submission={modals.videoPlayer} onClose={() => setModals(p=>({...p, videoPlayer: null}))} settings={settings} onVote={(s) => { setModals(p=>({...p, voteConfirm: s, videoPlayer: null})); }} />
+       <VideoModal 
+         isOpen={!!modals.videoPlayer} 
+         submission={modals.videoPlayer} 
+         onClose={() => setModals(p=>({...p, videoPlayer: null}))} 
+         settings={settings} 
+         cooldown={cooldown}
+         onVote={(s) => { setModals(p=>({...p, voteConfirm: s, videoPlayer: null})); }} 
+       />
        
        {modals.adminAuth && (
          <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/90 p-4 backdrop-blur-sm animate-fadeIn">

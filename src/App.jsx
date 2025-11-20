@@ -469,34 +469,17 @@ const WinnersPodium = ({ winners }) => {
     );
 };
 
-/// =========================================================================
-// *** REDESIGNED: VotingLeaderboard (Podium + Rotating Grid) ***
+// =========================================================================
+// *** REDESIGNED: VotingLeaderboard (Card Style Grid) ***
 // =========================================================================
 const VotingLeaderboard = ({ submissions }) => {
   const sorted = [...submissions].sort((a, b) => b.votes - a.votes);
   const top3 = sorted.slice(0, 3);
   const rest = sorted.slice(3);
 
-  // --- Logic for Rotating Grid ---
-  const [page, setPage] = useState(0);
-  const itemsPerPage = 4; // عدد العناصر في كل قلبه
-  const totalPages = Math.ceil(rest.length / itemsPerPage);
-
-  useEffect(() => {
-    if (totalPages <= 1) return;
-    const interval = setInterval(() => {
-      setPage((prev) => (prev + 1) % totalPages);
-    }, 5000); // يقلب كل 5 ثواني
-    return () => clearInterval(interval);
-  }, [totalPages]);
-
-  const currentBatch = rest.slice(page * itemsPerPage, (page + 1) * itemsPerPage);
-
-  // --- End Logic ---
-
   if (sorted.length === 0) return null;
 
-  // دالة رسم بطاقة المتسابق في المراكز الأولى
+  // Helper to render the specific style for each rank card
   const renderRankCard = (sub, rank) => {
     let config = {
       borderColor: 'border-white/10',
@@ -530,16 +513,25 @@ const VotingLeaderboard = ({ submissions }) => {
 
     return (
        <div key={sub.id} className={`relative bg-gray-900 rounded-2xl border-2 ${config.borderColor} ${config.glow} p-4 flex flex-col items-center justify-center transition-transform hover:scale-[1.02]`}>
-           <div className={`absolute top-0 right-0 ${config.badgeColor} font-black text-lg px-3 py-1 rounded-bl-2xl rounded-tr-xl z-10`}>
+           {/* Rank Badge */}
+           <div className={`absolute top-0 right-0 ${config.badgeColor} font-black text-lg px-3 py-1 rounded-bl-2xl rounded-tr-xl`}>
               #{rank}
            </div>
+           
+           {/* Profile Image */}
            <div className={`w-20 h-20 rounded-xl overflow-hidden mb-3 border-2 ${config.borderColor}`}>
               <img src={sub.profilePicUrl} alt={sub.participantName} className="w-full h-full object-cover" />
            </div>
+
+           {/* Votes */}
            <div className={`text-3xl font-black mb-1 ${config.textColor}`}>
               {sub.votes}
            </div>
+
+           {/* Name */}
            <h3 className="font-bold text-white text-lg truncate w-full text-center">{sub.participantName}</h3>
+           
+           {/* Country */}
            <div className="flex items-center gap-1 text-white/50 text-xs mt-1">
               <span>{sub.flag}</span>
               <span>{sub.country}</span>
@@ -552,81 +544,95 @@ const VotingLeaderboard = ({ submissions }) => {
     <div className="mb-12 animate-slideUp w-full max-w-5xl mx-auto">
        {/* Header Section */}
        <div className="flex justify-between items-center mb-6 border-b border-white/10 pb-4">
-           <div className="hidden md:block"></div>
+           <div className="hidden md:block"></div> {/* Spacer */}
            <LiveResultsBadge />
        </div>
        
-       {/* --- Top 3 Grid --- */}
+       {/* Grid Layout for Top 3 */}
        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-10">
+          
+          {/* Mobile View (Stacked) */}
           <div className="md:hidden space-y-4">
              {top3.map((sub, idx) => renderRankCard(sub, idx + 1))}
           </div>
+
+          {/* Desktop View (2 - 1 - 3 Layout) */}
           <div className="hidden md:contents">
+             {/* Position #2 */}
              {top3[1] && renderRankCard(top3[1], 2)}
+             {/* Position #1 (Make it slightly taller?) */}
              {top3[0] && (
                  <div className="transform scale-110 z-10">
                     {renderRankCard(top3[0], 1)}
                  </div>
              )}
+             {/* Position #3 */}
              {top3[2] && renderRankCard(top3[2], 3)}
           </div>
        </div>
 
-      {/* --- Rotating Grid (Batches of 4) --- */}
       {rest.length > 0 && (
-        <div className="relative">
-            {/* شريط التقدم الصغير ليوضح الصفحة الحالية */}
-            {totalPages > 1 && (
-                <div className="flex justify-center gap-1 mb-2">
-                    {Array.from({ length: totalPages }).map((_, idx) => (
-                        <div 
-                            key={idx} 
-                            className={`h-1 rounded-full transition-all duration-500 ${idx === page ? 'w-6 bg-[var(--highlight-color)]' : 'w-2 bg-white/10'}`}
-                        />
-                    ))}
-                </div>
-            )}
-
-            {/* الحاوية الرئيسية للبطاقات */}
-            <div className="bg-white/5 border border-white/10 rounded-2xl p-4 backdrop-blur-sm min-h-[140px] flex items-center justify-center">
-                {/* key={page} مهم جداً! 
-                   عندما يتغير رقم الصفحة، يقوم رياكت بإعادة بناء العناصر
-                   مما يشغل الأنميشن من جديد
-                */}
-                <div key={page} className="grid grid-cols-2 md:grid-cols-4 gap-4 w-full animate-fadeInUp">
-                    {currentBatch.map((sub, i) => {
-                        // حساب الترتيب الحقيقي
-                        const realRank = (page * itemsPerPage) + i + 4; 
-                        return (
-                            <div key={sub.id} className="flex items-center gap-3 bg-black/40 p-3 rounded-xl border border-white/5 hover:border-[var(--highlight-color)] transition group">
-                                <span className="text-white/30 font-mono text-sm font-bold">#{realRank}</span>
-                                
-                                <div className="relative w-10 h-10 shrink-0">
-                                    <img src={sub.profilePicUrl} className="w-10 h-10 rounded-full object-cover border border-white/10 group-hover:scale-110 transition" alt="" />
-                                </div>
-                                
-                                <div className="flex-1 overflow-hidden">
-                                    <h4 className="text-white font-bold text-sm truncate">{sub.participantName}</h4>
-                                    <span className="text-[var(--highlight-color)] font-bold text-xs">{sub.votes} صوت</span>
-                                </div>
-                            </div>
-                        );
-                    })}
-                </div>
-            </div>
-            
-            {/* ستايل الأنميشن الخاص بهذا الجزء */}
-            <style>{`
-                @keyframes fadeInUp {
-                    from { opacity: 0; transform: translateY(10px); }
-                    to { opacity: 1; transform: translateY(0); }
-                }
-                .animate-fadeInUp {
-                    animation: fadeInUp 0.5s ease-out forwards;
-                }
-            `}</style>
+        <div className="relative bg-white/5 border-y border-white/10 py-3 overflow-hidden group rounded-xl">
+          <div className="flex animate-scroll gap-8 w-max hover:pause" style={{ animation: `scroll ${Math.max(30, rest.length * 5)}s linear infinite` }}>
+            {rest.map((sub, i) => (
+              <div key={sub.id} className="flex items-center gap-3 px-4 border-l border-white/10 min-w-[200px]">
+                <span className="text-white/30 font-mono text-sm">#{i + 4}</span>
+                <img src={sub.profilePicUrl} className="w-8 h-8 rounded-full object-cover bg-gray-800" alt="" />
+                <span className="text-white font-bold text-sm">{sub.participantName}</span>
+                <span className="text-[var(--highlight-color)] font-bold">{sub.votes} صوت</span>
+              </div>
+            ))}
+          </div>
         </div>
       )}
+    </div>
+  );
+};
+
+const ResultsTable = ({ submissions }) => {
+    return (
+        <div className="max-w-4xl mx-auto bg-gray-900/50 border border-white/10 rounded-2xl overflow-hidden backdrop-blur-md p-4">
+            <h3 className="text-white/70 font-bold mb-4 pr-2">باقي المبدعين</h3>
+            <div className="space-y-2">
+                {submissions.map((sub, idx) => (
+                    <div key={sub.id} className="flex items-center bg-white/5 hover:bg-white/10 transition p-3 rounded-xl border border-white/5">
+                        <div className="w-8 text-center font-mono text-white/40 font-bold">#{idx + 4}</div>
+                        <img src={sub.profilePicUrl} className="w-10 h-10 rounded-full object-cover mx-4 border border-white/10" alt="" />
+                        <div className="flex-1">
+                            <h4 className="font-bold text-white">{sub.participantName}</h4>
+                            <p className="text-xs text-white/40">{sub.flag} {sub.country}</p>
+                        </div>
+                        <div className="text-white font-mono font-bold bg-black/30 px-3 py-1 rounded-lg">
+                            {sub.votes}
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+};
+
+const SearchFilterBar = ({ onSearch, onFilter }) => {
+  return (
+    <div className="flex flex-col md:flex-row gap-4 mb-8 bg-black/40 p-4 rounded-2xl border border-white/10 backdrop-blur-md">
+      <div className="flex-1 relative">
+        <Search className="absolute right-3 top-3.5 text-white/40 w-5 h-5" />
+        <input 
+          type="text" 
+          placeholder="بحث عن اسم المستخدم..." 
+          onChange={(e) => onSearch(e.target.value)}
+          className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pr-10 pl-4 text-white focus:border-[var(--highlight-color)] outline-none transition placeholder-white/30"
+        />
+      </div>
+      <div className="relative min-w-[200px]">
+        <Filter className="absolute right-3 top-3.5 text-white/40 w-5 h-5 pointer-events-none" />
+        <select 
+          onChange={(e) => onFilter(e.target.value)}
+          className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pr-10 pl-4 text-white appearance-none focus:border-[var(--highlight-color)] outline-none cursor-pointer"
+        >
+          {COUNTRIES.map(c => <option key={c.code} value={c.name} className="bg-gray-900">{c.flag} {c.name}</option>)}
+        </select>
+      </div>
     </div>
   );
 };

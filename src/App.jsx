@@ -249,7 +249,16 @@ const AlertBanner = ({ settings }) => {
              </div>
           </div>
        </div>
-  
+       <style>{`
+  @keyframes marquee {
+    0% { transform: translateX(-100%); }  /* البداية من اليسار */
+    100% { transform: translateX(0%); }     /* النهاية في اليمين */
+  }
+  .animate-marquee {
+    animation: marquee 20s linear infinite;
+    min-width: 100%;
+  }
+`}</style>
     </div>
   );
 };

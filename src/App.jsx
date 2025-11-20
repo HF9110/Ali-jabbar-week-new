@@ -21,7 +21,7 @@ import {
   increment,
   addDoc,
   updateDoc,
-  deleteDoc, // <--- أضف هذه الكلمة هنا
+  deleteDoc,
   serverTimestamp,
 } from 'firebase/firestore';
 import {
@@ -194,9 +194,6 @@ const InputField = ({ label, id, value, onChange, type = 'text', placeholder = '
   </div>
 );
 
-// =========================================================================
-// *** REDESIGNED: Alert Banner (Sleek Bar Style) ***
-// =========================================================================
 const AlertBanner = ({ settings }) => {
   const stage = settings.stage || 'Voting';
   const stageInfo = STAGES[stage];
@@ -234,7 +231,6 @@ const AlertBanner = ({ settings }) => {
                    <span className="text-white font-bold text-sm md:text-base px-4 inline-block" style={{ textShadow: '0 2px 4px rgba(0,0,0,0.3)' }}>
                       {subText}
                    </span>
-                   {/* Repeated for seamless loop */}
                    <span className="text-white font-bold text-sm md:text-base px-4 inline-block" style={{ textShadow: '0 2px 4px rgba(0,0,0,0.3)' }}>
                       {subText}
                    </span>
@@ -252,8 +248,8 @@ const AlertBanner = ({ settings }) => {
        </div>
        <style>{`
   @keyframes marquee {
-    0% { transform: translateX(-100%); }  /* البداية من اليسار */
-    100% { transform: translateX(0%); }     /* النهاية في اليمين */
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(0%); }
   }
   .animate-marquee {
     animation: marquee 20s linear infinite;
@@ -264,9 +260,6 @@ const AlertBanner = ({ settings }) => {
   );
 };
 
-// =========================================================================
-// *** REDESIGNED: Live Header (Inside Podium) ***
-// =========================================================================
 const LiveResultsBadge = () => (
     <div className="flex items-center gap-2">
         <span className="relative flex h-3 w-3">
@@ -373,8 +366,6 @@ const SubmissionForm = ({ settings }) => {
   );
 };
 
-// --- COMPONENTS FOR ENDED STAGE (RESULTS) ---
-
 const CelebrationHeader = () => (
   <div className="text-center mb-16 animate-fadeIn relative z-10">
     <style>{`
@@ -390,10 +381,6 @@ const CelebrationHeader = () => (
     <p className="text-white/70 text-xl font-bold tracking-wide">شكراً لجميع المبدعين الذين شاركوا معنا</p>
   </div>
 );
-
-// =========================================================================
-// >>>>>> تمت إضافة المكون المفقود هنا (WinnersPodium) <<<<<<
-// =========================================================================
 
 const WinnersPodium = ({ winners }) => {
     if (!winners || winners.length === 0) return null;
@@ -470,7 +457,100 @@ const WinnersPodium = ({ winners }) => {
 };
 
 // =========================================================================
-// *** REDESIGNED: VotingLeaderboard (Card Style Grid) ***
+// *** NEW COMPONENT: Remaining Participants Carousel (Cards) ***
+// =========================================================================
+const RemainingCarousel = ({ participants }) => {
+    const [index, setIndex] = useState(0);
+    const itemsPerPage = 4; // عدد البطاقات الظاهرة
+    const [isPaused, setIsPaused] = useState(false);
+  
+    // حساب العدد الكلي للصفحات
+    const totalPages = Math.ceil(participants.length / itemsPerPage);
+  
+    useEffect(() => {
+      if (isPaused || participants.length <= itemsPerPage) return;
+  
+      const interval = setInterval(() => {
+        setIndex((prevIndex) => {
+          const nextIndex = prevIndex + itemsPerPage;
+          return nextIndex >= participants.length ? 0 : nextIndex;
+        });
+      }, 5000); // التبديل كل 5 ثواني
+  
+      return () => clearInterval(interval);
+    }, [participants.length, isPaused]);
+  
+    // الحصول على المجموعة الحالية (4 أشخاص)
+    const currentGroup = participants.slice(index, index + itemsPerPage);
+  
+    if (participants.length === 0) return null;
+  
+    return (
+      <div 
+        className="w-full bg-white/5 border-y border-white/10 py-6 px-4 rounded-xl relative overflow-hidden group"
+        onMouseEnter={() => setIsPaused(true)}
+        onMouseLeave={() => setIsPaused(false)}
+      >
+        {/* عنوان جانبي صغير */}
+        <div className="flex justify-between items-center mb-4 px-2">
+          <h3 className="text-white/60 text-sm font-bold flex items-center gap-2">
+            <Trophy size={16} className="text-[var(--highlight-color)]"/> باقي المنافسين
+          </h3>
+          {totalPages > 1 && (
+             <div className="flex gap-1">
+               {Array.from({ length: Math.min(totalPages, 5) }).map((_, i) => (
+                 <div 
+                   key={i} 
+                   className={`h-1 rounded-full transition-all duration-500 ${i === Math.floor(index / itemsPerPage) % 5 ? 'w-6 bg-[var(--highlight-color)]' : 'w-2 bg-white/20'}`}
+                 />
+               ))}
+             </div>
+          )}
+        </div>
+  
+        {/* شبكة البطاقات */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 min-h-[100px]">
+          {currentGroup.map((sub, i) => (
+            <div 
+              key={`${sub.id}-${index}`} // تغيير المفتاح يجبر الرياكت على إعادة تشغيل الانميشن
+              className="bg-black/40 border border-white/10 rounded-xl p-3 flex items-center gap-3 hover:bg-white/10 transition duration-300 animate-fadeIn"
+              style={{ animationDelay: `${i * 100}ms` }}
+            >
+              {/* الترتيب */}
+              <div className="flex flex-col items-center justify-center bg-white/5 w-10 h-10 rounded-lg border border-white/5">
+                 <span className="text-xs text-white/40">#</span>
+                 <span className="font-mono font-bold text-white">{index + i + 4}</span>
+              </div>
+  
+              {/* الصورة */}
+              <img 
+                src={sub.profilePicUrl} 
+                className="w-12 h-12 rounded-full object-cover border border-white/20" 
+                alt="" 
+                onError={(e) => e.target.src='https://placehold.co/100'}
+              />
+  
+              {/* المعلومات */}
+              <div className="flex-1 overflow-hidden">
+                <h4 className="text-white font-bold text-sm truncate">{sub.participantName}</h4>
+                <p className="text-[var(--highlight-color)] text-xs font-bold mt-0.5">{sub.votes} صوت</p>
+              </div>
+            </div>
+          ))}
+        </div>
+        
+        {/* مؤشر التوقف المؤقت */}
+        {isPaused && totalPages > 1 && (
+          <div className="absolute top-2 left-2 text-[10px] bg-black/60 px-2 py-1 rounded text-white/50">
+            تم الإيقاف مؤقتاً
+          </div>
+        )}
+      </div>
+    );
+};
+
+// =========================================================================
+// *** REDESIGNED: VotingLeaderboard (Card Style Grid + Carousel) ***
 // =========================================================================
 const VotingLeaderboard = ({ submissions }) => {
   const sorted = [...submissions].sort((a, b) => b.votes - a.votes);
@@ -515,17 +595,17 @@ const VotingLeaderboard = ({ submissions }) => {
        <div key={sub.id} className={`relative bg-gray-900 rounded-2xl border-2 ${config.borderColor} ${config.glow} p-4 flex flex-col items-center justify-center transition-transform hover:scale-[1.02]`}>
            {/* Rank Badge */}
            <div className={`absolute top-0 right-0 ${config.badgeColor} font-black text-lg px-3 py-1 rounded-bl-2xl rounded-tr-xl`}>
-              #{rank}
+             #{rank}
            </div>
            
            {/* Profile Image */}
            <div className={`w-20 h-20 rounded-xl overflow-hidden mb-3 border-2 ${config.borderColor}`}>
-              <img src={sub.profilePicUrl} alt={sub.participantName} className="w-full h-full object-cover" />
+             <img src={sub.profilePicUrl} alt={sub.participantName} className="w-full h-full object-cover" />
            </div>
 
            {/* Votes */}
            <div className={`text-3xl font-black mb-1 ${config.textColor}`}>
-              {sub.votes}
+             {sub.votes}
            </div>
 
            {/* Name */}
@@ -533,8 +613,8 @@ const VotingLeaderboard = ({ submissions }) => {
            
            {/* Country */}
            <div className="flex items-center gap-1 text-white/50 text-xs mt-1">
-              <span>{sub.flag}</span>
-              <span>{sub.country}</span>
+             <span>{sub.flag}</span>
+             <span>{sub.country}</span>
            </div>
        </div>
     );
@@ -571,19 +651,9 @@ const VotingLeaderboard = ({ submissions }) => {
           </div>
        </div>
 
+      {/* CAROUSEL FOR REMAINING PARTICIPANTS */}
       {rest.length > 0 && (
-        <div className="relative bg-white/5 border-y border-white/10 py-3 overflow-hidden group rounded-xl">
-          <div className="flex animate-scroll gap-8 w-max hover:pause" style={{ animation: `scroll ${Math.max(30, rest.length * 5)}s linear infinite` }}>
-            {rest.map((sub, i) => (
-              <div key={sub.id} className="flex items-center gap-3 px-4 border-l border-white/10 min-w-[200px]">
-                <span className="text-white/30 font-mono text-sm">#{i + 4}</span>
-                <img src={sub.profilePicUrl} className="w-8 h-8 rounded-full object-cover bg-gray-800" alt="" />
-                <span className="text-white font-bold text-sm">{sub.participantName}</span>
-                <span className="text-[var(--highlight-color)] font-bold">{sub.votes} صوت</span>
-              </div>
-            ))}
-          </div>
-        </div>
+        <RemainingCarousel participants={rest} />
       )}
     </div>
   );
@@ -1111,13 +1181,12 @@ const ContestApp = () => {
       body, button, input, select, textarea, h1, h2, h3, h4, h5, h6, p, span {
         font-family: 'Cairo', sans-serif !important;
       }
-      @keyframes scroll {
-        0% { transform: translateX(0); }
-        100% { transform: translateX(-50%); }
+      @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
       }
-      .animate-scroll {
-         display: flex;
-         width: max-content;
+      .animate-fadeIn {
+        animation: fadeIn 0.5s ease-out forwards;
       }
       .custom-scrollbar::-webkit-scrollbar { width: 6px; }
       .custom-scrollbar::-webkit-scrollbar-track { background: #111; }
@@ -1184,19 +1253,19 @@ const ContestApp = () => {
     }
   };
   const handleManualAdd = async (data) => {
-     const countryData = COUNTRIES.find(c => c.name === data.country) || { flag: '🌍' };
-     await addDoc(collection(db, PATHS.SUBMISSIONS), {
-       participantName: data.displayName,
-       tiktokUser: data.tiktokUser,
-       country: data.country,
-       flag: countryData.flag,
-       videoUrl: data.url || '',
-       profilePicUrl: `https://ui-avatars.com/api/?name=${data.displayName}&background=random`,
-       thumbnailUrl: 'https://placehold.co/600x900/222/fff?text=Video',
-       status: 'Approved',
-       votes: data.initialVotes || 0,
-       submittedAt: serverTimestamp()
-     });
+      const countryData = COUNTRIES.find(c => c.name === data.country) || { flag: '🌍' };
+      await addDoc(collection(db, PATHS.SUBMISSIONS), {
+        participantName: data.displayName,
+        tiktokUser: data.tiktokUser,
+        country: data.country,
+        flag: countryData.flag,
+        videoUrl: data.url || '',
+        profilePicUrl: `https://ui-avatars.com/api/?name=${data.displayName}&background=random`,
+        thumbnailUrl: 'https://placehold.co/600x900/222/fff?text=Video',
+        status: 'Approved',
+        votes: data.initialVotes || 0,
+        submittedAt: serverTimestamp()
+      });
   };
   
   const confirmVote = async () => {
@@ -1255,8 +1324,6 @@ const ContestApp = () => {
                 
                 {(settings.stage === 'Voting' || settings.stage === 'Ended') && (
                   <>
-                    {/* Note: Live Header is now inside VotingLeaderboard for layout purposes, or we can keep simpler structure */}
-                    
                     {settings.stage === 'Voting' ? (
                         <VotingLeaderboard submissions={submissions.filter(s => s.status === 'Approved')} />
                     ) : (
@@ -1329,12 +1396,12 @@ const ContestApp = () => {
 
        {/* MODALS */}
        <Modal isOpen={!!modals.voteConfirm} onClose={() => setModals(p=>({...p, voteConfirm: null}))} title="تأكيد التصويت">
-          <div className="text-center py-4">
-              <img src={modals.voteConfirm?.profilePicUrl} className="w-20 h-20 rounded-full mx-auto mb-4 border-2 border-[var(--highlight-color)] object-cover bg-black" alt=""/>
-              <p className="text-lg mb-1">هل تود التصويت لـ <span className="font-bold text-white">{modals.voteConfirm?.participantName}</span>؟</p>
-              <p className="text-sm text-[var(--highlight-color)] mb-6">{modals.voteConfirm?.tiktokUser}</p>
-              <ShinyButton onClick={confirmVote} style={{backgroundColor: settings.mainColor}} className="w-full text-white">تأكيد التصويت</ShinyButton>
-          </div>
+         <div className="text-center py-4">
+             <img src={modals.voteConfirm?.profilePicUrl} className="w-20 h-20 rounded-full mx-auto mb-4 border-2 border-[var(--highlight-color)] object-cover bg-black" alt=""/>
+             <p className="text-lg mb-1">هل تود التصويت لـ <span className="font-bold text-white">{modals.voteConfirm?.participantName}</span>؟</p>
+             <p className="text-sm text-[var(--highlight-color)] mb-6">{modals.voteConfirm?.tiktokUser}</p>
+             <ShinyButton onClick={confirmVote} style={{backgroundColor: settings.mainColor}} className="w-full text-white">تأكيد التصويت</ShinyButton>
+         </div>
        </Modal>
 
        <VideoModal 

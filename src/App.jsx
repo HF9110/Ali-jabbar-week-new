@@ -245,20 +245,20 @@ const AlertBanner = ({ settings }) => {
 
              {/* Left: Decorative Tag */}
              <div className="hidden md:flex items-center justify-center px-4 bg-black/20 z-20 font-mono text-white/50 text-xs">
-                AJW
+                HF
              </div>
           </div>
        </div>
        <style>{`
-         @keyframes marquee {
-           0% { transform: translateX(0%); }
-           100% { transform: translateX(-100%); }
-         }
-         .animate-marquee {
-           animation: marquee 20s linear infinite;
-           min-width: 100%;
-         }
-       `}</style>
+  @keyframes marquee {
+    0% { transform: translateX(-100%); }  /* البداية من اليسار */
+    100% { transform: translateX(0%); }     /* النهاية في اليمين */
+  }
+  .animate-marquee {
+    animation: marquee 20s linear infinite;
+    min-width: 100%;
+  }
+`}</style>
     </div>
   );
 };

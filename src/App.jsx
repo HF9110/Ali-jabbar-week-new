@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   BrowserRouter,
   Routes,
@@ -38,7 +38,9 @@ import {
   Filter,
   Zap,
   PauseCircle,
-  Trophy
+  Trophy,
+  Download, // أيقونة التصدير
+  Upload    // أيقونة الاستيراد
 } from 'lucide-react';
 
 // =========================================================================
@@ -190,7 +192,7 @@ const InputField = ({ label, id, value, onChange, type = 'text', placeholder = '
 );
 
 // =========================================================================
-// *** ALERT BANNER ***
+// *** ALERT BANNER (MODIFIED: Smaller & Responsive) ***
 // =========================================================================
 const AlertBanner = ({ settings }) => {
   const stage = settings.stage || 'Voting';
@@ -232,7 +234,8 @@ const AlertBanner = ({ settings }) => {
   }, [stage]);
 
   return (
-    <div className={`relative w-full mb-12 mx-auto max-w-4xl transform hover:scale-[1.02] transition-transform duration-500 overflow-hidden rounded-2xl shadow-2xl border-2 ${config.border}`}>
+    // تم تعديل max-w-4xl إلى max-w-3xl لتصغير العرض على الكمبيوتر
+    <div className={`relative w-full mb-8 mx-auto max-w-3xl transform hover:scale-[1.02] transition-transform duration-500 overflow-hidden rounded-2xl shadow-2xl border-2 ${config.border}`}>
         <style>{`
             @keyframes flash-sheen {
                 0% { transform: translateX(-150%) skewX(-20deg); }
@@ -255,20 +258,22 @@ const AlertBanner = ({ settings }) => {
 
         <div className="absolute -inset-1 blur-xl opacity-50 animate-pulse z-0" style={{ backgroundColor: config.glow }}></div>
         
-        <div className="relative z-20 flex flex-col md:flex-row items-center justify-between px-8 py-6">
-            <div className="relative shrink-0 mb-4 md:mb-0 md:ml-6">
+        {/* تم تقليل الـ Padding ليتناسب مع الموبايل والكمبيوتر بشكل أفضل */}
+        <div className="relative z-20 flex flex-col md:flex-row items-center justify-between px-5 py-4 md:px-8 md:py-5">
+            <div className="relative shrink-0 mb-2 md:mb-0 md:ml-6">
                 <div className={`absolute inset-0 rounded-full border-2 ${config.ripple} animate-ripple`}></div>
                 <div className={`absolute inset-0 rounded-full border-2 ${config.ripple} animate-ripple delay-150`}></div>
-                <div className="relative w-14 h-14 rounded-full flex items-center justify-center bg-white/20 backdrop-blur-md border border-white/40 shadow-lg">
-                    <stageInfo.icon size={28} className="text-white drop-shadow-md" />
+                <div className="relative w-10 h-10 md:w-14 md:h-14 rounded-full flex items-center justify-center bg-white/20 backdrop-blur-md border border-white/40 shadow-lg">
+                    <stageInfo.icon size={20} className="md:w-7 md:h-7 text-white drop-shadow-md" />
                 </div>
             </div>
 
             <div className="flex-1 text-center md:text-right space-y-1">
-                <h1 className="text-3xl md:text-4xl font-black text-white drop-shadow-lg tracking-tight relative">
+                {/* تم تصغير حجم الخط للموبايل */}
+                <h1 className="text-xl md:text-3xl font-black text-white drop-shadow-lg tracking-tight relative">
                     {stageInfo.title}
                 </h1>
-                <p className="text-white/90 font-bold font-mono tracking-wide drop-shadow-md" style={{ fontSize: `${settings.marqueeSize}px` }}>
+                <p className="text-white/90 font-bold font-mono tracking-wide drop-shadow-md text-xs md:text-base" style={{ fontSize: `${settings.marqueeSize}px` }}>
                     {subText}
                 </p>
             </div>
@@ -428,8 +433,8 @@ const WinnersPodium = ({ winners }) => {
                         </div>
                     </div>
                     <div className="text-center mb-2">
-                         <h3 className="font-bold text-white truncate max-w-[100px] md:max-w-full">{second.participantName}</h3>
-                         <p className="text-gray-400 text-sm font-mono">{second.votes} صوت</p>
+                          <h3 className="font-bold text-white truncate max-w-[100px] md:max-w-full">{second.participantName}</h3>
+                          <p className="text-gray-400 text-sm font-mono">{second.votes} صوت</p>
                     </div>
                     <div className="w-full h-32 bg-gradient-to-t from-gray-900 to-gray-700 rounded-t-2xl border-t border-gray-500 flex items-end justify-center pb-4 shadow-2xl">
                         <span className="text-4xl opacity-20 font-black text-white">2</span>
@@ -450,8 +455,8 @@ const WinnersPodium = ({ winners }) => {
                         </div>
                     </div>
                     <div className="text-center mb-4">
-                         <h3 className="font-black text-2xl text-white truncate max-w-[120px] md:max-w-full">{first.participantName}</h3>
-                         <p className="text-yellow-400 font-bold text-lg font-mono">{first.votes} صوت</p>
+                          <h3 className="font-black text-2xl text-white truncate max-w-[120px] md:max-w-full">{first.participantName}</h3>
+                          <p className="text-yellow-400 font-bold text-lg font-mono">{first.votes} صوت</p>
                     </div>
                     <div className="w-full h-48 bg-gradient-to-t from-yellow-900/50 to-yellow-600 rounded-t-2xl border-t border-yellow-400 flex items-end justify-center pb-6 shadow-[0_0_50px_rgba(234,179,8,0.2)] relative overflow-hidden">
                         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-30"></div>
@@ -472,8 +477,8 @@ const WinnersPodium = ({ winners }) => {
                         </div>
                     </div>
                     <div className="text-center mb-2">
-                         <h3 className="font-bold text-white truncate max-w-[100px] md:max-w-full">{third.participantName}</h3>
-                         <p className="text-orange-400 text-sm font-mono">{third.votes} صوت</p>
+                          <h3 className="font-bold text-white truncate max-w-[100px] md:max-w-full">{third.participantName}</h3>
+                          <p className="text-orange-400 text-sm font-mono">{third.votes} صوت</p>
                     </div>
                     <div className="w-full h-24 bg-gradient-to-t from-gray-900 to-orange-900/60 rounded-t-2xl border-t border-orange-700 flex items-end justify-center pb-4 shadow-2xl">
                         <span className="text-4xl opacity-20 font-black text-white">3</span>
@@ -507,7 +512,7 @@ const ResultsTable = ({ submissions }) => {
     );
 };
 
-// --- LEADERBOARD & TICKER ---
+// --- LEADERBOARD & TICKER (MODIFIED: No Duplication) ---
 const VotingLeaderboard = ({ submissions }) => {
   const sorted = [...submissions].sort((a, b) => b.votes - a.votes);
   const top3 = sorted.slice(0, 3);
@@ -566,23 +571,14 @@ const VotingLeaderboard = ({ submissions }) => {
 
       {rest.length > 0 && (
         <div className="relative bg-white/5 border-y border-white/10 py-3 overflow-hidden group">
-          {/* --- تعديل: شريط متحرك (Ticker) --- */}
-          <div className="flex animate-scroll gap-8 w-max hover:pause" style={{ animation: 'scroll 30s linear infinite' }}>
+          {/* تم إزالة التكرار هنا: يعرض القائمة مرة واحدة فقط */}
+          <div className="flex animate-scroll gap-8 w-max hover:pause" style={{ animation: `scroll ${Math.max(30, rest.length * 5)}s linear infinite` }}>
             {rest.map((sub, i) => (
               <div key={sub.id} className="flex items-center gap-3 px-4 border-l border-white/10 min-w-[200px]">
                 <span className="text-white/30 font-mono text-sm">#{i + 4}</span>
                 <img src={sub.profilePicUrl} className="w-8 h-8 rounded-full object-cover bg-gray-800" alt="" />
                 <span className="text-white font-bold text-sm">{sub.participantName}</span>
                 <span className="text-[var(--highlight-color)] font-bold">{sub.votes} صوت</span>
-              </div>
-            ))}
-            {/* تكرار العناصر لجعل الشريط مستمر */}
-            {rest.map((sub, i) => (
-              <div key={`dup-${sub.id}`} className="flex items-center gap-3 px-4 border-l border-white/10 min-w-[200px]">
-                 <span className="text-white/30 font-mono text-sm">#{i + 4}</span>
-                 <img src={sub.profilePicUrl} className="w-8 h-8 rounded-full object-cover bg-gray-800" alt="" />
-                 <span className="text-white font-bold text-sm">{sub.participantName}</span>
-                 <span className="text-[var(--highlight-color)] font-bold">{sub.votes} صوت</span>
               </div>
             ))}
           </div>
@@ -885,7 +881,7 @@ const AdminSettingsPanel = ({ settings, onSaveSettings }) => {
 
       <div className="mt-6 pt-4 border-t border-white/10 text-right">
         <ShinyButton onClick={() => { setIsSaving(true); onSaveSettings(localSettings).then(() => setIsSaving(false)); }} style={{backgroundColor: localSettings.mainColor}} className="text-white">
-           {isSaving ? 'جاري الحفظ...' : 'حفظ التغييرات'}
+            {isSaving ? 'جاري الحفظ...' : 'حفظ التغييرات'}
         </ShinyButton>
       </div>
     </GlassCard>
@@ -898,25 +894,99 @@ const AdminSubmissionsPanel = ({ submissions, onUpdateStatus, onManualAdd }) => 
   const [editData, setEditData] = useState({});
   const [isAddModalOpen, setAddModal] = useState(false);
   const [newSub, setNewSub] = useState({ displayName: '', tiktokUser: '@', country: 'العراق', url: '' });
+  
+  const fileInputRef = useRef(null);
 
   const startEdit = (sub) => { setEditMode(sub.id); setEditData({ ...sub }); };
   const saveEdit = async () => { await updateDoc(doc(db, PATHS.SUBMISSIONS, editMode), editData); setEditMode(null); };
   const handleManualSubmit = async () => { await onManualAdd(newSub); setAddModal(false); setNewSub({ displayName: '', tiktokUser: '@', country: 'العراق', url: '' }); };
 
+  // --- Export Function ---
+  const exportToCSV = () => {
+    const headers = ['الاسم', 'اليوزر', 'البلد', 'عدد الأصوات', 'الحالة', 'رابط الفيديو'];
+    const rows = submissions.map(sub => [
+      `"${sub.participantName}"`, 
+      sub.tiktokUser,
+      sub.country,
+      sub.votes,
+      sub.status,
+      sub.videoUrl
+    ]);
+    const csvContent = "\uFEFF" + [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `submissions_backup_${new Date().toLocaleDateString()}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // --- Import Function ---
+  const handleFileUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      const text = event.target.result;
+      const lines = text.split('\n');
+      const dataLines = lines.slice(1); // skip headers
+      let count = 0;
+      for (let line of dataLines) {
+        if (!line.trim()) continue;
+        const cols = line.split(',');
+        if (cols.length >= 3) {
+            const name = cols[0]?.replace(/"/g, '').trim() || 'Unknown';
+            const user = cols[1]?.trim() || '@user';
+            const country = cols[2]?.trim() || 'العراق';
+            const votes = parseInt(cols[3]) || 0;
+            const url = cols[5]?.trim() || '';
+            await onManualAdd({
+                displayName: name,
+                tiktokUser: user,
+                country: country,
+                url: url,
+                initialVotes: votes
+            });
+            count++;
+        }
+      }
+      alert(`تم استيراد ${count} مشاركة بنجاح!`);
+    };
+    reader.readAsText(file);
+    e.target.value = ''; 
+  };
+
   const filtered = submissions.filter(s => s.status === filter);
 
   return (
     <GlassCard className="p-6" isGlassmorphism>
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-wrap justify-between items-center mb-6 gap-4">
         <h3 className="text-xl font-bold text-white">إدارة المشاركات</h3>
-        <button onClick={() => setAddModal(true)} className="bg-green-600 px-4 py-2 rounded-lg text-white text-sm font-bold flex items-center gap-2 hover:bg-green-500 transition">
-          <Plus size={16} /> إضافة يدوية
-        </button>
+        
+        <div className="flex gap-2">
+            {/* Export Button */}
+            <button onClick={exportToCSV} className="bg-blue-600/80 px-4 py-2 rounded-lg text-white text-sm font-bold flex items-center gap-2 hover:bg-blue-500 transition">
+                <Download size={16} /> تصدير (Excel)
+            </button>
+
+            {/* Import Button */}
+            <button onClick={() => fileInputRef.current.click()} className="bg-purple-600/80 px-4 py-2 rounded-lg text-white text-sm font-bold flex items-center gap-2 hover:bg-purple-500 transition">
+                <Upload size={16} /> استيراد
+            </button>
+            <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept=".csv" className="hidden" />
+
+            {/* Add Button */}
+            <button onClick={() => setAddModal(true)} className="bg-green-600 px-4 py-2 rounded-lg text-white text-sm font-bold flex items-center gap-2 hover:bg-green-500 transition">
+                <Plus size={16} /> إضافة
+            </button>
+        </div>
       </div>
       
-      <div className="flex gap-2 mb-4 border-b border-white/10 pb-4">
+      <div className="flex gap-2 mb-4 border-b border-white/10 pb-4 overflow-x-auto">
         {['Pending', 'Approved', 'Rejected'].map(s => (
-          <button key={s} onClick={() => setFilter(s)} className={`px-4 py-2 rounded-lg text-xs font-bold transition ${filter === s ? 'bg-gray-700 text-white shadow' : 'bg-white/5 text-white/50 hover:bg-white/10'}`}>
+          <button key={s} onClick={() => setFilter(s)} className={`px-4 py-2 rounded-lg text-xs font-bold transition whitespace-nowrap ${filter === s ? 'bg-gray-700 text-white shadow' : 'bg-white/5 text-white/50 hover:bg-white/10'}`}>
              {s} ({submissions.filter(sub => sub.status === s).length})
           </button>
         ))}
@@ -998,7 +1068,6 @@ const ContestApp = () => {
       body, button, input, select, textarea, h1, h2, h3, h4, h5, h6, p, span {
         font-family: 'Cairo', sans-serif !important;
       }
-      /* حركة شريط النتائج */
       @keyframes scroll {
         0% { transform: translateX(0); }
         100% { transform: translateX(-50%); }
@@ -1067,17 +1136,17 @@ const ContestApp = () => {
     else await updateDoc(doc(db, PATHS.SUBMISSIONS, id), { status: st });
   };
   const handleManualAdd = async (data) => {
-     const countryData = COUNTRIES.find(c => c.name === data.country);
+     const countryData = COUNTRIES.find(c => c.name === data.country) || { flag: '🌍' };
      await addDoc(collection(db, PATHS.SUBMISSIONS), {
        participantName: data.displayName,
        tiktokUser: data.tiktokUser,
        country: data.country,
        flag: countryData.flag,
-       videoUrl: data.url,
+       videoUrl: data.url || '',
        profilePicUrl: `https://ui-avatars.com/api/?name=${data.displayName}&background=random`,
        thumbnailUrl: 'https://placehold.co/600x900/222/fff?text=Video',
        status: 'Approved',
-       votes: 0,
+       votes: data.initialVotes || 0, // Updated to accept initial votes for Import
        submittedAt: serverTimestamp()
      });
   };
@@ -1126,7 +1195,7 @@ const ContestApp = () => {
               <AdminSettingsPanel settings={settings} onSaveSettings={handleSaveSettings} />
               <AdminSubmissionsPanel submissions={submissions} onUpdateStatus={handleStatus} onManualAdd={handleManualAdd} />
             </div>
-         ) : <div className="h-screen flex flex-col items-center justify-center gap-4"><Lock className="w-12 h-12 text-red-500"/><button onClick={() => setModals(p=>({...p, adminAuth: true}))} className="text-white underline">تسجيل الدخول</button></div>} />
+         ) : <div className="h-screen flex flex-col items-center justify-center gap-4"><SettingsIcon className="w-12 h-12 text-red-500"/><button onClick={() => setModals(p=>({...p, adminAuth: true}))} className="text-white underline">تسجيل الدخول</button></div>} />
 
          <Route path="/" element={
            <>
@@ -1220,10 +1289,10 @@ const ContestApp = () => {
        {/* MODALS */}
        <Modal isOpen={!!modals.voteConfirm} onClose={() => setModals(p=>({...p, voteConfirm: null}))} title="تأكيد التصويت">
           <div className="text-center py-4">
-             <img src={modals.voteConfirm?.profilePicUrl} className="w-20 h-20 rounded-full mx-auto mb-4 border-2 border-[var(--highlight-color)] object-cover bg-black" alt=""/>
-             <p className="text-lg mb-1">هل تود التصويت لـ <span className="font-bold text-white">{modals.voteConfirm?.participantName}</span>؟</p>
-             <p className="text-sm text-[var(--highlight-color)] mb-6">{modals.voteConfirm?.tiktokUser}</p>
-             <ShinyButton onClick={confirmVote} style={{backgroundColor: settings.mainColor}} className="w-full text-white">تأكيد التصويت</ShinyButton>
+              <img src={modals.voteConfirm?.profilePicUrl} className="w-20 h-20 rounded-full mx-auto mb-4 border-2 border-[var(--highlight-color)] object-cover bg-black" alt=""/>
+              <p className="text-lg mb-1">هل تود التصويت لـ <span className="font-bold text-white">{modals.voteConfirm?.participantName}</span>؟</p>
+              <p className="text-sm text-[var(--highlight-color)] mb-6">{modals.voteConfirm?.tiktokUser}</p>
+              <ShinyButton onClick={confirmVote} style={{backgroundColor: settings.mainColor}} className="w-full text-white">تأكيد التصويت</ShinyButton>
           </div>
        </Modal>
 

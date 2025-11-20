@@ -21,6 +21,7 @@ import {
   increment,
   addDoc,
   updateDoc,
+  deleteDoc, // <--- أضف هذه الكلمة هنا
   serverTimestamp,
 } from 'firebase/firestore';
 import {
@@ -1161,8 +1162,14 @@ const ContestApp = () => {
 
   const handleSaveSettings = async (newS) => await setDoc(doc(db, PATHS.SETTINGS), newS, { merge: true });
   const handleStatus = async (id, st) => {
-    if(st === 'Deleted') { /* delete */ } 
-    else await updateDoc(doc(db, PATHS.SUBMISSIONS, id), { status: st });
+    if (st === 'Deleted') {
+       // هذا الأمر يقوم بحذف المستند نهائياً من قاعدة البيانات
+       await deleteDoc(doc(db, PATHS.SUBMISSIONS, id));
+    } 
+    else {
+       // هذا الأمر يقوم بتحديث الحالة فقط (قبول/رفض)
+       await updateDoc(doc(db, PATHS.SUBMISSIONS, id), { status: st });
+    }
   };
   const handleManualAdd = async (data) => {
      const countryData = COUNTRIES.find(c => c.name === data.country) || { flag: '🌍' };

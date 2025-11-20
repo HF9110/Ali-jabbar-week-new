@@ -39,8 +39,10 @@ import {
   Zap,
   PauseCircle,
   Trophy,
-  Download, // أيقونة التصدير
-  Upload    // أيقونة الاستيراد
+  Download,
+  Upload,
+  AlignRight,
+  Info
 } from 'lucide-react';
 
 // =========================================================================
@@ -192,7 +194,7 @@ const InputField = ({ label, id, value, onChange, type = 'text', placeholder = '
 );
 
 // =========================================================================
-// *** ALERT BANNER (MODIFIED: Smaller & Responsive) ***
+// *** REDESIGNED: Alert Banner (Sleek Bar Style) ***
 // =========================================================================
 const AlertBanner = ({ settings }) => {
   const stage = settings.stage || 'Voting';
@@ -202,105 +204,78 @@ const AlertBanner = ({ settings }) => {
   const config = useMemo(() => {
     switch (stage) {
       case 'Submission': 
-        return { 
-          bg: 'linear-gradient(135deg, #00f2ea 0%, #25f4ee 100%)', 
-          glow: '#25f4ee',
-          border: 'border-[#25f4ee]/40',
-          ripple: 'border-[#25f4ee]',
-        };
+        return { bg: 'bg-gradient-to-r from-cyan-600 to-cyan-400', iconColor: 'text-white' };
       case 'Voting':
-        return { 
-          bg: 'linear-gradient(135deg, #fe2c55 0%, #ee1d52 100%)', 
-          glow: '#fe2c55',
-          border: 'border-[#fe2c55]/40',
-          ripple: 'border-[#fe2c55]',
-          iconColor: 'text-white'
-        };
+        return { bg: 'bg-gradient-to-r from-[#ff0050] to-[#ff4070]', iconColor: 'text-white' };
       case 'Ended':
-        return { 
-            bg: 'linear-gradient(135deg, #047857 0%, #059669 100%)', 
-            glow: '#34d399',
-            border: 'border-green-500/40',
-            ripple: 'border-green-400'
-        };
+        return { bg: 'bg-gradient-to-r from-emerald-600 to-emerald-400', iconColor: 'text-white' };
       default:
-        return { 
-            bg: 'linear-gradient(135deg, #991b1b 0%, #dc2626 100%)', 
-            glow: '#f87171',
-            border: 'border-red-500/40',
-            ripple: 'border-red-400'
-        };
+        return { bg: 'bg-gradient-to-r from-red-700 to-red-500', iconColor: 'text-white' };
     }
   }, [stage]);
 
   return (
-    // تم تعديل max-w-4xl إلى max-w-3xl لتصغير العرض على الكمبيوتر
-    <div className={`relative w-full mb-8 mx-auto max-w-3xl transform hover:scale-[1.02] transition-transform duration-500 overflow-hidden rounded-2xl shadow-2xl border-2 ${config.border}`}>
-        <style>{`
-            @keyframes flash-sheen {
-                0% { transform: translateX(-150%) skewX(-20deg); }
-                50% { transform: translateX(250%) skewX(-20deg); }
-                100% { transform: translateX(250%) skewX(-20deg); }
-            }
-            @keyframes ripple-out {
-                0% { transform: scale(0.8); opacity: 1; }
-                100% { transform: scale(2.2); opacity: 0; }
-            }
-            .animate-sheen { animation: flash-sheen 4s infinite ease-in-out; }
-            .animate-ripple { animation: ripple-out 2s cubic-bezier(0, 0.2, 0.8, 1) infinite; }
-        `}</style>
+    <div className="w-full mb-8 animate-fadeIn">
+       <div className={`relative w-full rounded-xl overflow-hidden shadow-lg ${config.bg} border border-white/10`}>
+          <div className="flex items-stretch min-h-[60px]">
+             
+             {/* Right: Status Label (Icon + Title) */}
+             <div className="flex items-center gap-2 px-4 md:px-6 bg-black/20 backdrop-blur-sm z-20 shrink-0">
+                <stageInfo.icon className={`w-5 h-5 md:w-6 md:h-6 ${config.iconColor} animate-pulse`} />
+                <h2 className="font-black text-white text-sm md:text-lg tracking-wide whitespace-nowrap">
+                  {stageInfo.title}
+                </h2>
+             </div>
 
-        <div className="absolute inset-0 z-0" style={{ background: config.bg }}></div>
-        
-        <div className="absolute inset-0 z-10 pointer-events-none">
-            <div className="absolute inset-0 w-1/2 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-sheen" style={{ filter: 'blur(10px)' }}></div>
-        </div>
-
-        <div className="absolute -inset-1 blur-xl opacity-50 animate-pulse z-0" style={{ backgroundColor: config.glow }}></div>
-        
-        {/* تم تقليل الـ Padding ليتناسب مع الموبايل والكمبيوتر بشكل أفضل */}
-        <div className="relative z-20 flex flex-col md:flex-row items-center justify-between px-5 py-4 md:px-8 md:py-5">
-            <div className="relative shrink-0 mb-2 md:mb-0 md:ml-6">
-                <div className={`absolute inset-0 rounded-full border-2 ${config.ripple} animate-ripple`}></div>
-                <div className={`absolute inset-0 rounded-full border-2 ${config.ripple} animate-ripple delay-150`}></div>
-                <div className="relative w-10 h-10 md:w-14 md:h-14 rounded-full flex items-center justify-center bg-white/20 backdrop-blur-md border border-white/40 shadow-lg">
-                    <stageInfo.icon size={20} className="md:w-7 md:h-7 text-white drop-shadow-md" />
+             {/* Middle: Scrolling Text */}
+             <div className="flex-1 relative flex items-center overflow-hidden bg-black/10">
+                <div className="animate-marquee whitespace-nowrap absolute left-0 top-0 bottom-0 flex items-center">
+                   <span className="text-white font-bold text-sm md:text-base px-4 inline-block" style={{ textShadow: '0 2px 4px rgba(0,0,0,0.3)' }}>
+                      {subText}
+                   </span>
+                   {/* Repeated for seamless loop */}
+                   <span className="text-white font-bold text-sm md:text-base px-4 inline-block" style={{ textShadow: '0 2px 4px rgba(0,0,0,0.3)' }}>
+                      {subText}
+                   </span>
+                   <span className="text-white font-bold text-sm md:text-base px-4 inline-block" style={{ textShadow: '0 2px 4px rgba(0,0,0,0.3)' }}>
+                      {subText}
+                   </span>
                 </div>
-            </div>
+             </div>
 
-            <div className="flex-1 text-center md:text-right space-y-1">
-                {/* تم تصغير حجم الخط للموبايل */}
-                <h1 className="text-xl md:text-3xl font-black text-white drop-shadow-lg tracking-tight relative">
-                    {stageInfo.title}
-                </h1>
-                <p className="text-white/90 font-bold font-mono tracking-wide drop-shadow-md text-xs md:text-base" style={{ fontSize: `${settings.marqueeSize}px` }}>
-                    {subText}
-                </p>
-            </div>
-        </div>
+             {/* Left: Decorative Tag */}
+             <div className="hidden md:flex items-center justify-center px-4 bg-black/20 z-20 font-mono text-white/50 text-xs">
+                AJW
+             </div>
+          </div>
+       </div>
+       <style>{`
+         @keyframes marquee {
+           0% { transform: translateX(0%); }
+           100% { transform: translateX(-100%); }
+         }
+         .animate-marquee {
+           animation: marquee 20s linear infinite;
+           min-width: 100%;
+         }
+       `}</style>
     </div>
   );
 };
 
-const LiveHeader = () => (
-<div className="flex items-center justify-center gap-3 mb-24 animate-fadeIn mt-4">
-      <div 
-      className="flex items-center gap-2 px-4 py-2 rounded-full border"
-      style={{ 
-        backgroundColor: 'rgba(254, 44, 85, 0.1)', 
-        borderColor: 'rgba(254, 44, 85, 0.3)' 
-      }}
-    >
+// =========================================================================
+// *** REDESIGNED: Live Header (Inside Podium) ***
+// =========================================================================
+const LiveResultsBadge = () => (
+    <div className="flex items-center gap-2">
         <span className="relative flex h-3 w-3">
           <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ backgroundColor: '#fe2c55' }}></span>
           <span className="relative inline-flex rounded-full h-3 w-3" style={{ backgroundColor: '#fe2c55' }}></span>
         </span>
-        
-        <h3 className="font-bold text-xl tracking-wide" style={{ color: '#fe2c55' }}>
-        النتائج مباشرة
+        <h3 className="font-bold text-lg text-white tracking-wide">
+          النتائج المباشرة
         </h3>
     </div>
-  </div>
 );
 
 const ShinyButton = ({ children, onClick, disabled, className = '', style = {} }) => (
@@ -415,78 +390,135 @@ const CelebrationHeader = () => (
   </div>
 );
 
-const WinnersPodium = ({ winners }) => {
-    if (winners.length === 0) return null;
-    const [first, second, third] = winners;
+// =========================================================================
+// *** REDESIGNED: VotingLeaderboard (Card Style Grid) ***
+// =========================================================================
+const VotingLeaderboard = ({ submissions }) => {
+  const sorted = [...submissions].sort((a, b) => b.votes - a.votes);
+  const top3 = sorted.slice(0, 3);
+  const rest = sorted.slice(3);
+
+  if (sorted.length === 0) return null;
+
+  // Helper to render the specific style for each rank card
+  const renderRankCard = (sub, rank) => {
+    let config = {
+      borderColor: 'border-white/10',
+      glow: '',
+      textColor: 'text-white',
+      badgeColor: 'bg-gray-700'
+    };
+
+    if (rank === 1) { // #1
+       config = { 
+         borderColor: 'border-cyan-400', 
+         glow: 'shadow-[0_0_30px_rgba(34,211,238,0.2)]', 
+         textColor: 'text-cyan-400',
+         badgeColor: 'bg-cyan-400 text-black'
+       };
+    } else if (rank === 2) { // #2
+       config = { 
+         borderColor: 'border-[#ff0050]', 
+         glow: 'shadow-[0_0_30px_rgba(255,0,80,0.2)]', 
+         textColor: 'text-[#ff0050]',
+         badgeColor: 'bg-[#ff0050] text-white'
+       };
+    } else if (rank === 3) { // #3
+       config = { 
+         borderColor: 'border-red-900', 
+         glow: 'shadow-[0_0_30px_rgba(127,29,29,0.2)]', 
+         textColor: 'text-red-400',
+         badgeColor: 'bg-red-900 text-white'
+       };
+    }
 
     return (
-        <div className="flex justify-center items-end gap-4 md:gap-8 mb-20 min-h-[350px] px-4">
-            {/* المركز الثاني */}
-            {second && (
-                <div className="flex flex-col items-center w-1/3 md:w-1/4 animate-slideUp delay-100">
-                    <div className="relative mb-4">
-                        <div className="w-20 h-20 md:w-28 md:h-28 rounded-full border-4 border-gray-300 shadow-[0_0_20px_rgba(209,213,219,0.3)] overflow-hidden">
-                            <img src={second.profilePicUrl} className="w-full h-full object-cover" alt="" />
-                        </div>
-                        <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 bg-gray-300 text-gray-900 font-bold px-3 py-1 rounded-full border-2 border-gray-100 shadow-lg flex items-center gap-1">
-                            <span className="text-xs">#2</span>
-                        </div>
-                    </div>
-                    <div className="text-center mb-2">
-                          <h3 className="font-bold text-white truncate max-w-[100px] md:max-w-full">{second.participantName}</h3>
-                          <p className="text-gray-400 text-sm font-mono">{second.votes} صوت</p>
-                    </div>
-                    <div className="w-full h-32 bg-gradient-to-t from-gray-900 to-gray-700 rounded-t-2xl border-t border-gray-500 flex items-end justify-center pb-4 shadow-2xl">
-                        <span className="text-4xl opacity-20 font-black text-white">2</span>
-                    </div>
-                </div>
-            )}
+       <div key={sub.id} className={`relative bg-gray-900 rounded-2xl border-2 ${config.borderColor} ${config.glow} p-4 flex flex-col items-center justify-center transition-transform hover:scale-[1.02]`}>
+           {/* Rank Badge */}
+           <div className={`absolute top-0 right-0 ${config.badgeColor} font-black text-lg px-3 py-1 rounded-bl-2xl rounded-tr-xl`}>
+              #{rank}
+           </div>
+           
+           {/* Profile Image */}
+           <div className={`w-20 h-20 rounded-xl overflow-hidden mb-3 border-2 ${config.borderColor}`}>
+              <img src={sub.profilePicUrl} alt={sub.participantName} className="w-full h-full object-cover" />
+           </div>
 
-            {/* المركز الأول */}
-            {first && (
-                <div className="flex flex-col items-center w-1/3 md:w-1/3 z-10 animate-slideUp">
-                    <div className="relative mb-6">
-                        <Crown className="absolute -top-10 left-1/2 -translate-x-1/2 text-yellow-400 w-12 h-12 animate-bounce fill-yellow-400" />
-                        <div className="w-28 h-28 md:w-40 md:h-40 rounded-full border-4 border-yellow-400 shadow-[0_0_40px_rgba(250,204,21,0.5)] overflow-hidden ring-4 ring-yellow-400/20">
-                            <img src={first.profilePicUrl} className="w-full h-full object-cover" alt="" />
-                        </div>
-                        <div className="absolute -bottom-5 left-1/2 -translate-x-1/2 bg-gradient-to-r from-yellow-400 to-yellow-600 text-black font-black px-6 py-1.5 rounded-full border-2 border-yellow-200 shadow-xl flex items-center gap-1 text-lg">
-                            <span>#1</span>
-                        </div>
-                    </div>
-                    <div className="text-center mb-4">
-                          <h3 className="font-black text-2xl text-white truncate max-w-[120px] md:max-w-full">{first.participantName}</h3>
-                          <p className="text-yellow-400 font-bold text-lg font-mono">{first.votes} صوت</p>
-                    </div>
-                    <div className="w-full h-48 bg-gradient-to-t from-yellow-900/50 to-yellow-600 rounded-t-2xl border-t border-yellow-400 flex items-end justify-center pb-6 shadow-[0_0_50px_rgba(234,179,8,0.2)] relative overflow-hidden">
-                        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-30"></div>
-                        <span className="text-6xl opacity-30 font-black text-white">1</span>
-                    </div>
-                </div>
-            )}
+           {/* Votes */}
+           <div className={`text-3xl font-black mb-1 ${config.textColor}`}>
+              {sub.votes}
+           </div>
 
-            {/* المركز الثالث */}
-            {third && (
-                <div className="flex flex-col items-center w-1/3 md:w-1/4 animate-slideUp delay-200">
-                    <div className="relative mb-4">
-                        <div className="w-20 h-20 md:w-28 md:h-28 rounded-full border-4 border-orange-700 shadow-[0_0_20px_rgba(194,65,12,0.3)] overflow-hidden">
-                            <img src={third.profilePicUrl} className="w-full h-full object-cover" alt="" />
-                        </div>
-                        <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 bg-orange-700 text-white font-bold px-3 py-1 rounded-full border-2 border-orange-500 shadow-lg flex items-center gap-1">
-                            <span className="text-xs">#3</span>
-                        </div>
-                    </div>
-                    <div className="text-center mb-2">
-                          <h3 className="font-bold text-white truncate max-w-[100px] md:max-w-full">{third.participantName}</h3>
-                          <p className="text-orange-400 text-sm font-mono">{third.votes} صوت</p>
-                    </div>
-                    <div className="w-full h-24 bg-gradient-to-t from-gray-900 to-orange-900/60 rounded-t-2xl border-t border-orange-700 flex items-end justify-center pb-4 shadow-2xl">
-                        <span className="text-4xl opacity-20 font-black text-white">3</span>
-                    </div>
-                </div>
-            )}
-        </div>
+           {/* Name */}
+           <h3 className="font-bold text-white text-lg truncate w-full text-center">{sub.participantName}</h3>
+           
+           {/* Country */}
+           <div className="flex items-center gap-1 text-white/50 text-xs mt-1">
+              <span>{sub.flag}</span>
+              <span>{sub.country}</span>
+           </div>
+       </div>
     );
+  };
+
+  return (
+    <div className="mb-12 animate-slideUp w-full max-w-5xl mx-auto">
+       {/* Header Section */}
+       <div className="flex justify-between items-center mb-6 border-b border-white/10 pb-4">
+           <div className="hidden md:block"></div> {/* Spacer */}
+           <LiveResultsBadge />
+       </div>
+       
+       {/* Grid Layout for Top 3 */}
+       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-10">
+          {/* Order visually: 2 - 1 - 3 (or 3 - 2 - 1) depending on preference. 
+              Standard CSS Grid keeps them 1, 2, 3. Let's stick to logic 1, 2, 3 but style differently.
+              Wait, user image shows #3, #2, #1 left to right or cards. 
+              Let's just render top3 array directly, but style based on index.
+          */}
+          
+          {/* Note: In the image, #1 is biggest. In a grid, we usually want #1 in center on desktop.
+              To achieve center #1 on desktop:
+              Mobile: 1, 2, 3 (Stack)
+              Desktop: 2, 1, 3
+          */}
+          
+          {/* Mobile View (Stacked) */}
+          <div className="md:hidden space-y-4">
+             {top3.map((sub, idx) => renderRankCard(sub, idx + 1))}
+          </div>
+
+          {/* Desktop View (2 - 1 - 3 Layout) */}
+          <div className="hidden md:contents">
+             {/* Position #2 */}
+             {top3[1] && renderRankCard(top3[1], 2)}
+             {/* Position #1 (Make it slightly taller?) */}
+             {top3[0] && (
+                 <div className="transform scale-110 z-10">
+                    {renderRankCard(top3[0], 1)}
+                 </div>
+             )}
+             {/* Position #3 */}
+             {top3[2] && renderRankCard(top3[2], 3)}
+          </div>
+       </div>
+
+      {rest.length > 0 && (
+        <div className="relative bg-white/5 border-y border-white/10 py-3 overflow-hidden group rounded-xl">
+          <div className="flex animate-scroll gap-8 w-max hover:pause" style={{ animation: `scroll ${Math.max(30, rest.length * 5)}s linear infinite` }}>
+            {rest.map((sub, i) => (
+              <div key={sub.id} className="flex items-center gap-3 px-4 border-l border-white/10 min-w-[200px]">
+                <span className="text-white/30 font-mono text-sm">#{i + 4}</span>
+                <img src={sub.profilePicUrl} className="w-8 h-8 rounded-full object-cover bg-gray-800" alt="" />
+                <span className="text-white font-bold text-sm">{sub.participantName}</span>
+                <span className="text-[var(--highlight-color)] font-bold">{sub.votes} صوت</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
 };
 
 const ResultsTable = ({ submissions }) => {
@@ -510,82 +542,6 @@ const ResultsTable = ({ submissions }) => {
             </div>
         </div>
     );
-};
-
-// --- LEADERBOARD & TICKER (MODIFIED: No Duplication) ---
-const VotingLeaderboard = ({ submissions }) => {
-  const sorted = [...submissions].sort((a, b) => b.votes - a.votes);
-  const top3 = sorted.slice(0, 3);
-  const rest = sorted.slice(3);
-
-  if (sorted.length === 0) return null;
-
-  return (
-    <div className="mb-12 animate-slideUp">
-      <div className="flex justify-center items-end gap-4 mb-10 min-h-[220px]">
-        {top3[1] && (
-          <div className="flex flex-col items-center w-1/3 md:w-auto animate-fadeIn">
-            <div className="relative">
-              <img src={top3[1].profilePicUrl} alt="2nd" className="w-16 h-16 md:w-20 md:h-20 rounded-full border-4 border-gray-400 shadow-lg object-cover bg-black" />
-              <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-gray-400 text-black text-xs font-bold px-2 py-0.5 rounded-full">#2</div>
-            </div>
-            <div className="mt-3 text-center">
-              <p className="font-bold text-white text-xs md:text-sm truncate max-w-[100px]">{top3[1].participantName}</p>
-              <p className="font-bold text-gray-300 text-sm">{top3[1].votes}</p>
-            </div>
-            <div className="w-16 md:w-20 h-20 bg-gray-700/30 rounded-t-lg border-t border-gray-500/30 mt-2"></div>
-          </div>
-        )}
-
-        {top3[0] && (
-          <div className="flex flex-col items-center z-10 w-1/3 md:w-auto animate-fadeIn">
-            <div className="relative">
-              <Crown className="absolute -top-8 left-1/2 -translate-x-1/2 text-yellow-400 w-8 h-8 animate-pulse" />
-              <img src={top3[0].profilePicUrl} alt="1st" className="w-24 h-24 md:w-28 md:h-28 rounded-full border-4 border-yellow-400 shadow-2xl shadow-yellow-400/20 object-cover bg-black" />
-              <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-yellow-400 text-black text-xs font-bold px-3 py-1 rounded-full">#1</div>
-            </div>
-            <div className="mt-3 text-center">
-              <p className="font-bold text-white text-sm md:text-lg truncate max-w-[120px]">{top3[0].participantName}</p>
-              <p className="font-black text-yellow-400 text-xl">{top3[0].votes}</p>
-            </div>
-            <div className="w-20 md:w-24 h-28 bg-gradient-to-b from-yellow-500/20 to-transparent rounded-t-xl border-t border-yellow-500/30 mt-2 relative overflow-hidden">
-               <div className="absolute inset-0 bg-yellow-400/10 animate-pulse"></div>
-            </div>
-          </div>
-        )}
-
-        {top3[2] && (
-          <div className="flex flex-col items-center w-1/3 md:w-auto animate-fadeIn">
-            <div className="relative">
-              <img src={top3[2].profilePicUrl} alt="3rd" className="w-16 h-16 md:w-20 md:h-20 rounded-full border-4 border-orange-700 shadow-lg object-cover bg-black" />
-              <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-orange-700 text-white text-xs font-bold px-2 py-0.5 rounded-full">#3</div>
-            </div>
-            <div className="mt-3 text-center">
-              <p className="font-bold text-white text-xs md:text-sm truncate max-w-[100px]">{top3[2].participantName}</p>
-              <p className="font-bold text-orange-400 text-sm">{top3[2].votes}</p>
-            </div>
-            <div className="w-16 md:w-20 h-14 bg-gray-700/30 rounded-t-lg border-t border-orange-700/30 mt-2"></div>
-          </div>
-        )}
-      </div>
-
-      {rest.length > 0 && (
-        <div className="relative bg-white/5 border-y border-white/10 py-3 overflow-hidden group">
-          {/* تم إزالة التكرار هنا: يعرض القائمة مرة واحدة فقط */}
-          <div className="flex animate-scroll gap-8 w-max hover:pause" style={{ animation: `scroll ${Math.max(30, rest.length * 5)}s linear infinite` }}>
-            {rest.map((sub, i) => (
-              <div key={sub.id} className="flex items-center gap-3 px-4 border-l border-white/10 min-w-[200px]">
-                <span className="text-white/30 font-mono text-sm">#{i + 4}</span>
-                <img src={sub.profilePicUrl} className="w-8 h-8 rounded-full object-cover bg-gray-800" alt="" />
-                <span className="text-white font-bold text-sm">{sub.participantName}</span>
-                <span className="text-[var(--highlight-color)] font-bold">{sub.votes} صوت</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
 };
 
 const SearchFilterBar = ({ onSearch, onFilter }) => {
@@ -614,7 +570,7 @@ const SearchFilterBar = ({ onSearch, onFilter }) => {
 };
 
 // =========================================================================
-// *** MODIFIED: VideoCard ***
+// *** VIDEO CARD & MODAL ***
 // =========================================================================
 const VideoCard = ({ submission, settings, onVote, onClick, cooldown }) => (
   <div 
@@ -662,9 +618,6 @@ const VideoCard = ({ submission, settings, onVote, onClick, cooldown }) => (
   </div>
 );
 
-// =========================================================================
-// *** UPDATED: VideoModal (Full Responsive / Only Video) ***
-// =========================================================================
 const VideoModal = ({ isOpen, onClose, submission, settings, onVote, cooldown }) => {
   if (!isOpen || !submission) return null;
   const videoId = submission.videoUrl.split('/').pop().split('?')[0];
@@ -672,13 +625,10 @@ const VideoModal = ({ isOpen, onClose, submission, settings, onVote, cooldown })
 
   return (
     <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/95 backdrop-blur-md animate-fadeIn" onClick={onClose}>
-      {/* الحاوية الرئيسية: تأخذ كامل الشاشة تقريباً على الجوال */}
       <div 
         className="relative w-full h-full md:h-[90vh] md:max-w-6xl md:rounded-2xl overflow-hidden flex flex-col md:flex-row bg-black md:border md:border-white/10 shadow-2xl"
         onClick={e => e.stopPropagation()}
       >
-        
-        {/* زر الإغلاق - عائم دائماً */}
         <button 
             onClick={onClose} 
             className="absolute top-4 left-4 z-[200] bg-black/50 p-2 rounded-full text-white hover:bg-red-600 transition border border-white/10"
@@ -686,7 +636,6 @@ const VideoModal = ({ isOpen, onClose, submission, settings, onVote, cooldown })
             <X size={24} />
         </button>
 
-        {/* قسم الفيديو: يأخذ المساحة الأكبر */}
         <div className="w-full md:flex-1 h-full bg-black relative flex items-center justify-center">
            <iframe 
              src={embedUrl} 
@@ -697,7 +646,6 @@ const VideoModal = ({ isOpen, onClose, submission, settings, onVote, cooldown })
            ></iframe>
         </div>
 
-        {/* قسم المعلومات الجانبي: يختفي أو يصغر في الموبايل للتركيز على الفيديو */}
         <div className="hidden md:flex w-full md:w-80 bg-gray-900 border-l border-white/10 flex-col relative p-6">
            <div className="flex flex-col items-center mb-6 mt-4">
              <img src={submission.profilePicUrl} className="w-16 h-16 rounded-full border-2 border-[var(--highlight-color)] mb-3 object-cover bg-black" alt="" />
@@ -723,7 +671,6 @@ const VideoModal = ({ isOpen, onClose, submission, settings, onVote, cooldown })
            )}
         </div>
 
-        {/* زر عائم للتصويت في الموبايل فقط (فوق الفيديو) */}
         <div className="md:hidden absolute bottom-8 left-0 right-0 px-6 z-50 flex items-center justify-between gap-4">
             <div className="bg-black/60 backdrop-blur-md rounded-full px-4 py-2 border border-white/10 flex items-center gap-2">
                  <span className="text-white font-bold text-sm">{submission.votes} صوت</span>
@@ -819,6 +766,29 @@ const AdminSettingsPanel = ({ settings, onSaveSettings }) => {
              </div>
           </div>
           
+          {/* --- ADDED: Content Fields --- */}
+          <h3 className="text-lg font-bold text-white border-b border-white/10 pb-2 mt-6">المحتوى والنصوص</h3>
+          <div className="space-y-4">
+             <div>
+                <label className="block text-white mb-2 text-sm opacity-90">عن المسابقة (Why Text)</label>
+                <textarea 
+                   value={localSettings.whyText || ''} 
+                   onChange={(e) => setLocalSettings({...localSettings, whyText: e.target.value})}
+                   className="w-full p-3 rounded-lg bg-gray-800/80 border border-white/10 text-white text-sm outline-none focus:border-[var(--highlight-color)] h-24"
+                   placeholder="اكتب نبذة عن المسابقة..."
+                />
+             </div>
+             <div>
+                <label className="block text-white mb-2 text-sm opacity-90">الشروط والأحكام (Terms)</label>
+                <textarea 
+                   value={localSettings.termsText || ''} 
+                   onChange={(e) => setLocalSettings({...localSettings, termsText: e.target.value})}
+                   className="w-full p-3 rounded-lg bg-gray-800/80 border border-white/10 text-white text-sm outline-none focus:border-[var(--highlight-color)] h-24"
+                   placeholder="اكتب الشروط والأحكام..."
+                />
+             </div>
+          </div>
+
           <h3 className="text-lg font-bold text-white border-b border-white/10 pb-2 mt-6">التوقيت والمواعيد</h3>
           <div className="flex gap-4">
               <InputField label="وقت البدء" type="datetime-local" id="start" value={localSettings.startTime} onChange={(v) => setLocalSettings({...localSettings, startTime: v})} />
@@ -901,7 +871,6 @@ const AdminSubmissionsPanel = ({ submissions, onUpdateStatus, onManualAdd }) => 
   const saveEdit = async () => { await updateDoc(doc(db, PATHS.SUBMISSIONS, editMode), editData); setEditMode(null); };
   const handleManualSubmit = async () => { await onManualAdd(newSub); setAddModal(false); setNewSub({ displayName: '', tiktokUser: '@', country: 'العراق', url: '' }); };
 
-  // --- Export Function ---
   const exportToCSV = () => {
     const headers = ['الاسم', 'اليوزر', 'البلد', 'عدد الأصوات', 'الحالة', 'رابط الفيديو'];
     const rows = submissions.map(sub => [
@@ -923,7 +892,6 @@ const AdminSubmissionsPanel = ({ submissions, onUpdateStatus, onManualAdd }) => 
     document.body.removeChild(link);
   };
 
-  // --- Import Function ---
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -931,7 +899,7 @@ const AdminSubmissionsPanel = ({ submissions, onUpdateStatus, onManualAdd }) => 
     reader.onload = async (event) => {
       const text = event.target.result;
       const lines = text.split('\n');
-      const dataLines = lines.slice(1); // skip headers
+      const dataLines = lines.slice(1);
       let count = 0;
       for (let line of dataLines) {
         if (!line.trim()) continue;
@@ -966,18 +934,13 @@ const AdminSubmissionsPanel = ({ submissions, onUpdateStatus, onManualAdd }) => 
         <h3 className="text-xl font-bold text-white">إدارة المشاركات</h3>
         
         <div className="flex gap-2">
-            {/* Export Button */}
             <button onClick={exportToCSV} className="bg-blue-600/80 px-4 py-2 rounded-lg text-white text-sm font-bold flex items-center gap-2 hover:bg-blue-500 transition">
                 <Download size={16} /> تصدير (Excel)
             </button>
-
-            {/* Import Button */}
             <button onClick={() => fileInputRef.current.click()} className="bg-purple-600/80 px-4 py-2 rounded-lg text-white text-sm font-bold flex items-center gap-2 hover:bg-purple-500 transition">
                 <Upload size={16} /> استيراد
             </button>
             <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept=".csv" className="hidden" />
-
-            {/* Add Button */}
             <button onClick={() => setAddModal(true)} className="bg-green-600 px-4 py-2 rounded-lg text-white text-sm font-bold flex items-center gap-2 hover:bg-green-500 transition">
                 <Plus size={16} /> إضافة
             </button>
@@ -1108,7 +1071,6 @@ const ContestApp = () => {
     }
   }, [settings]);
 
-  // --- CHECK LOCAL STORAGE FOR COOLDOWN ON MOUNT ---
   useEffect(() => {
     const lastVoteTime = localStorage.getItem('lastVoteTime_AliWeek');
     if (lastVoteTime) {
@@ -1146,23 +1108,16 @@ const ContestApp = () => {
        profilePicUrl: `https://ui-avatars.com/api/?name=${data.displayName}&background=random`,
        thumbnailUrl: 'https://placehold.co/600x900/222/fff?text=Video',
        status: 'Approved',
-       votes: data.initialVotes || 0, // Updated to accept initial votes for Import
+       votes: data.initialVotes || 0,
        submittedAt: serverTimestamp()
      });
   };
   
-  // --- CONFIRM VOTE WITH PERSISTENCE ---
   const confirmVote = async () => {
     if (modals.voteConfirm) {
-      // 1. Update Firebase
       await updateDoc(doc(db, PATHS.SUBMISSIONS, modals.voteConfirm.id), { votes: increment(1) });
-      
-      // 2. Set Cooldown State
       setCooldown(30);
-      
-      // 3. Persist to LocalStorage
       localStorage.setItem('lastVoteTime_AliWeek', Date.now().toString());
-
       setModals(p => ({...p, voteConfirm: null}));
     }
   };
@@ -1214,7 +1169,7 @@ const ContestApp = () => {
                 
                 {(settings.stage === 'Voting' || settings.stage === 'Ended') && (
                   <>
-                    {settings.stage === 'Voting' && <LiveHeader settings={settings} />}
+                    {/* Note: Live Header is now inside VotingLeaderboard for layout purposes, or we can keep simpler structure */}
                     
                     {settings.stage === 'Voting' ? (
                         <VotingLeaderboard submissions={submissions.filter(s => s.status === 'Approved')} />
@@ -1321,7 +1276,7 @@ const ContestApp = () => {
        )}
        
        <Modal isOpen={!!modals.info} onClose={() => setModals(p=>({...p, info: null}))} title="المعلومات">
-         {modals.info === 'why' && <p className="text-lg leading-relaxed text-gray-300">{settings.whyText}</p>}
+         {modals.info === 'why' && <p className="text-lg leading-relaxed text-gray-300 whitespace-pre-line">{settings.whyText}</p>}
          {modals.info === 'terms' && <p className="text-lg leading-relaxed text-gray-300 whitespace-pre-line">{settings.termsText}</p>}
          {modals.info === 'organizers' && (settings.organizers || []).map((o, i) => (
            <div key={i} className="flex items-center gap-4 bg-white/5 p-3 rounded-xl border border-white/5">

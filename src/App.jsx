@@ -940,14 +940,16 @@ const AdminSubmissionsPanel = ({ submissions, onUpdateStatus, onManualAdd }) => 
   const handleManualSubmit = async () => { await onManualAdd(newSub); setAddModal(false); setNewSub({ displayName: '', tiktokUser: '@', country: 'العراق', url: '' }); };
 
   const exportToCSV = () => {
-    const headers = ['الاسم', 'اليوزر', 'البلد', 'عدد الأصوات', 'الحالة', 'رابط الفيديو'];
+    const headers = ['الاسم', 'اليوزر', 'البلد', 'عدد الأصوات', 'الحالة', 'رابط الفيديو', 'رابط الصورة', 'رابط المصغرة'];
     const rows = submissions.map(sub => [
       `"${sub.participantName}"`, 
       sub.tiktokUser,
       sub.country,
       sub.votes,
       sub.status,
-      sub.videoUrl
+      sub.videoUrl,
+      sub.profilePicUrl,
+      sub.thumbnailUrl
     ]);
     const csvContent = "\uFEFF" + [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -1029,9 +1031,19 @@ const AdminSubmissionsPanel = ({ submissions, onUpdateStatus, onManualAdd }) => 
           <div key={sub.id} className="bg-white/5 p-4 rounded-xl border border-white/5 flex flex-col md:flex-row gap-4 items-start md:items-center hover:border-white/10 transition">
             {editMode === sub.id ? (
               <div className="flex-1 grid grid-cols-2 gap-2 w-full">
+                 {/* الاسم واليوزر */}
                  <input value={editData.participantName} onChange={e => setEditData({...editData, participantName: e.target.value})} placeholder="الاسم الظاهر" className="bg-gray-800 border border-white/20 rounded p-2 text-white text-sm" />
                  <input value={editData.tiktokUser} onChange={e => setEditData({...editData, tiktokUser: e.target.value})} placeholder="@username" className="bg-gray-800 border border-white/20 rounded p-2 text-white text-sm" />
-                 <input value={editData.videoUrl} onChange={e => setEditData({...editData, videoUrl: e.target.value})} placeholder="URL" className="col-span-2 bg-gray-800 border border-white/20 rounded p-2 text-white text-sm" />
+                 
+                 {/* رابط الفيديو */}
+                 <input value={editData.videoUrl} onChange={e => setEditData({...editData, videoUrl: e.target.value})} placeholder="رابط الفيديو URL" className="col-span-2 bg-gray-800 border border-white/20 rounded p-2 text-white text-sm" />
+                 
+                 {/* رابط صورة البروفايل */}
+                 <input value={editData.profilePicUrl} onChange={e => setEditData({...editData, profilePicUrl: e.target.value})} placeholder="رابط صورة الحساب (Profile Pic)" className="col-span-2 bg-gray-800 border border-white/20 rounded p-2 text-white text-sm" />
+                 
+                 {/* رابط الصورة المصغرة */}
+                 <input value={editData.thumbnailUrl} onChange={e => setEditData({...editData, thumbnailUrl: e.target.value})} placeholder="رابط الصورة المصغرة (Thumbnail)" className="col-span-2 bg-gray-800 border border-white/20 rounded p-2 text-white text-sm" />
+                 
                  <div className="col-span-2 flex gap-2 justify-end mt-2">
                    <button onClick={() => setEditMode(null)} className="px-3 py-1 text-xs bg-gray-700 rounded text-white">إلغاء</button>
                    <button onClick={saveEdit} className="px-3 py-1 text-xs bg-green-600 rounded text-white">حفظ</button>

@@ -472,167 +472,159 @@ const WinnersPodium = ({ winners }) => {
 // =========================================================================
 // *** REDESIGNED: VotingLeaderboard (Card Style Grid) ***
 // =========================================================================
+// =========================================================================
+// *** UPDATED: VotingLeaderboard (Carousel Style) ***
+// =========================================================================
+
 const VotingLeaderboard = ({ submissions }) => {
   const sorted = [...submissions].sort((a, b) => b.votes - a.votes);
   const top3 = sorted.slice(0, 3);
   const rest = sorted.slice(3);
 
+  // إعدادات السلايدر
+  const BATCH_SIZE = 4;
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [animating, setAnimating] = useState(false);
+
+  // حساب عدد الصفحات
+  const totalPages = Math.ceil(rest.length / BATCH_SIZE);
+
+  useEffect(() => {
+    if (rest.length === 0) return;
+    
+    const interval = setInterval(() => {
+      setAnimating(true);
+      setTimeout(() => {
+        setCurrentIndex((prev) => (prev + 1) % totalPages);
+        setAnimating(false);
+      }, 500); // نصف ثانية للاختفاء قبل ظهور المجموعة التالية
+    }, 5000); // يقلب كل 5 ثواني
+
+    return () => clearInterval(interval);
+  }, [totalPages, rest.length]);
+
+  // جلب العناصر الحالية للعرض
+  const currentBatch = rest.slice(currentIndex * BATCH_SIZE, (currentIndex + 1) * BATCH_SIZE);
+
   if (sorted.length === 0) return null;
 
-  // Helper to render the specific style for each rank card
-  const renderRankCard = (sub, rank) => {
-    let config = {
-      borderColor: 'border-white/10',
-      glow: '',
-      textColor: 'text-white',
-      badgeColor: 'bg-gray-700'
-    };
-
-    if (rank === 1) { // #1
-       config = { 
-         borderColor: 'border-cyan-400', 
-         glow: 'shadow-[0_0_30px_rgba(34,211,238,0.2)]', 
-         textColor: 'text-cyan-400',
-         badgeColor: 'bg-cyan-400 text-black'
-       };
-    } else if (rank === 2) { // #2
-       config = { 
-         borderColor: 'border-[#ff0050]', 
-         glow: 'shadow-[0_0_30px_rgba(255,0,80,0.2)]', 
-         textColor: 'text-[#ff0050]',
-         badgeColor: 'bg-[#ff0050] text-white'
-       };
-    } else if (rank === 3) { // #3
-       config = { 
-         borderColor: 'border-red-900', 
-         glow: 'shadow-[0_0_30px_rgba(127,29,29,0.2)]', 
-         textColor: 'text-red-400',
-         badgeColor: 'bg-red-900 text-white'
-       };
-    }
-
-    return (
-       <div key={sub.id} className={`relative bg-gray-900 rounded-2xl border-2 ${config.borderColor} ${config.glow} p-4 flex flex-col items-center justify-center transition-transform hover:scale-[1.02]`}>
-           {/* Rank Badge */}
-           <div className={`absolute top-0 right-0 ${config.badgeColor} font-black text-lg px-3 py-1 rounded-bl-2xl rounded-tr-xl`}>
-              #{rank}
-           </div>
-           
-           {/* Profile Image */}
-           <div className={`w-20 h-20 rounded-xl overflow-hidden mb-3 border-2 ${config.borderColor}`}>
-              <img src={sub.profilePicUrl} alt={sub.participantName} className="w-full h-full object-cover" />
-           </div>
-
-           {/* Votes */}
-           <div className={`text-3xl font-black mb-1 ${config.textColor}`}>
-              {sub.votes}
-           </div>
-
-           {/* Name */}
-           <h3 className="font-bold text-white text-lg truncate w-full text-center">{sub.participantName}</h3>
-           
-           {/* Country */}
-           <div className="flex items-center gap-1 text-white/50 text-xs mt-1">
-              <span>{sub.flag}</span>
-              <span>{sub.country}</span>
-           </div>
-       </div>
-    );
-  };
-
   return (
-    <div className="mb-12 animate-slideUp w-full max-w-5xl mx-auto">
-       {/* Header Section */}
-       <div className="flex justify-between items-center mb-6 border-b border-white/10 pb-4">
-           <div className="hidden md:block"></div> {/* Spacer */}
-           <LiveResultsBadge />
-       </div>
-       
-       {/* Grid Layout for Top 3 */}
-       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-10">
-          
-          {/* Mobile View (Stacked) */}
-          <div className="md:hidden space-y-4">
-             {top3.map((sub, idx) => renderRankCard(sub, idx + 1))}
+    <div className="mb-12 animate-slideUp">
+      {/* --- المراكز الثلاثة الأولى (كما هي) --- */}
+      <div className="flex justify-center items-end gap-4 mb-10 min-h-[220px]">
+        {top3[1] && (
+          <div className="flex flex-col items-center w-1/3 md:w-auto animate-fadeIn">
+            <div className="relative">
+              <img src={top3[1].profilePicUrl} alt="2nd" className="w-16 h-16 md:w-20 md:h-20 rounded-full border-4 border-gray-400 shadow-lg object-cover bg-black" />
+              <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-gray-400 text-black text-xs font-bold px-2 py-0.5 rounded-full">#2</div>
+            </div>
+            <div className="mt-3 text-center">
+              <p className="font-bold text-white text-xs md:text-sm truncate max-w-[100px]">{top3[1].participantName}</p>
+              <p className="font-bold text-gray-300 text-sm">{top3[1].votes}</p>
+            </div>
+            <div className="w-16 md:w-20 h-20 bg-gray-700/30 rounded-t-lg border-t border-gray-500/30 mt-2"></div>
           </div>
+        )}
 
-          {/* Desktop View (2 - 1 - 3 Layout) */}
-          <div className="hidden md:contents">
-             {/* Position #2 */}
-             {top3[1] && renderRankCard(top3[1], 2)}
-             {/* Position #1 (Make it slightly taller?) */}
-             {top3[0] && (
-                 <div className="transform scale-110 z-10">
-                    {renderRankCard(top3[0], 1)}
-                 </div>
-             )}
-             {/* Position #3 */}
-             {top3[2] && renderRankCard(top3[2], 3)}
+        {top3[0] && (
+          <div className="flex flex-col items-center z-10 w-1/3 md:w-auto animate-fadeIn">
+            <div className="relative">
+              <Crown className="absolute -top-8 left-1/2 -translate-x-1/2 text-yellow-400 w-8 h-8 animate-pulse" />
+              <img src={top3[0].profilePicUrl} alt="1st" className="w-24 h-24 md:w-28 md:h-28 rounded-full border-4 border-yellow-400 shadow-2xl shadow-yellow-400/20 object-cover bg-black" />
+              <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-yellow-400 text-black text-xs font-bold px-3 py-1 rounded-full">#1</div>
+            </div>
+            <div className="mt-3 text-center">
+              <p className="font-bold text-white text-sm md:text-lg truncate max-w-[120px]">{top3[0].participantName}</p>
+              <p className="font-black text-yellow-400 text-xl">{top3[0].votes}</p>
+            </div>
+            <div className="w-20 md:w-24 h-28 bg-gradient-to-b from-yellow-500/20 to-transparent rounded-t-xl border-t border-yellow-500/30 mt-2 relative overflow-hidden">
+               <div className="absolute inset-0 bg-yellow-400/10 animate-pulse"></div>
+            </div>
           </div>
-       </div>
+        )}
 
+        {top3[2] && (
+          <div className="flex flex-col items-center w-1/3 md:w-auto animate-fadeIn">
+            <div className="relative">
+              <img src={top3[2].profilePicUrl} alt="3rd" className="w-16 h-16 md:w-20 md:h-20 rounded-full border-4 border-orange-700 shadow-lg object-cover bg-black" />
+              <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-orange-700 text-white text-xs font-bold px-2 py-0.5 rounded-full">#3</div>
+            </div>
+            <div className="mt-3 text-center">
+              <p className="font-bold text-white text-xs md:text-sm truncate max-w-[100px]">{top3[2].participantName}</p>
+              <p className="font-bold text-orange-400 text-sm">{top3[2].votes}</p>
+            </div>
+            <div className="w-16 md:w-20 h-14 bg-gray-700/30 rounded-t-lg border-t border-orange-700/30 mt-2"></div>
+          </div>
+        )}
+      </div>
+
+      {/* --- الشريط الجديد: نظام البطاقات (Carousel) --- */}
       {rest.length > 0 && (
-        <div className="relative bg-white/5 border-y border-white/10 py-3 overflow-hidden group rounded-xl">
-          <div className="flex animate-scroll gap-8 w-max hover:pause" style={{ animation: `scroll ${Math.max(30, rest.length * 5)}s linear infinite` }}>
-            {rest.map((sub, i) => (
-              <div key={sub.id} className="flex items-center gap-3 px-4 border-l border-white/10 min-w-[200px]">
-                <span className="text-white/30 font-mono text-sm">#{i + 4}</span>
-                <img src={sub.profilePicUrl} className="w-8 h-8 rounded-full object-cover bg-gray-800" alt="" />
-                <span className="text-white font-bold text-sm">{sub.participantName}</span>
-                <span className="text-[var(--highlight-color)] font-bold">{sub.votes} صوت</span>
-              </div>
-            ))}
+        <div className="relative max-w-5xl mx-auto">
+          {/* الحاوية الرئيسية */}
+          <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden backdrop-blur-md relative min-h-[80px] flex items-center">
+            
+            <div 
+               className={`w-full grid grid-cols-2 md:grid-cols-4 divide-x divide-x-reverse divide-white/5 transition-opacity duration-500 ${animating ? 'opacity-0' : 'opacity-100'}`}
+            >
+               {currentBatch.map((sub, i) => {
+                 const globalIndex = (currentIndex * BATCH_SIZE) + i + 4;
+                 return (
+                   <div key={sub.id} className="flex items-center gap-3 p-4 justify-center md:justify-start">
+                      <div className="text-white/20 font-mono text-lg font-bold w-6">#{globalIndex}</div>
+                      
+                      <div className="relative">
+                        <img src={sub.profilePicUrl} className="w-10 h-10 rounded-full object-cover bg-gray-800 border border-white/10" alt="" />
+                        <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-gray-900 rounded-full flex items-center justify-center text-[8px] border border-white/20">
+                          {sub.flag}
+                        </div>
+                      </div>
+
+                      <div className="flex-1 min-w-0">
+                         <h4 className="text-white font-bold text-sm truncate">{sub.participantName}</h4>
+                         <p className="text-[var(--highlight-color)] text-xs font-bold">{sub.votes} صوت</p>
+                      </div>
+                   </div>
+                 );
+               })}
+               
+               {/* ملء الفراغات إذا كانت المجموعة الأخيرة ناقصة للحفاظ على الشكل */}
+               {Array.from({ length: BATCH_SIZE - currentBatch.length }).map((_, i) => (
+                   <div key={`empty-${i}`} className="hidden md:block p-4"></div>
+               ))}
+            </div>
+
+            {/* شريط التقدم السفلي (Animation Bar) */}
+            <div className="absolute bottom-0 left-0 h-0.5 bg-[var(--highlight-color)]/30 w-full">
+                <div 
+                  key={currentIndex} // إعادة تشغيل الانميشن عند تغير الصفحة
+                  className="h-full bg-[var(--highlight-color)]" 
+                  style={{ 
+                    width: '100%', 
+                    animation: 'shrink 5s linear forwards' 
+                  }}
+                ></div>
+            </div>
+            
+            <style>{`
+              @keyframes shrink { from { width: 0%; } to { width: 100%; } }
+            `}</style>
+
           </div>
+          
+          {/* أزرار التنقل اليدوية الصغيرة (اختياري) */}
+          {totalPages > 1 && (
+            <div className="flex justify-center gap-1 mt-2">
+              {Array.from({ length: totalPages }).map((_, idx) => (
+                <div 
+                  key={idx} 
+                  className={`h-1 rounded-full transition-all duration-300 ${idx === currentIndex ? 'w-6 bg-[var(--highlight-color)]' : 'w-2 bg-white/20'}`}
+                ></div>
+              ))}
+            </div>
+          )}
         </div>
       )}
-    </div>
-  );
-};
-
-const ResultsTable = ({ submissions }) => {
-    return (
-        <div className="max-w-4xl mx-auto bg-gray-900/50 border border-white/10 rounded-2xl overflow-hidden backdrop-blur-md p-4">
-            <h3 className="text-white/70 font-bold mb-4 pr-2">باقي المبدعين</h3>
-            <div className="space-y-2">
-                {submissions.map((sub, idx) => (
-                    <div key={sub.id} className="flex items-center bg-white/5 hover:bg-white/10 transition p-3 rounded-xl border border-white/5">
-                        <div className="w-8 text-center font-mono text-white/40 font-bold">#{idx + 4}</div>
-                        <img src={sub.profilePicUrl} className="w-10 h-10 rounded-full object-cover mx-4 border border-white/10" alt="" />
-                        <div className="flex-1">
-                            <h4 className="font-bold text-white">{sub.participantName}</h4>
-                            <p className="text-xs text-white/40">{sub.flag} {sub.country}</p>
-                        </div>
-                        <div className="text-white font-mono font-bold bg-black/30 px-3 py-1 rounded-lg">
-                            {sub.votes}
-                        </div>
-                    </div>
-                ))}
-            </div>
-        </div>
-    );
-};
-
-const SearchFilterBar = ({ onSearch, onFilter }) => {
-  return (
-    <div className="flex flex-col md:flex-row gap-4 mb-8 bg-black/40 p-4 rounded-2xl border border-white/10 backdrop-blur-md">
-      <div className="flex-1 relative">
-        <Search className="absolute right-3 top-3.5 text-white/40 w-5 h-5" />
-        <input 
-          type="text" 
-          placeholder="بحث عن اسم المستخدم..." 
-          onChange={(e) => onSearch(e.target.value)}
-          className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pr-10 pl-4 text-white focus:border-[var(--highlight-color)] outline-none transition placeholder-white/30"
-        />
-      </div>
-      <div className="relative min-w-[200px]">
-        <Filter className="absolute right-3 top-3.5 text-white/40 w-5 h-5 pointer-events-none" />
-        <select 
-          onChange={(e) => onFilter(e.target.value)}
-          className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pr-10 pl-4 text-white appearance-none focus:border-[var(--highlight-color)] outline-none cursor-pointer"
-        >
-          {COUNTRIES.map(c => <option key={c.code} value={c.name} className="bg-gray-900">{c.flag} {c.name}</option>)}
-        </select>
-      </div>
     </div>
   );
 };

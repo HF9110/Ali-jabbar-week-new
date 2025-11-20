@@ -391,6 +391,84 @@ const CelebrationHeader = () => (
 );
 
 // =========================================================================
+// >>>>>> تمت إضافة المكون المفقود هنا (WinnersPodium) <<<<<<
+// =========================================================================
+
+const WinnersPodium = ({ winners }) => {
+    if (!winners || winners.length === 0) return null;
+    const [first, second, third] = winners;
+
+    return (
+        <div className="flex justify-center items-end gap-4 md:gap-8 mb-20 min-h-[350px] px-4">
+            {/* المركز الثاني */}
+            {second && (
+                <div className="flex flex-col items-center w-1/3 md:w-1/4 animate-slideUp delay-100">
+                    <div className="relative mb-4">
+                        <div className="w-20 h-20 md:w-28 md:h-28 rounded-full border-4 border-gray-300 shadow-[0_0_20px_rgba(209,213,219,0.3)] overflow-hidden">
+                            <img src={second.profilePicUrl || 'https://placehold.co/400'} className="w-full h-full object-cover" alt="" />
+                        </div>
+                        <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 bg-gray-300 text-gray-900 font-bold px-3 py-1 rounded-full border-2 border-gray-100 shadow-lg flex items-center gap-1">
+                            <span className="text-xs">#2</span>
+                        </div>
+                    </div>
+                    <div className="text-center mb-2">
+                          <h3 className="font-bold text-white truncate max-w-[100px] md:max-w-full">{second.participantName}</h3>
+                          <p className="text-gray-400 text-sm font-mono">{second.votes} صوت</p>
+                    </div>
+                    <div className="w-full h-32 bg-gradient-to-t from-gray-900 to-gray-700 rounded-t-2xl border-t border-gray-500 flex items-end justify-center pb-4 shadow-2xl">
+                        <span className="text-4xl opacity-20 font-black text-white">2</span>
+                    </div>
+                </div>
+            )}
+
+            {/* المركز الأول */}
+            {first && (
+                <div className="flex flex-col items-center w-1/3 md:w-1/3 z-10 animate-slideUp">
+                    <div className="relative mb-6">
+                        <Crown className="absolute -top-10 left-1/2 -translate-x-1/2 text-yellow-400 w-12 h-12 animate-bounce fill-yellow-400" />
+                        <div className="w-28 h-28 md:w-40 md:h-40 rounded-full border-4 border-yellow-400 shadow-[0_0_40px_rgba(250,204,21,0.5)] overflow-hidden ring-4 ring-yellow-400/20">
+                            <img src={first.profilePicUrl || 'https://placehold.co/400'} className="w-full h-full object-cover" alt="" />
+                        </div>
+                        <div className="absolute -bottom-5 left-1/2 -translate-x-1/2 bg-gradient-to-r from-yellow-400 to-yellow-600 text-black font-black px-6 py-1.5 rounded-full border-2 border-yellow-200 shadow-xl flex items-center gap-1 text-lg">
+                            <span>#1</span>
+                        </div>
+                    </div>
+                    <div className="text-center mb-4">
+                          <h3 className="font-black text-2xl text-white truncate max-w-[120px] md:max-w-full">{first.participantName}</h3>
+                          <p className="text-yellow-400 font-bold text-lg font-mono">{first.votes} صوت</p>
+                    </div>
+                    <div className="w-full h-48 bg-gradient-to-t from-yellow-900/50 to-yellow-600 rounded-t-2xl border-t border-yellow-400 flex items-end justify-center pb-6 shadow-[0_0_50px_rgba(234,179,8,0.2)] relative overflow-hidden">
+                        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-30"></div>
+                        <span className="text-6xl opacity-30 font-black text-white">1</span>
+                    </div>
+                </div>
+            )}
+
+            {/* المركز الثالث */}
+            {third && (
+                <div className="flex flex-col items-center w-1/3 md:w-1/4 animate-slideUp delay-200">
+                    <div className="relative mb-4">
+                        <div className="w-20 h-20 md:w-28 md:h-28 rounded-full border-4 border-orange-700 shadow-[0_0_20px_rgba(194,65,12,0.3)] overflow-hidden">
+                            <img src={third.profilePicUrl || 'https://placehold.co/400'} className="w-full h-full object-cover" alt="" />
+                        </div>
+                        <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 bg-orange-700 text-white font-bold px-3 py-1 rounded-full border-2 border-orange-500 shadow-lg flex items-center gap-1">
+                            <span className="text-xs">#3</span>
+                        </div>
+                    </div>
+                    <div className="text-center mb-2">
+                          <h3 className="font-bold text-white truncate max-w-[100px] md:max-w-full">{third.participantName}</h3>
+                          <p className="text-orange-400 text-sm font-mono">{third.votes} صوت</p>
+                    </div>
+                    <div className="w-full h-24 bg-gradient-to-t from-gray-900 to-orange-900/60 rounded-t-2xl border-t border-orange-700 flex items-end justify-center pb-4 shadow-2xl">
+                        <span className="text-4xl opacity-20 font-black text-white">3</span>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
+// =========================================================================
 // *** REDESIGNED: VotingLeaderboard (Card Style Grid) ***
 // =========================================================================
 const VotingLeaderboard = ({ submissions }) => {
@@ -471,17 +549,6 @@ const VotingLeaderboard = ({ submissions }) => {
        
        {/* Grid Layout for Top 3 */}
        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-10">
-          {/* Order visually: 2 - 1 - 3 (or 3 - 2 - 1) depending on preference. 
-              Standard CSS Grid keeps them 1, 2, 3. Let's stick to logic 1, 2, 3 but style differently.
-              Wait, user image shows #3, #2, #1 left to right or cards. 
-              Let's just render top3 array directly, but style based on index.
-          */}
-          
-          {/* Note: In the image, #1 is biggest. In a grid, we usually want #1 in center on desktop.
-              To achieve center #1 on desktop:
-              Mobile: 1, 2, 3 (Stack)
-              Desktop: 2, 1, 3
-          */}
           
           {/* Mobile View (Stacked) */}
           <div className="md:hidden space-y-4">

@@ -195,19 +195,44 @@ const GlassCard = ({ children, className = '', isGlassmorphism = true, color = '
   return <div className={`p-4 rounded-xl ${color} ${glassClasses} ${className}`}>{children}</div>;
 };
 
+// شريط التنبيهات مع تأثير الحركة الانسيابية (Marquee)
 const AlertBanner = ({ settings }) => (
-  <div className="p-3 text-white border-r-4 rounded-lg flex items-center mb-6 shadow-2xl overflow-hidden"
+  <div className="p-3 text-white border-r-4 rounded-lg flex items-center mb-6 shadow-2xl overflow-hidden relative"
     style={{
       '--pulse-shadow': `0 0 10px 2px ${settings.highlightColor}`,
       backgroundColor: settings.mainColor,
       borderColor: settings.highlightColor,
     }}>
-    <style>{`@keyframes pulse-effect { 0%, 100% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.7); } 50% { box-shadow: var(--pulse-shadow); } } .pulse-animation { animation: pulse-effect 2s infinite ease-in-out; }`}</style>
-    <div className="pulse-animation p-1 rounded-full border-2 mr-4 flex-shrink-0" style={{ borderColor: settings.highlightColor }}>
+    <style>{`
+      @keyframes pulse-effect { 0%, 100% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.7); } 50% { box-shadow: var(--pulse-shadow); } } 
+      .pulse-animation { animation: pulse-effect 2s infinite ease-in-out; }
+      
+      @keyframes marquee-rtl {
+        0% { right: 100%; transform: translateX(0%); }
+        100% { right: 0%; transform: translateX(100%); }
+      }
+      
+      .animate-marquee-rtl {
+        display: inline-block;
+        white-space: nowrap;
+        position: absolute;
+        animation: marquee-rtl 15s linear infinite;
+      }
+      
+      .animate-marquee-rtl:hover {
+        animation-play-state: paused;
+      }
+    `}</style>
+    
+    <div className="pulse-animation p-1 rounded-full border-2 mr-2 flex-shrink-0 z-10 bg-inherit" style={{ borderColor: settings.highlightColor }}>
       <Film className="w-6 h-6" />
     </div>
-    <span className="font-bold ml-2 text-xl whitespace-nowrap">إعلان</span>
-    <span className="mx-auto text-lg truncate px-4">{settings.marqueeText}</span>
+    <span className="font-bold ml-4 text-xl whitespace-nowrap z-10 relative">إعلان</span>
+    
+    {/* حاوية النص المتحرك - تأخذ المساحة المتبقية وتقص الزائد */}
+    <div className="flex-grow overflow-hidden relative h-8 flex items-center pr-2" style={{ maskImage: 'linear-gradient(to right, transparent, black 2%, black 98%, transparent)' }}>
+      <span className="animate-marquee-rtl text-lg cursor-default">{settings.marqueeText}</span>
+    </div>
   </div>
 );
 

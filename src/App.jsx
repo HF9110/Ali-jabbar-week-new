@@ -1,16 +1,12 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import {
-  BrowserRouter,
-  Routes,
-  Route,
-  useNavigate,
-} from 'react-router-dom';
 import { initializeApp } from 'firebase/app';
 import {
   getAuth,
+  signInAnonymously,
+  signInWithCustomToken,
+  onAuthStateChanged,
   signInWithEmailAndPassword,
   signOut,
-  onAuthStateChanged,
 } from 'firebase/auth';
 import {
   getFirestore,
@@ -18,813 +14,873 @@ import {
   doc,
   onSnapshot,
   setDoc,
-  increment,
-  addDoc,
+  query,
   updateDoc,
-  deleteDoc,
+  addDoc,
+  getDocs,
+  limit,
+  getDoc,
   serverTimestamp,
+  increment,
+  where,
 } from 'firebase/firestore';
 import {
+  ChevronDown,
   Crown,
   Search,
   Settings as SettingsIcon,
   X,
   Loader,
+  User,
+  ChevronLeft,
+  ChevronRight,
+  Lock,
+  Mail,
+  Key,
   CheckCircle,
   Clock,
+  Info,
   LogOut,
-  Plus,
-  Edit3,
-  Trash2,
-  Filter,
-  Zap,
-  PauseCircle,
-  Trophy,
+  Film,
+  Smartphone,
+  MonitorPlay,
   Download,
-  Upload,
-  AlignRight,
-  Info
+  Home as HomeIcon,
+  UploadCloud,
+  FolderOpen,
+  PlayCircle,
+  ArrowRight,
+  AlertTriangle
 } from 'lucide-react';
 
 // =========================================================================
-// 1. FIREBASE CONFIGURATION
+// 1. FIREBASE & INITIALIZATION
 // =========================================================================
 
-const APP_ID = 'ali-jabbar-week';
+const appId = 'ali-jabbar-week';
+
+const getEnvVar = (key, fallback) => {
+  try {
+    if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env[key]) {
+      return import.meta.env[key];
+    }
+  } catch (e) {}
+  return fallback;
+};
+
+const VITE_FIREBASE_API_KEY = getEnvVar('VITE_FIREBASE_API_KEY', 'AIzaSyDUxC_2orwmSLL9iEBIkeohZKfH36MjZ4Y');
 
 const userFirebaseConfig = {
-  apiKey: "AIzaSyDUxC_2orwmSLL9iEBIkeohZKfH36MjZ4Y",
-  authDomain: "ali-jabbar-week.firebaseapp.com",
-  projectId: "ali-jabbar-week",
-  storageBucket: "ali-jabbar-week.firebasestorage.app",
-  messagingSenderId: "642187294882",
-  appId: "1:642187294882:web:fe30f0016e5803a5e1bffb",
-  measurementId: "G-8XSRK7TE1K",
+  apiKey: VITE_FIREBASE_API_KEY,
+  authDomain: 'ali-jabbar-week.firebaseapp.com',
+  projectId: 'ali-jabbar-week',
+  storageBucket: 'ali-jabbar-week.firebasestorage.app',
+  messagingSenderId: '642187294882',
+  appId: '1:642187294882:web:fe30f0016e5803a5e1bffb',
+  measurementId: 'G-8XSRK7TE1K',
 };
+const firebaseConfig = Object.keys(userFirebaseConfig).length > 0 ? userFirebaseConfig : {};
 
-let isFirebaseInitialized = false;
 let firebaseApp, db, auth;
-
-try {
-  firebaseApp = initializeApp(userFirebaseConfig);
-  db = getFirestore(firebaseApp);
-  auth = getAuth(firebaseApp);
-  isFirebaseInitialized = true;
-} catch (e) {
-  console.error('❌ Firebase Initialization Failed:', e);
+if (Object.keys(firebaseConfig).length) {
+  try {
+    firebaseApp = initializeApp(firebaseConfig);
+    db = getFirestore(firebaseApp);
+    auth = getAuth(firebaseApp);
+  } catch (e) {
+    console.error('Firebase Initialization Failed:', e);
+  }
 }
 
-const PATHS = {
-  SETTINGS: `artifacts/${APP_ID}/public/data/settings/config`,
-  SUBMISSIONS: `artifacts/${APP_ID}/public/data/submissions`,
+const PUBLIC_SETTINGS_PATH = `settings/config`;
+const PUBLIC_SUBMISSIONS_COLLECTION = `submissions`;
+
+const retryOperation = async (operation, maxRetries = 3, delay = 1000) => {
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      return await operation();
+    } catch (error) {
+      if (i === maxRetries - 1) throw error;
+      await new Promise((resolve) => setTimeout(resolve, delay * Math.pow(2, i)));
+    }
+  }
 };
 
 // =========================================================================
-// 2. CONSTANTS & STYLES
+// 2. CONSTANTS (EPISODES, COUNTRIES, MOCK DATA)
 // =========================================================================
 
-const STAGES = {
-  Submission: { label: 'استقبال المشاركات', color: 'cyan', icon: Clock, title: 'انضم للمنافسة الآن' },
-  Voting: { label: 'التصويت مفتوح', color: 'pink', icon: Zap, title: 'المنافسة مشتعلة' },
-  Paused: { label: 'متوقفة مؤقتاً', color: 'red', icon: PauseCircle, title: 'تنبيه هام' },
-  Ended: { label: 'إعلان النتائج', color: 'green', icon: Trophy, title: 'ألف مبروك للفائزين' },
-};
+const EPISODES = Array.from({ length: 30 }, (_, i) => `الحلقة ${i + 1}`);
 
 const COUNTRIES = [
-  { name: 'الكل', code: 'ALL', flag: '🌍' },
   { name: 'العراق', code: 'IQ', flag: '🇮🇶' },
+  { name: 'السعودية', code: 'SA', flag: '🇸🇦' },
   { name: 'الأردن', code: 'JO', flag: '🇯🇴' },
   { name: 'الإمارات', code: 'AE', flag: '🇦🇪' },
-  { name: 'البحرين', code: 'BH', flag: '🇧🇭' },
-  { name: 'الجزائر', code: 'DZ', flag: '🇩🇿' },
-  { name: 'السعودية', code: 'SA', flag: '🇸🇦' },
-  { name: 'السودان', code: 'SD', flag: '🇸🇩' },
-  { name: 'الكويت', code: 'KW', flag: '🇰🇼' },
-  { name: 'المغرب', code: 'MA', flag: '🇲🇦' },
-  { name: 'اليمن', code: 'YE', flag: '🇾🇪' },
-  { name: 'تونس', code: 'TN', flag: '🇹🇳' },
-  { name: 'سوريا', code: 'SY', flag: '🇸🇾' },
-  { name: 'عُمان', code: 'OM', flag: '🇴🇲' },
-  { name: 'فلسطين', code: 'PS', flag: '🇵🇸' },
-  { name: 'قطر', code: 'QA', flag: '🇶🇦' },
-  { name: 'لبنان', code: 'LB', flag: '🇱🇧' },
-  { name: 'ليبيا', code: 'LY', flag: '🇱🇾' },
   { name: 'مصر', code: 'EG', flag: '🇪🇬' },
-].filter((c, index, self) => 
-  index === self.findIndex((t) => (t.code === c.code))
-);
+  { name: 'سوريا', code: 'SY', flag: '🇸🇾' },
+  { name: 'المغرب', code: 'MA', flag: '🇲🇦' },
+  { name: 'الجزائر', code: 'DZ', flag: '🇩🇿' },
+  { name: 'الكويت', code: 'KW', flag: '🇰🇼' },
+  { name: 'عُمان', code: 'OM', flag: '🇴🇲' },
+  { name: 'قطر', code: 'QA', flag: '🇶🇦' },
+  { name: 'البحرين', code: 'BH', flag: '🇧🇭' },
+  { name: 'لبنان', code: 'LB', flag: '🇱🇧' },
+  { name: 'تونس', code: 'TN', flag: '🇹🇳' },
+  { name: 'فلسطين', code: 'PS', flag: '🇵🇸' },
+  { name: 'اليمن', code: 'YE', flag: '🇾🇪' },
+  { name: 'ليبيا', code: 'LY', flag: '🇱🇾' },
+  { name: 'السودان', code: 'SD', flag: '🇸🇩' },
+];
 
 const DEFAULT_SETTINGS = {
-  mainColor: '#ec4899',
+  mainColor: '#fe2c55',
   highlightColor: '#25f4ee',
   appFont: 'Cairo',
-  title: 'Ali Jabbar Week',
-  logoUrl: 'https://placehold.co/200x60/transparent/white?text=LOGO',
-  logoSize: 100,
-  stage: 'Voting',
+  title: 'مسابقة مسلسل رمضان',
+  logoUrl: 'https://placehold.co/100x40/fe2c55/25f4ee?text=Series',
+  marqueeText: 'أهلاً بكم في مسابقة تصاميم المسلسل الرمضاني. التصويت والمشاركات مفتوحة دائماً!',
   useGlassmorphism: true,
-  stageTexts: {
-    Submission: 'باب المشاركة مفتوح الآن! أرسل إبداعك',
-    Voting: 'صوت لمشتركك المفضل الآن 🔥',
-    Paused: 'سنعود قريباً...',
-    Ended: 'شكراً لكل من شارك وصوت في المسابقة'
-  },
-  marqueeSize: 16,
-  termsText: 'الشروط والأحكام:\n- الالتزام بالآداب العامة.',
-  whyText: 'لتعزيز المحتوى العربي الإبداعي.',
-  startTime: '',
-  endTime: '',
-  organizers: [],
+  termsText: 'الشروط والأحكام:\n- يجب أن يكون التصميم من مشاهد المسلسل حصراً.\n- يمنع استخدام حقوق موسيقية غير مصرح بها.\n- يرجى اختيار رقم الحلقة الصحيح عند الإرسال.',
+  whyText: 'لماذا هذه المسابقة؟\nلدعم المصممين وصناع المحتوى العراقي والعربي خلال شهر رمضان المبارك، واختيار أفضل الإبداعات للمشاهد الرمضانية.',
 };
 
+const generateAvatar = (name) => `https://ui-avatars.com/api/?name=${encodeURIComponent(name || 'Unknown')}&background=random&color=fff&size=128&bold=true`;
+
+const MOCK_SUBMISSIONS = [
+  { id: '1', participantName: 'أحمد العراقي', description: 'تصميم حزين لمشهد النهاية مع موسيقى هادئة جداً', country: 'العراق', episode: 'الحلقة 1', votes: 890, status: 'Approved', videoUrl: 'https://www.tiktok.com/@tiktok/video/7279148301138855211', thumbnailUrl: 'https://placehold.co/600x900/111827/ffffff?text=Ep+1', profilePic: generateAvatar('أحمد العراقي'), flag: '🇮🇶', submittedAt: new Date(Date.now() - 100000) },
+  { id: '2', participantName: 'سارة خالد', description: 'تعديل اكشن سريع للمواجهة في بداية الحلقة', country: 'السعودية', episode: 'الحلقة 1', votes: 750, status: 'Approved', videoUrl: 'https://www.tiktok.com/@tiktok/video/7279148301138855211', thumbnailUrl: 'https://placehold.co/600x900/111827/ffffff?text=Ep+1', profilePic: generateAvatar('سارة خالد'), flag: '🇸🇦', submittedAt: new Date(Date.now() - 200000) },
+  { id: '3', participantName: 'أحمد العراقي', description: 'ريأكشن كوميدي على لقطة المقهى', country: 'العراق', episode: 'الحلقة 2', votes: 620, status: 'Approved', videoUrl: 'https://www.tiktok.com/@tiktok/video/7279148301138855211', thumbnailUrl: 'https://placehold.co/600x900/111827/ffffff?text=Ep+2', profilePic: generateAvatar('أحمد العراقي'), flag: '🇮🇶', submittedAt: new Date(Date.now() - 300000) },
+  { id: '4', participantName: 'نور علي', description: 'مونتاج للمشهد الدرامي في المستشفى', country: 'الكويت', episode: 'الحلقة 2', votes: 580, status: 'Approved', videoUrl: 'https://www.tiktok.com/@tiktok/video/7279148301138855211', thumbnailUrl: 'https://placehold.co/600x900/111827/ffffff?text=Ep+2', profilePic: generateAvatar('نور علي'), flag: '🇰🇼', submittedAt: new Date(Date.now() - 400000) },
+];
+
+const MOCK_LIBRARY_SCENES = Array.from({ length: 30 }, (_, index) => {
+  const episodeName = `الحلقة ${index + 1}`;
+  return [
+    { id: `${index}-1`, episode: episodeName, title: `مشهد المواجهة القوية - ${episodeName}`, verticalUrl: '#', horizontalUrl: '#' },
+    { id: `${index}-2`, episode: episodeName, title: `مشهد النهاية الصادم - ${episodeName}`, verticalUrl: '#', horizontalUrl: '#' },
+  ];
+}).flat();
+
 // =========================================================================
-// 3. UI COMPONENTS
+// 3. CORE COMPONENTS & HOOKS
 // =========================================================================
 
-const GlassCard = ({ children, className = '', isGlassmorphism = true, color = 'bg-gray-900', onClick }) => {
-  const glassClasses = isGlassmorphism
-    ? 'bg-opacity-60 backdrop-blur-xl shadow-2xl border border-white/10'
-    : 'bg-opacity-100 shadow-xl border border-gray-800';
-  return (
-    <div 
-      className={`p-5 rounded-2xl transition-all duration-300 ${color} ${glassClasses} ${className}`}
-      onClick={onClick}
-    >
-      {children}
+const useAuth = () => {
+  const [userId, setUserId] = useState(null);
+  useEffect(() => {
+    if (!auth) { setUserId('mock-user-id'); return; }
+    const unsubscribe = onAuthStateChanged(
+      auth,
+      (user) => { setUserId(user ? user.uid : 'public-read-only'); },
+      (error) => { console.error('Auth Error:', error); setUserId('public-read-only'); }
+    );
+    return () => unsubscribe();
+  }, []);
+  return { userId, isAuthReady: userId !== null };
+};
+
+const GlassCard = ({ children, className = '', isGlassmorphism = true, color = 'bg-gray-700' }) => {
+  const glassClasses = isGlassmorphism ? 'bg-opacity-50 backdrop-blur-md shadow-xl border border-white/10' : 'shadow-2xl';
+  return <div className={`p-4 rounded-xl ${color} ${glassClasses} ${className}`}>{children}</div>;
+};
+
+const AlertBanner = ({ settings }) => (
+  <div className="p-3 text-white border-r-4 rounded-lg flex items-center mb-6 shadow-2xl overflow-hidden"
+    style={{
+      '--pulse-shadow': `0 0 10px 2px ${settings.highlightColor}`,
+      backgroundColor: settings.mainColor,
+      borderColor: settings.highlightColor,
+    }}>
+    <style>{`@keyframes pulse-effect { 0%, 100% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.7); } 50% { box-shadow: var(--pulse-shadow); } } .pulse-animation { animation: pulse-effect 2s infinite ease-in-out; }`}</style>
+    <div className="pulse-animation p-1 rounded-full border-2 mr-4 flex-shrink-0" style={{ borderColor: settings.highlightColor }}>
+      <Film className="w-6 h-6" />
     </div>
-  );
-};
+    <span className="font-bold ml-2 text-xl whitespace-nowrap">إعلان</span>
+    <span className="mx-auto text-lg truncate px-4">{settings.marqueeText}</span>
+  </div>
+);
 
 const Modal = ({ isOpen, onClose, title, children }) => {
   if (!isOpen) return null;
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm animate-fadeIn" onClick={onClose}>
-      <GlassCard 
-        className="w-full max-w-2xl max-h-[90vh] overflow-y-auto relative flex flex-col !p-0" 
-        color="bg-gray-900" 
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex justify-between items-center p-5 border-b border-white/10 bg-white/5 sticky top-0 backdrop-blur-md z-10">
-          <h2 className="text-xl font-bold text-white">{title}</h2>
-          <button onClick={onClose} className="text-white/70 hover:text-red-500 transition p-1 rounded-full hover:bg-white/10">
-            <X className="w-6 h-6" />
-          </button>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onClick={onClose}>
+      <GlassCard isGlassmorphism className="w-full max-w-2xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        <div className="flex justify-between items-center pb-3 border-b border-white/20">
+          <h2 className="text-2xl font-bold text-white">{title}</h2>
+          <button onClick={onClose} className="text-white hover:text-highlight-color transition"><X className="w-6 h-6" /></button>
         </div>
-        <div className="p-6 text-white space-y-4">
-          {children}
-        </div>
+        <div className="pt-4 text-white text-lg leading-relaxed space-y-4">{children}</div>
       </GlassCard>
     </div>
   );
 };
 
-const InputField = ({ label, id, value, onChange, type = 'text', placeholder = '', required = false }) => (
-  <div className="mb-4 w-full">
-    <label htmlFor={id} className="block text-white mb-2 font-medium text-sm opacity-90">
-      {label} {required && <span className="text-red-500">*</span>}
-    </label>
-    <input
-      type={type}
-      id={id}
-      value={value || ''}
-      onChange={(e) => onChange(e.target.value)}
-      placeholder={placeholder}
-      className="w-full p-3 rounded-lg bg-gray-800/80 border border-white/10 text-white placeholder-gray-500 focus:ring-2 focus:ring-[var(--highlight-color)] focus:border-transparent transition duration-200 outline-none"
-    />
-  </div>
-);
+// =========================================================================
+// 4. MAIN VIEWS (HOME, SUBMIT, LIBRARY, RESULTS, PROFILE)
+// =========================================================================
 
-const AlertBanner = ({ settings }) => {
-  const stage = settings.stage || 'Voting';
-  const stageInfo = STAGES[stage];
-  const subText = settings.stageTexts?.[stage] || 'أهلاً بكم';
-
-  const config = useMemo(() => {
-    switch (stage) {
-      case 'Submission': 
-        return { bg: 'bg-gradient-to-r from-cyan-600 to-cyan-400', iconColor: 'text-white' };
-      case 'Voting':
-        return { bg: 'bg-gradient-to-r from-[#ff0050] to-[#ff4070]', iconColor: 'text-white' };
-      case 'Ended':
-        return { bg: 'bg-gradient-to-r from-emerald-600 to-emerald-400', iconColor: 'text-white' };
-      default:
-        return { bg: 'bg-gradient-to-r from-red-700 to-red-500', iconColor: 'text-white' };
-    }
-  }, [stage]);
+const StatsCard = ({ submission, settings, onDesignerClick }) => {
+  const { participantName, flag, country, episode, votes, profilePic, submittedAt } = submission;
+  const submittedDate = submittedAt instanceof Date ? submittedAt : (submittedAt && typeof submittedAt.toDate === 'function' ? submittedAt.toDate() : new Date());
+  const formattedDate = submittedDate.toLocaleDateString('ar-EG', { day: 'numeric', month: 'short' });
 
   return (
-    <div className="w-full mb-8 animate-fadeIn">
-       <div className={`relative w-full rounded-xl overflow-hidden shadow-lg ${config.bg} border border-white/10`}>
-          <div className="flex items-stretch min-h-[60px]">
-             
-             {/* Right: Status Label (Icon + Title) */}
-             <div className="flex items-center gap-2 px-4 md:px-6 bg-black/20 backdrop-blur-sm z-20 shrink-0">
-                <stageInfo.icon className={`w-5 h-5 md:w-6 md:h-6 ${config.iconColor} animate-pulse`} />
-                <h2 className="font-black text-white text-sm md:text-lg tracking-wide whitespace-nowrap">
-                  {stageInfo.title}
-                </h2>
-             </div>
-
-             {/* Middle: Scrolling Text */}
-             <div className="flex-1 relative flex items-center overflow-hidden bg-black/10">
-                <div className="animate-marquee whitespace-nowrap absolute left-0 top-0 bottom-0 flex items-center">
-                   <span className="text-white font-bold text-sm md:text-base px-4 inline-block" style={{ textShadow: '0 2px 4px rgba(0,0,0,0.3)' }}>
-                      {subText}
-                   </span>
-                   <span className="text-white font-bold text-sm md:text-base px-4 inline-block" style={{ textShadow: '0 2px 4px rgba(0,0,0,0.3)' }}>
-                      {subText}
-                   </span>
-                   <span className="text-white font-bold text-sm md:text-base px-4 inline-block" style={{ textShadow: '0 2px 4px rgba(0,0,0,0.3)' }}>
-                      {subText}
-                   </span>
-                </div>
-             </div>
-
-             {/* Left: Decorative Tag */}
-             <div className="hidden md:flex items-center justify-center px-4 bg-black/20 z-20 font-mono text-white/50 text-xs">
-                HF
-             </div>
-          </div>
-       </div>
-       <style>{`
-  @keyframes marquee {
-    0% { transform: translateX(-100%); }
-    100% { transform: translateX(0%); }
-  }
-  .animate-marquee {
-    animation: marquee 20s linear infinite;
-    min-width: 100%;
-  }
-`}</style>
+    <div className="relative w-full h-40 group [perspective:1000px]">
+      <style>{`.flip-container { transition: transform 0.6s; transform-style: preserve-3d; } .flip-container.flipped { transform: rotateY(180deg); } .front, .back { backface-visibility: hidden; position: absolute; top: 0; left: 0; width: 100%; height: 100%; } .back { transform: rotateY(180deg); }`}</style>
+      <div className="flip-container h-full group-hover:flipped">
+        <div className="front">
+          <GlassCard isGlassmorphism={settings.useGlassmorphism} color="bg-gray-800" className="h-full p-2 flex flex-col items-center justify-center overflow-hidden relative">
+            <span className="absolute top-1 right-1 bg-black/50 text-[10px] px-1 rounded text-highlight-color font-bold">{episode}</span>
+            <img
+              src={profilePic || generateAvatar(participantName)}
+              alt={`Profile of ${participantName}`}
+              onClick={() => onDesignerClick(participantName)}
+              className="w-12 h-12 object-cover rounded-full mb-1 border-2 cursor-pointer hover:scale-110 transition"
+              style={{ borderColor: `var(--highlight-color-css)` }}
+            />
+            <p className="text-xl font-extrabold text-white mt-1" style={{ color: `var(--highlight-color-css)` }}>{votes.toLocaleString()}</p>
+            <p onClick={() => onDesignerClick(participantName)} className="text-xs font-bold text-white truncate w-full text-center mt-1 cursor-pointer hover:underline">{participantName}</p>
+            <p className="text-[10px] text-white/70">{flag} {country}</p>
+          </GlassCard>
+        </div>
+        <div className="back">
+          <GlassCard isGlassmorphism={settings.useGlassmorphism} color="bg-gray-800" className="h-full p-2 flex flex-col items-center justify-center text-center">
+            <p className="text-xs text-white/70 mb-1">تاريخ التقديم:</p>
+            <p className="text-sm font-semibold text-white">{formattedDate}</p>
+            <div className="h-px w-1/2 my-2 mx-auto" style={{ backgroundColor: `var(--main-color-css)` }} />
+            <p className="text-xs text-white/70 mb-1">إجمالي الأصوات:</p>
+            <p className="text-2xl font-extrabold text-white" style={{ color: `var(--highlight-color-css)` }}>{votes.toLocaleString()}</p>
+          </GlassCard>
+        </div>
+      </div>
     </div>
   );
 };
 
-const LiveResultsBadge = () => (
-    <div className="flex items-center gap-2">
-        <span className="relative flex h-3 w-3">
-          <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ backgroundColor: '#fe2c55' }}></span>
-          <span className="relative inline-flex rounded-full h-3 w-3" style={{ backgroundColor: '#fe2c55' }}></span>
-        </span>
-        <h3 className="font-bold text-lg text-white tracking-wide">
-          النتائج المباشرة
-        </h3>
-    </div>
-);
+const LiveResultsView = ({ approvedSubmissions, settings, currentFilter, onDesignerClick }) => {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [isHovering, setIsHovering] = useState(false);
+  const perSlide = 4;
 
-const ShinyButton = ({ children, onClick, disabled, className = '', style = {} }) => (
-  <button
-    onClick={onClick}
-    disabled={disabled}
-    className={`relative overflow-hidden group px-6 py-3 rounded-xl font-bold text-white shadow-lg transform transition hover:-translate-y-1 hover:shadow-2xl disabled:opacity-50 disabled:cursor-not-allowed ${className}`}
-    style={style}
-  >
-    <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-[150%] group-hover:animate-shine z-10" />
-    <span className="relative z-20 flex items-center justify-center gap-2">{children}</span>
-  </button>
-);
+  const rankedSubmissions = useMemo(() => approvedSubmissions.sort((a, b) => b.votes - a.votes), [approvedSubmissions]);
+  const topThree = rankedSubmissions.slice(0, 3);
+  const remainingSubmissions = rankedSubmissions.slice(3);
+  const numSlides = Math.ceil(remainingSubmissions.length / perSlide);
 
-// =========================================================================
-// 4. PUBLIC COMPONENTS
-// =========================================================================
+  const nextSlide = () => setCurrentIndex((prev) => (prev + 1) % numSlides);
+  const prevSlide = () => setCurrentIndex((prev) => (prev - 1 + numSlides) % numSlides);
 
-const SubmissionForm = ({ settings }) => {
-  const [form, setForm] = useState({ displayName: '', tiktokUser: '', country: 'العراق', url: '' });
-  const [status, setStatus] = useState('idle');
+  const currentSlideSubmissions = remainingSubmissions.slice(currentIndex * perSlide, currentIndex * perSlide + perSlide);
 
-  const handleUserChange = (val) => {
-    if (val && !val.startsWith('@')) val = '@' + val;
-    setForm({ ...form, tiktokUser: val });
-  };
+  useEffect(() => {
+    if (numSlides <= 1 || isHovering) return;
+    const autoSlideTimer = setInterval(() => { nextSlide(); }, 5000);
+    return () => clearInterval(autoSlideTimer);
+  }, [numSlides, isHovering, approvedSubmissions]);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!form.displayName || !form.tiktokUser || !form.url || !form.tiktokUser.startsWith('@')) {
-      return alert('يرجى تعبئة جميع الحقول بشكل صحيح.');
-    }
-    setStatus('submitting');
-    try {
-      const countryData = COUNTRIES.find(c => c.name === form.country);
-      const defaultProfilePic = `https://ui-avatars.com/api/?name=${form.displayName}&background=random&color=fff&size=128`;
-      const defaultThumb = `https://placehold.co/600x900/333/fff?text=Video`;
+  if (rankedSubmissions.length === 0) return null;
 
-      await addDoc(collection(db, PATHS.SUBMISSIONS), {
-        participantName: form.displayName,
-        tiktokUser: form.tiktokUser,
-        profilePicUrl: defaultProfilePic,
-        country: form.country,
-        flag: countryData.flag,
-        videoUrl: form.url,
-        thumbnailUrl: defaultThumb,
-        status: 'Pending',
-        votes: 0,
-        submittedAt: serverTimestamp(),
-      });
-      setStatus('success');
-      setForm({ displayName: '', tiktokUser: '', country: 'العراق', url: '' });
-    } catch (err) {
-      console.error(err);
-      setStatus('error');
-    }
+  const CompactPodiumItem = ({ submission, rank, settings }) => {
+    const { participantName, country, flag, episode, votes, profilePic } = submission;
+    const rankColor = { 1: settings.highlightColor, 2: settings.mainColor, 3: '#5b1f28' }[rank];
+
+    return (
+      <div className="relative flex flex-col items-center p-3 text-center w-full transform hover:scale-105 transition duration-300 rounded-lg mt-4"
+        style={{ backgroundColor: `${rankColor}30`, border: `2px solid ${rankColor}`, boxShadow: `0 0 10px ${rankColor}80` }}>
+        
+        {rank === 1 && <Crown className="absolute -top-6 text-yellow-400 w-8 h-8 drop-shadow-lg animate-bounce" />}
+        
+        <p className="text-xs font-bold text-gray-900 absolute top-0 right-0 p-1 rounded-bl-lg" style={{ backgroundColor: rankColor, color: rank === 1 ? '#000' : '#fff' }}>
+          #{rank}
+        </p>
+        <p className="text-[10px] font-bold text-white absolute top-0 left-0 p-1 rounded-br-lg bg-black/50">
+          {episode}
+        </p>
+        
+        <img 
+           src={profilePic || generateAvatar(participantName)} 
+           alt={`Rank ${rank}`} 
+           onClick={() => onDesignerClick(participantName)}
+           className="w-14 h-14 object-cover rounded-full mb-2 border-2 mt-3 cursor-pointer hover:scale-110 transition" 
+           style={{ borderColor: rankColor }} 
+        />
+        <p className="text-lg font-extrabold text-white" style={{ color: rankColor }}>{votes.toLocaleString()}</p>
+        <p onClick={() => onDesignerClick(participantName)} className="text-sm font-bold text-white truncate w-full cursor-pointer hover:underline">{participantName}</p>
+        <p className="text-[10px] text-white/70">{flag} {country}</p>
+      </div>
+    );
   };
 
   return (
-    <GlassCard className="max-w-xl mx-auto p-8 mt-10" isGlassmorphism={settings.useGlassmorphism}>
-      <div className="text-center mb-8">
-        <div className="inline-block p-4 rounded-full bg-cyan-500/10 mb-4 border border-cyan-500/30">
-          <Clock className="w-10 h-10 text-cyan-400" />
-        </div>
-        <h2 className="text-3xl font-bold text-white mb-2">شارك إبداعك</h2>
-        <p className="text-white/60">املأ الاستمارة بدقة للمشاركة في المنافسة</p>
+    <GlassCard isGlassmorphism={settings.useGlassmorphism} color="bg-gray-800" className="p-4 mb-6 shadow-2xl">
+      <h2 className="text-2xl font-extrabold text-white mb-4 border-b border-white/20 pb-2" style={{ color: `var(--highlight-color-css)` }}>
+        أوائل المصممين {currentFilter !== 'الكل' ? `(${currentFilter})` : ''}
+      </h2>
+      
+      <div className="flex justify-around gap-2 mb-6 items-end">
+        {topThree[1] && <div className="w-1/3"><CompactPodiumItem submission={topThree[1]} rank={2} settings={settings} /></div>}
+        {topThree[0] && <div className="w-1/3 z-10 -mt-4"><CompactPodiumItem submission={topThree[0]} rank={1} settings={settings} /></div>}
+        {topThree[2] && <div className="w-1/3"><CompactPodiumItem submission={topThree[2]} rank={3} settings={settings} /></div>}
       </div>
 
-      {status === 'success' && (
-        <div className="bg-green-500/20 border border-green-500 text-green-200 p-4 rounded-lg mb-6 text-center flex items-center justify-center gap-2">
-          <CheckCircle className="w-5 h-5" /> تم الإرسال بنجاح!
+      {remainingSubmissions.length > 0 && (
+        <div className="relative flex items-center justify-center mt-8 border-t border-white/10 pt-4" onMouseEnter={() => setIsHovering(true)} onMouseLeave={() => setIsHovering(false)}>
+          <button onClick={prevSlide} className="p-2 rounded-full bg-white/10 hover:bg-white/30 text-white transition disabled:opacity-50 z-10" disabled={numSlides <= 1}>
+            <ChevronRight className="w-6 h-6" />
+          </button>
+          <div className="flex-grow mx-4 overflow-hidden">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 transition-transform duration-500">
+              {currentSlideSubmissions.map((sub) => (
+                <StatsCard key={sub.id} submission={sub} settings={settings} onDesignerClick={onDesignerClick}/>
+              ))}
+              {[...Array(perSlide - currentSlideSubmissions.length)].map((_, i) => (
+                <div key={`filler-${i}`} className="w-full hidden md:block"></div>
+              ))}
+            </div>
+          </div>
+          <button onClick={nextSlide} className="p-2 rounded-full bg-white/10 hover:bg-white/30 text-white transition disabled:opacity-50 z-10" disabled={numSlides <= 1}>
+            <ChevronLeft className="w-6 h-6" />
+          </button>
         </div>
       )}
-
-      <form onSubmit={handleSubmit} className="space-y-5">
-        <InputField label="اسم الحساب الظاهر" id="dname" value={form.displayName} onChange={v => setForm({...form, displayName: v})} placeholder="مثال: أحمد المصمم"/>
-        <InputField label="اسم المستخدم (مع @)" id="tiktok" value={form.tiktokUser} onChange={handleUserChange} placeholder="@username"/>
-        <div className="mb-4">
-          <label className="block text-white mb-2 text-sm opacity-90">البلد</label>
-          <select 
-            value={form.country} 
-            onChange={e => setForm({...form, country: e.target.value})}
-            className="w-full p-3 rounded-lg bg-gray-800/80 border border-white/10 text-white outline-none focus:ring-2 focus:ring-[var(--highlight-color)] appearance-none cursor-pointer"
-          >
-            {COUNTRIES.filter(c => c.code !== 'ALL').map(c => <option key={c.code} value={c.name} className="bg-gray-900">{c.flag} {c.name}</option>)}
-          </select>
-        </div>
-        <InputField label="رابط الفيديو" id="sub-url" value={form.url} onChange={v => setForm({...form, url: v})} placeholder="https://www.tiktok.com/..." />
-        <ShinyButton type="submit" disabled={status === 'submitting'} className="w-full" style={{ backgroundColor: settings.mainColor }}>
-          {status === 'submitting' ? <Loader className="animate-spin w-5 h-5 inline" /> : 'إرسال المشاركة'}
-        </ShinyButton>
-      </form>
     </GlassCard>
   );
 };
 
-const CelebrationHeader = () => (
-  <div className="text-center mb-16 animate-fadeIn relative z-10">
-    <style>{`
-      @keyframes fireworks { 0% { transform: translate(var(--x), var(--initialY)); width: var(--initialSize); opacity: 1; } 50% { width: 0.5rem; opacity: 1; } 100% { width: var(--finalSize); opacity: 0; } }
-      .firework, .firework::before, .firework::after {
-        position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 0.5vmin; aspect-ratio: 1; background: radial-gradient(circle, #ff0 0.2vmin, #0000 0) 50% 0% / 100% 50% no-repeat; animation: fireworks 2s infinite; pointer-events: none;
-      }
-    `}</style>
-    <div className="firework" style={{left: '20%', top: '30%'}}></div>
-    <div className="firework" style={{left: '80%', top: '30%', animationDelay: '0.5s'}}></div>
-    <div className="firework" style={{left: '50%', top: '10%', animationDelay: '1s'}}></div>
-    
-    <p className="text-white/70 text-xl font-bold tracking-wide">شكراً لجميع المبدعين الذين شاركوا معنا</p>
-  </div>
-);
 
-const WinnersPodium = ({ winners }) => {
-    if (!winners || winners.length === 0) return null;
-    const [first, second, third] = winners;
+const SubmissionForm = ({ settings, userId, allSubmissions }) => {
+  const [step, setStep] = useState(1);
+  const [videoUrl, setVideoUrl] = useState('');
+  const [isFetching, setIsFetching] = useState(false);
+  const [fetchError, setFetchError] = useState(false);
+  
+  const [formData, setFormData] = useState({ 
+    participantName: '', 
+    description: '', 
+    thumbnailUrl: '',
+    country: COUNTRIES[0].name, 
+    episode: EPISODES[0] 
+  });
+  
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [successMessage, setSuccessMessage] = useState(null);
+  const [error, setError] = useState(null);
 
-    return (
-        <div className="flex justify-center items-end gap-4 md:gap-8 mb-20 min-h-[350px] px-4">
-            {/* المركز الثاني */}
-            {second && (
-                <div className="flex flex-col items-center w-1/3 md:w-1/4 animate-slideUp delay-100">
-                    <div className="relative mb-4">
-                        <div className="w-20 h-20 md:w-28 md:h-28 rounded-full border-4 border-gray-300 shadow-[0_0_20px_rgba(209,213,219,0.3)] overflow-hidden">
-                            <img src={second.profilePicUrl || 'https://placehold.co/400'} className="w-full h-full object-cover" alt="" />
-                        </div>
-                        <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 bg-gray-300 text-gray-900 font-bold px-3 py-1 rounded-full border-2 border-gray-100 shadow-lg flex items-center gap-1">
-                            <span className="text-xs">#2</span>
-                        </div>
-                    </div>
-                    <div className="text-center mb-2">
-                          <h3 className="font-bold text-white truncate max-w-[100px] md:max-w-full">{second.participantName}</h3>
-                          <p className="text-gray-400 text-sm font-mono">{second.votes} صوت</p>
-                    </div>
-                    <div className="w-full h-32 bg-gradient-to-t from-gray-900 to-gray-700 rounded-t-2xl border-t border-gray-500 flex items-end justify-center pb-4 shadow-2xl">
-                        <span className="text-4xl opacity-20 font-black text-white">2</span>
-                    </div>
-                </div>
-            )}
+  // دالة لتنظيف الرابط من المتغيرات الزائدة للمقارنة
+  const normalizeTikTokUrl = (url) => {
+    try {
+      const urlObj = new URL(url);
+      return urlObj.origin + urlObj.pathname;
+    } catch (e) {
+      return url;
+    }
+  };
 
-            {/* المركز الأول */}
-            {first && (
-                <div className="flex flex-col items-center w-1/3 md:w-1/3 z-10 animate-slideUp">
-                    <div className="relative mb-6">
-                        <Crown className="absolute -top-10 left-1/2 -translate-x-1/2 text-yellow-400 w-12 h-12 animate-bounce fill-yellow-400" />
-                        <div className="w-28 h-28 md:w-40 md:h-40 rounded-full border-4 border-yellow-400 shadow-[0_0_40px_rgba(250,204,21,0.5)] overflow-hidden ring-4 ring-yellow-400/20">
-                            <img src={first.profilePicUrl || 'https://placehold.co/400'} className="w-full h-full object-cover" alt="" />
-                        </div>
-                        <div className="absolute -bottom-5 left-1/2 -translate-x-1/2 bg-gradient-to-r from-yellow-400 to-yellow-600 text-black font-black px-6 py-1.5 rounded-full border-2 border-yellow-200 shadow-xl flex items-center gap-1 text-lg">
-                            <span>#1</span>
-                        </div>
-                    </div>
-                    <div className="text-center mb-4">
-                          <h3 className="font-black text-2xl text-white truncate max-w-[120px] md:max-w-full">{first.participantName}</h3>
-                          <p className="text-yellow-400 font-bold text-lg font-mono">{first.votes} صوت</p>
-                    </div>
-                    <div className="w-full h-48 bg-gradient-to-t from-yellow-900/50 to-yellow-600 rounded-t-2xl border-t border-yellow-400 flex items-end justify-center pb-6 shadow-[0_0_50px_rgba(234,179,8,0.2)] relative overflow-hidden">
-                        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-30"></div>
-                        <span className="text-6xl opacity-30 font-black text-white">1</span>
-                    </div>
-                </div>
-            )}
+  const handleFetchData = async (e) => {
+    e.preventDefault();
+    setError(null);
+    setSuccessMessage(null);
 
-            {/* المركز الثالث */}
-            {third && (
-                <div className="flex flex-col items-center w-1/3 md:w-1/4 animate-slideUp delay-200">
-                    <div className="relative mb-4">
-                        <div className="w-20 h-20 md:w-28 md:h-28 rounded-full border-4 border-orange-700 shadow-[0_0_20px_rgba(194,65,12,0.3)] overflow-hidden">
-                            <img src={third.profilePicUrl || 'https://placehold.co/400'} className="w-full h-full object-cover" alt="" />
-                        </div>
-                        <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 bg-orange-700 text-white font-bold px-3 py-1 rounded-full border-2 border-orange-500 shadow-lg flex items-center gap-1">
-                            <span className="text-xs">#3</span>
-                        </div>
-                    </div>
-                    <div className="text-center mb-2">
-                          <h3 className="font-bold text-white truncate max-w-[100px] md:max-w-full">{third.participantName}</h3>
-                          <p className="text-orange-400 text-sm font-mono">{third.votes} صوت</p>
-                    </div>
-                    <div className="w-full h-24 bg-gradient-to-t from-gray-900 to-orange-900/60 rounded-t-2xl border-t border-orange-700 flex items-end justify-center pb-4 shadow-2xl">
-                        <span className="text-4xl opacity-20 font-black text-white">3</span>
-                    </div>
-                </div>
-            )}
-        </div>
-    );
-};
-
-// =========================================================================
-// *** NEW COMPONENT: Remaining Participants Carousel (Cards) ***
-// =========================================================================
-const RemainingCarousel = ({ participants }) => {
-    const [index, setIndex] = useState(0);
-    const itemsPerPage = 4; // عدد البطاقات الظاهرة
-    const [isPaused, setIsPaused] = useState(false);
-  
-    // حساب العدد الكلي للصفحات
-    const totalPages = Math.ceil(participants.length / itemsPerPage);
-  
-    useEffect(() => {
-      if (isPaused || participants.length <= itemsPerPage) return;
-  
-      const interval = setInterval(() => {
-        setIndex((prevIndex) => {
-          const nextIndex = prevIndex + itemsPerPage;
-          return nextIndex >= participants.length ? 0 : nextIndex;
-        });
-      }, 5000); // التبديل كل 5 ثواني
-  
-      return () => clearInterval(interval);
-    }, [participants.length, isPaused]);
-  
-    // الحصول على المجموعة الحالية (4 أشخاص)
-    const currentGroup = participants.slice(index, index + itemsPerPage);
-  
-    if (participants.length === 0) return null;
-  
-    return (
-      <div 
-        className="w-full bg-white/5 border-y border-white/10 py-6 px-4 rounded-xl relative overflow-hidden group"
-        onMouseEnter={() => setIsPaused(true)}
-        onMouseLeave={() => setIsPaused(false)}
-      >
-        {/* عنوان جانبي صغير */}
-        <div className="flex justify-between items-center mb-4 px-2">
-          <h3 className="text-white/60 text-sm font-bold flex items-center gap-2">
-            <Trophy size={16} className="text-[var(--highlight-color)]"/> باقي المنافسين
-          </h3>
-          {totalPages > 1 && (
-             <div className="flex gap-1">
-               {Array.from({ length: Math.min(totalPages, 5) }).map((_, i) => (
-                 <div 
-                   key={i} 
-                   className={`h-1 rounded-full transition-all duration-500 ${i === Math.floor(index / itemsPerPage) % 5 ? 'w-6 bg-[var(--highlight-color)]' : 'w-2 bg-white/20'}`}
-                 />
-               ))}
-             </div>
-          )}
-        </div>
-  
-        {/* شبكة البطاقات */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 min-h-[100px]">
-          {currentGroup.map((sub, i) => (
-            <div 
-              key={`${sub.id}-${index}`} // تغيير المفتاح يجبر الرياكت على إعادة تشغيل الانميشن
-              className="bg-black/40 border border-white/10 rounded-xl p-3 flex items-center gap-3 hover:bg-white/10 transition duration-300 animate-fadeIn"
-              style={{ animationDelay: `${i * 100}ms` }}
-            >
-              {/* الترتيب */}
-              <div className="flex flex-col items-center justify-center bg-white/5 w-10 h-10 rounded-lg border border-white/5">
-                 <span className="text-xs text-white/40">#</span>
-                 <span className="font-mono font-bold text-white">{index + i + 4}</span>
-              </div>
-  
-              {/* الصورة */}
-              <img 
-                src={sub.profilePicUrl} 
-                className="w-12 h-12 rounded-full object-cover border border-white/20" 
-                alt="" 
-                onError={(e) => e.target.src='https://placehold.co/100'}
-              />
-  
-              {/* المعلومات */}
-              <div className="flex-1 overflow-hidden">
-                <h4 className="text-white font-bold text-sm truncate">{sub.participantName}</h4>
-                <p className="text-[var(--highlight-color)] text-xs font-bold mt-0.5">{sub.votes} صوت</p>
-              </div>
-            </div>
-          ))}
-        </div>
-        
-        {/* مؤشر التوقف المؤقت */}
-        {isPaused && totalPages > 1 && (
-          <div className="absolute top-2 left-2 text-[10px] bg-black/60 px-2 py-1 rounded text-white/50">
-            تم الإيقاف مؤقتاً
-          </div>
-        )}
-      </div>
-    );
-};
-
-// =========================================================================
-// *** REDESIGNED: VotingLeaderboard (Card Style Grid + Carousel) ***
-// =========================================================================
-const VotingLeaderboard = ({ submissions }) => {
-  const sorted = [...submissions].sort((a, b) => b.votes - a.votes);
-  const top3 = sorted.slice(0, 3);
-  const rest = sorted.slice(3);
-
-  if (sorted.length === 0) return null;
-
-  // Helper to render the specific style for each rank card
-  const renderRankCard = (sub, rank) => {
-    let config = {
-      borderColor: 'border-white/10',
-      glow: '',
-      textColor: 'text-white',
-      badgeColor: 'bg-gray-700'
-    };
-
-    if (rank === 1) { // #1
-       config = { 
-         borderColor: 'border-cyan-400', 
-         glow: 'shadow-[0_0_30px_rgba(34,211,238,0.2)]', 
-         textColor: 'text-cyan-400',
-         badgeColor: 'bg-cyan-400 text-black'
-       };
-    } else if (rank === 2) { // #2
-       config = { 
-         borderColor: 'border-[#ff0050]', 
-         glow: 'shadow-[0_0_30px_rgba(255,0,80,0.2)]', 
-         textColor: 'text-[#ff0050]',
-         badgeColor: 'bg-[#ff0050] text-white'
-       };
-    } else if (rank === 3) { // #3
-       config = { 
-         borderColor: 'border-red-900', 
-         glow: 'shadow-[0_0_30px_rgba(127,29,29,0.2)]', 
-         textColor: 'text-red-400',
-         badgeColor: 'bg-red-900 text-white'
-       };
+    if (!videoUrl.includes('tiktok.com')) {
+      setError('الرجاء إدخال رابط تيك توك صحيح.');
+      return;
     }
 
-    return (
-       <div key={sub.id} className={`relative bg-gray-900 rounded-2xl border-2 ${config.borderColor} ${config.glow} p-4 flex flex-col items-center justify-center transition-transform hover:scale-[1.02]`}>
-           {/* Rank Badge */}
-           <div className={`absolute top-0 right-0 ${config.badgeColor} font-black text-lg px-3 py-1 rounded-bl-2xl rounded-tr-xl`}>
-             #{rank}
-           </div>
-           
-           {/* Profile Image */}
-           <div className={`w-20 h-20 rounded-xl overflow-hidden mb-3 border-2 ${config.borderColor}`}>
-             <img src={sub.profilePicUrl} alt={sub.participantName} className="w-full h-full object-cover" />
-           </div>
+    setIsFetching(true);
+    try {
+      const cleanUrl = normalizeTikTokUrl(videoUrl);
 
-           {/* Votes */}
-           <div className={`text-3xl font-black mb-1 ${config.textColor}`}>
-             {sub.votes}
-           </div>
+      // 1. التحقق من وجود التصميم مسبقاً
+      const exists = allSubmissions.some(sub => normalizeTikTokUrl(sub.videoUrl) === cleanUrl);
+      if (exists) {
+        setError('عذراً، هذا التصميم مشارك في المسابقة مسبقاً!');
+        setIsFetching(false);
+        return;
+      }
 
-           {/* Name */}
-           <h3 className="font-bold text-white text-lg truncate w-full text-center">{sub.participantName}</h3>
-           
-           {/* Country */}
-           <div className="flex items-center gap-1 text-white/50 text-xs mt-1">
-             <span>{sub.flag}</span>
-             <span>{sub.country}</span>
-           </div>
-       </div>
-    );
+      // 2. محاولة جلب البيانات من TikTok oEmbed API عبر Proxy
+      const oembedApi = `https://www.tiktok.com/oembed?url=${encodeURIComponent(cleanUrl)}`;
+      const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(oembedApi)}`;
+      
+      const response = await fetch(proxyUrl);
+      if (!response.ok) throw new Error('Network error');
+      
+      const proxyData = await response.json();
+      if (!proxyData.contents) throw new Error('No content');
+      
+      const data = JSON.parse(proxyData.contents);
+
+      setFormData(prev => ({
+        ...prev,
+        participantName: data.author_name || '',
+        description: data.title || '',
+        thumbnailUrl: data.thumbnail_url || ''
+      }));
+      setFetchError(false);
+      
+    } catch (err) {
+      console.warn("Fetch failed, switching to manual mode.", err);
+      // في حال فشل الجلب (CORS, Adblocker, الخ)، نفتح الوضع اليدوي للمستخدم
+      setFormData(prev => ({
+        ...prev,
+        participantName: '',
+        description: '',
+        thumbnailUrl: ''
+      }));
+      setFetchError(true);
+    } finally {
+      setIsFetching(false);
+      setStep(2); // دائماً ننتقل للخطوة الثانية، سواء نجح الجلب أو فشل
+    }
+  };
+
+  const handleFinalSubmit = async (e) => {
+    e.preventDefault();
+    setError(null); 
+    
+    if (!formData.participantName || !formData.description) {
+      setError('الرجاء تعبئة اسم المصمم ووصف التصميم.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      if (!db) throw new Error('قاعدة البيانات غير مهيأة.');
+      const countryData = COUNTRIES.find((c) => c.name === formData.country);
+      const cleanUrl = normalizeTikTokUrl(videoUrl);
+      
+      const newSubmission = {
+        participantName: formData.participantName,
+        description: formData.description,
+        videoUrl: cleanUrl,
+        episode: formData.episode,
+        country: formData.country,
+        userId: userId || 'anonymous',
+        status: 'Pending',
+        votes: 0,
+        flag: countryData.flag,
+        profilePic: generateAvatar(formData.participantName), 
+        // إذا لم يكن هناك صورة غلاف بسبب فشل الجلب، نولد غلافاً برقم الحلقة
+        thumbnailUrl: formData.thumbnailUrl || `https://placehold.co/600x900/111827/ffffff?text=${encodeURIComponent(formData.episode)}`,
+        submittedAt: serverTimestamp(),
+      };
+
+      await retryOperation(() => addDoc(collection(db, PUBLIC_SUBMISSIONS_COLLECTION), newSubmission));
+      setSuccessMessage('تم إرسال مشاركتك بنجاح! سيتم مراجعتها وعرضها قريباً.');
+      
+      // تصفير البيانات للبدء من جديد
+      setStep(1);
+      setVideoUrl('');
+      setFormData({ participantName: '', description: '', thumbnailUrl: '', country: COUNTRIES[0].name, episode: EPISODES[0] });
+    } catch (e) {
+      setError(`حدث خطأ أثناء الإرسال: ${e.message}`);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
-    <div className="mb-12 animate-slideUp w-full max-w-5xl mx-auto">
-       {/* Header Section */}
-       <div className="flex justify-between items-center mb-6 border-b border-white/10 pb-4">
-           <div className="hidden md:block"></div> {/* Spacer */}
-           <LiveResultsBadge />
-       </div>
-       
-       {/* Grid Layout for Top 3 */}
-       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-10">
-          
-          {/* Mobile View (Stacked) */}
-          <div className="md:hidden space-y-4">
-             {top3.map((sub, idx) => renderRankCard(sub, idx + 1))}
+    <GlassCard isGlassmorphism={settings.useGlassmorphism} color="bg-gray-900" className="max-w-xl mx-auto mt-10">
+      <h1 className="text-3xl font-bold text-center mb-6" style={{ color: `var(--main-color-css)` }}>إرسال تصميم جديد</h1>
+      {successMessage && <div className="bg-green-600/70 p-4 rounded-lg mb-4 text-white text-center font-semibold">{successMessage}</div>}
+      {error && <div className="bg-red-600/70 p-4 rounded-lg mb-4 text-white text-center font-semibold">{error}</div>}
+      
+      {step === 1 && (
+        <form onSubmit={handleFetchData} className="space-y-4 animate-fade-in">
+          <div>
+            <label className="block text-white mb-2 font-medium">رابط تصميم الفيديو (TikTok URL)</label>
+            <input 
+              type="url" 
+              value={videoUrl} 
+              onChange={(e) => setVideoUrl(e.target.value)} 
+              className="w-full p-4 rounded-lg bg-gray-800/80 border border-white/20 text-white focus:border-highlight-color transition shadow-inner" 
+              placeholder="https://www.tiktok.com/@user/video/123..."
+              dir="ltr" 
+              required 
+            />
+            <p className="text-xs text-white/50 mt-2 flex items-center"><Info className="w-4 h-4 ml-1" /> سيتم جلب اسمك والصورة المصغرة والوصف تلقائياً إن أمكن.</p>
           </div>
 
-          {/* Desktop View (2 - 1 - 3 Layout) */}
-          <div className="hidden md:contents">
-             {/* Position #2 */}
-             {top3[1] && renderRankCard(top3[1], 2)}
-             {/* Position #1 (Make it slightly taller?) */}
-             {top3[0] && (
-                 <div className="transform scale-110 z-10">
-                    {renderRankCard(top3[0], 1)}
-                 </div>
-             )}
-             {/* Position #3 */}
-             {top3[2] && renderRankCard(top3[2], 3)}
-          </div>
-       </div>
-
-      {/* CAROUSEL FOR REMAINING PARTICIPANTS */}
-      {rest.length > 0 && (
-        <RemainingCarousel participants={rest} />
+          <button type="submit" disabled={isFetching || !videoUrl} className="w-full p-4 rounded-lg font-bold text-lg text-gray-900 transition duration-300 disabled:opacity-50 mt-4 flex items-center justify-center" style={{ backgroundColor: `var(--highlight-color-css)` }}>
+            {isFetching ? <><Loader className="w-5 h-5 animate-spin ml-2" /> جاري التحليل...</> : 'تحقق وجلب البيانات'}
+          </button>
+        </form>
       )}
-    </div>
-  );
-};
 
-const ResultsTable = ({ submissions }) => {
-    return (
-        <div className="max-w-4xl mx-auto bg-gray-900/50 border border-white/10 rounded-2xl overflow-hidden backdrop-blur-md p-4">
-            <h3 className="text-white/70 font-bold mb-4 pr-2">باقي المبدعين</h3>
-            <div className="space-y-2">
-                {submissions.map((sub, idx) => (
-                    <div key={sub.id} className="flex items-center bg-white/5 hover:bg-white/10 transition p-3 rounded-xl border border-white/5">
-                        <div className="w-8 text-center font-mono text-white/40 font-bold">#{idx + 4}</div>
-                        <img src={sub.profilePicUrl} className="w-10 h-10 rounded-full object-cover mx-4 border border-white/10" alt="" />
-                        <div className="flex-1">
-                            <h4 className="font-bold text-white">{sub.participantName}</h4>
-                            <p className="text-xs text-white/40">{sub.flag} {sub.country}</p>
-                        </div>
-                        <div className="text-white font-mono font-bold bg-black/30 px-3 py-1 rounded-lg">
-                            {sub.votes}
-                        </div>
-                    </div>
-                ))}
+      {step === 2 && (
+        <form onSubmit={handleFinalSubmit} className="space-y-4 animate-fade-in">
+          
+          {/* رسالة في حال فشل الجلب التلقائي */}
+          {fetchError && (
+            <div className="bg-yellow-600/20 border border-yellow-500/50 p-3 rounded-lg text-yellow-200 text-sm mb-4">
+              <AlertTriangle className="w-5 h-5 inline-block ml-1" />
+              تعذر الجلب التلقائي (بسبب حماية المتصفح أو الشبكة). يرجى إدخال تفاصيل التصميم يدوياً.
             </div>
-        </div>
-    );
-};
+          )}
 
-const SearchFilterBar = ({ onSearch, onFilter }) => {
-  return (
-    <div className="flex flex-col md:flex-row gap-4 mb-8 bg-black/40 p-4 rounded-2xl border border-white/10 backdrop-blur-md">
-      <div className="flex-1 relative">
-        <Search className="absolute right-3 top-3.5 text-white/40 w-5 h-5" />
-        <input 
-          type="text" 
-          placeholder="بحث عن اسم المستخدم..." 
-          onChange={(e) => onSearch(e.target.value)}
-          className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pr-10 pl-4 text-white focus:border-[var(--highlight-color)] outline-none transition placeholder-white/30"
-        />
-      </div>
-      <div className="relative min-w-[200px]">
-        <Filter className="absolute right-3 top-3.5 text-white/40 w-5 h-5 pointer-events-none" />
-        <select 
-          onChange={(e) => onFilter(e.target.value)}
-          className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pr-10 pl-4 text-white appearance-none focus:border-[var(--highlight-color)] outline-none cursor-pointer"
-        >
-          {COUNTRIES.map(c => <option key={c.code} value={c.name} className="bg-gray-900">{c.flag} {c.name}</option>)}
-        </select>
-      </div>
-    </div>
+          {/* المعاينة في حال نجاح الجلب */}
+          {!fetchError && formData.thumbnailUrl && (
+            <div className="bg-gray-800 p-4 rounded-xl border border-white/20 flex gap-4">
+              <img src={formData.thumbnailUrl} alt="Thumbnail" className="w-24 h-36 object-cover rounded-lg shadow-lg border border-white/10" />
+              <div className="flex flex-col justify-center overflow-hidden">
+                 <span className="text-xs text-white/50 mb-1">تم جلب البيانات (يمكنك تعديلها إذا رغبت)</span>
+                 <p className="text-lg font-bold truncate text-white" style={{ color: settings.highlightColor }}>{formData.participantName}</p>
+                 <p className="text-sm text-white/80 line-clamp-3 mt-2">{formData.description}</p>
+              </div>
+            </div>
+          )}
+
+          {/* الحقول تظهر دائماً ليتمكن المستخدم من المراجعة أو الإدخال اليدوي */}
+          <div>
+            <label className="block text-white mb-2 font-medium">اسم الحساب / المصمم</label>
+            <input 
+              type="text" 
+              value={formData.participantName} 
+              onChange={(e) => setFormData({ ...formData, participantName: e.target.value })} 
+              className="w-full p-3 rounded-lg bg-gray-800/80 border border-white/20 text-white focus:border-highlight-color" 
+              placeholder="اسم المصمم..."
+              required 
+            />
+          </div>
+
+          <div>
+            <label className="block text-white mb-2 font-medium">وصف التصميم (عنوان الفيديو)</label>
+            <textarea 
+              value={formData.description} 
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })} 
+              className="w-full p-3 rounded-lg bg-gray-800/80 border border-white/20 text-white focus:border-highlight-color h-20" 
+              placeholder="اكتب وصفاً قصيراً للتصميم..."
+              required 
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-white mb-2 font-medium">رقم الحلقة</label>
+              <div className="relative">
+                <select value={formData.episode} onChange={(e) => setFormData({ ...formData, episode: e.target.value })} className="appearance-none w-full p-3 rounded-lg bg-gray-800/80 border border-white/20 text-white focus:border-highlight-color pr-10" style={{ backgroundImage: 'none' }} required>
+                  {EPISODES.map((ep) => <option key={ep} value={ep}>{ep}</option>)}
+                </select>
+                <ChevronDown className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-white pointer-events-none" />
+              </div>
+            </div>
+            <div>
+              <label className="block text-white mb-2 font-medium">البلد</label>
+              <div className="relative">
+                <select value={formData.country} onChange={(e) => setFormData({ ...formData, country: e.target.value })} className="appearance-none w-full p-3 rounded-lg bg-gray-800/80 border border-white/20 text-white focus:border-highlight-color pr-10" style={{ backgroundImage: 'none' }} required>
+                  {COUNTRIES.map((c) => <option key={c.code} value={c.name}>{c.flag} {c.name}</option>)}
+                </select>
+                <ChevronDown className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-white pointer-events-none" />
+              </div>
+            </div>
+          </div>
+
+          <div className="flex gap-4 pt-4">
+            <button type="button" onClick={() => {setStep(1); setFetchError(false); setError(null);}} disabled={isSubmitting} className="w-1/3 p-3 rounded-lg font-bold text-white bg-gray-700 hover:bg-gray-600 transition duration-300">
+              تراجع
+            </button>
+            <button type="submit" disabled={isSubmitting} className="w-2/3 p-3 rounded-lg font-bold text-lg text-gray-900 transition duration-300 disabled:opacity-50" style={{ backgroundColor: `var(--main-color-css)` }}>
+              {isSubmitting ? 'جاري الإرسال...' : 'تأكيد وإرسال'}
+            </button>
+          </div>
+        </form>
+      )}
+    </GlassCard>
   );
 };
 
-// =========================================================================
-// *** VIDEO CARD & MODAL ***
-// =========================================================================
-const VideoCard = ({ submission, settings, onVote, onClick, cooldown }) => (
-  <div 
-    onClick={onClick}
-    className="group relative aspect-[9/16] rounded-2xl overflow-hidden cursor-pointer transform transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl hover:shadow-[var(--highlight-color)]/20 border border-white/10 bg-gray-800"
-  >
-    <img 
-      src={submission.thumbnailUrl} 
-      alt={submission.participantName} 
-      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-80 group-hover:opacity-100"
-      onError={(e) => e.target.src = 'https://placehold.co/600x900/111/fff?text=No+Image'}
-    />
-    
-    <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent flex flex-col justify-end p-4">
-      <div className="flex items-center gap-2 mb-3">
-        <img src={submission.profilePicUrl} className="w-8 h-8 rounded-full border border-white/50 bg-black" alt="" />
-        <div className="overflow-hidden">
-          <h3 className="font-bold text-white text-sm truncate shadow-sm">{submission.participantName}</h3>
-          <p className="text-[var(--highlight-color)] text-[10px] truncate opacity-90">{submission.tiktokUser}</p>
-        </div>
+const ContestCard = ({ submission, settings, onVote, onOpenVideo, onDesignerClick }) => {
+  const { participantName, description, country, flag, episode, thumbnailUrl, profilePic, votes } = submission;
+  
+  return (
+    <GlassCard isGlassmorphism={settings.useGlassmorphism} color="bg-gray-900" className="flex flex-col h-full overflow-hidden hover:shadow-highlight transition duration-300 relative group">
+      <div className="absolute top-2 left-2 z-10 px-2 py-1 rounded-md text-xs font-bold text-gray-900 shadow-md" style={{ backgroundColor: settings.highlightColor }}>
+        {episode}
       </div>
       
-      {settings.stage !== 'Ended' && (
-          <button 
-            onClick={(e) => { e.stopPropagation(); if(cooldown === 0) onVote(submission); }}
-            disabled={cooldown > 0}
-            className={`w-full py-2 rounded-lg font-bold text-xs transition flex items-center justify-center gap-2 shadow-lg active:scale-95 
-              ${cooldown > 0 
-                ? 'bg-gray-600 text-gray-300 cursor-not-allowed opacity-80' 
-                : 'bg-white text-black hover:bg-gray-200'}`}
-          >
-            {cooldown > 0 ? (
-              <span>{cooldown}s</span>
-            ) : (
-              <><Crown className="w-3 h-3 text-yellow-600" /> تصويت ({submission.votes})</>
-            )}
-          </button>
-      )}
-      {settings.stage === 'Ended' && (
-          <div className="w-full py-2 rounded-lg font-bold text-xs bg-white/10 text-white text-center border border-white/10">
-             {submission.votes} صوت
-          </div>
-      )}
-    </div>
-  </div>
-);
+      <div className="relative overflow-hidden w-full aspect-[2/3] rounded-lg mb-3 cursor-pointer" onClick={() => onOpenVideo(submission)}>
+        <img src={thumbnailUrl} alt="Video Thumbnail" className="w-full h-full object-cover transition duration-300 transform group-hover:scale-105 opacity-80" onError={(e) => (e.target.src = 'https://placehold.co/600x900/111827/ffffff?text=Video')} />
+        
+        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent flex flex-col justify-end p-2 pb-4">
+           <div className="flex items-center justify-center h-full">
+             <PlayCircle className="w-12 h-12 text-white/70 group-hover:text-white transition duration-300" />
+           </div>
+        </div>
+      </div>
 
-const VideoModal = ({ isOpen, onClose, submission, settings, onVote, cooldown }) => {
-  if (!isOpen || !submission) return null;
-  const videoId = submission.videoUrl.split('/').pop().split('?')[0];
-  const embedUrl = `https://www.tiktok.com/embed/v2/${videoId}`;
+      <div className="flex flex-col flex-grow justify-between text-white p-1">
+        
+        {/* معلومات المصمم قابلة للضغط للذهاب لبروفايله */}
+        <div className="flex items-center mb-2 group/author cursor-pointer" onClick={() => onDesignerClick(participantName)}>
+           <img src={profilePic || generateAvatar(participantName)} alt={participantName} className="w-8 h-8 rounded-full border border-white/20 object-cover group-hover/author:border-highlight-color transition" />
+           <div className="mr-2 overflow-hidden">
+             <p className="text-sm font-bold truncate leading-tight group-hover/author:text-highlight-color transition">{participantName}</p>
+             <p className="text-[10px] text-white/60 flex items-center">{flag} {country}</p>
+           </div>
+        </div>
+
+        <div className="mb-3 h-10">
+          <p className="text-xs text-white/80 line-clamp-2" title={description}>
+            {description || "لم يتم كتابة وصف لهذا التصميم."}
+          </p>
+        </div>
+
+        <div className="flex justify-between items-center mb-3 pt-2 border-t border-white/10">
+            <span className="text-xs text-white/60">إجمالي الدعم</span>
+            <span className="text-sm font-bold" style={{ color: settings.highlightColor }}>{votes.toLocaleString()} صوت</span>
+        </div>
+
+        <button onClick={() => onVote(submission)} className="w-full py-2 px-4 rounded-lg font-bold text-gray-900 transition duration-300 hover:scale-[1.02] active:scale-95" style={{ backgroundColor: `var(--main-color-css)` }}>
+          صوت للتصميم
+        </button>
+      </div>
+    </GlassCard>
+  );
+};
+
+// --- المكون الجديد: صفحة بروفايل المصمم ---
+const DesignerProfile = ({ designerName, allSubmissions, settings, onVote, onBack, setVoteConfirmData }) => {
+  const [videoModalOpen, setVideoModalOpen] = useState(false);
+  const [selectedSubmission, setSelectedSubmission] = useState(null);
+
+  // جلب كل تصميمات هذا المصمم
+  const designerSubmissions = useMemo(() => 
+    allSubmissions.filter(sub => sub.status === 'Approved' && sub.participantName === designerName).sort((a,b) => b.votes - a.votes)
+  , [allSubmissions, designerName]);
+
+  const totalDesignerVotes = designerSubmissions.reduce((sum, sub) => sum + sub.votes, 0);
+  
+  // جلب الصورة والبلد من أول تصميم كبيانات أساسية
+  const profileInfo = designerSubmissions.length > 0 ? designerSubmissions[0] : null;
+
+  const handleOpenVideo = (submission) => { setSelectedSubmission(submission); setVideoModalOpen(true); };
+  
+  if(designerSubmissions.length === 0) {
+    return (
+      <div className="text-center py-20 text-white">
+        <p className="text-2xl mb-4">لا توجد أعمال معتمدة لهذا المصمم حالياً.</p>
+        <button onClick={onBack} className="px-6 py-2 bg-gray-800 rounded-full hover:bg-gray-700">العودة</button>
+      </div>
+    );
+  }
 
   return (
-    <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/95 backdrop-blur-md animate-fadeIn" onClick={onClose}>
-      <div 
-        className="relative w-full h-full md:h-[90vh] md:max-w-6xl md:rounded-2xl overflow-hidden flex flex-col md:flex-row bg-black md:border md:border-white/10 shadow-2xl"
-        onClick={e => e.stopPropagation()}
-      >
-        <button 
-            onClick={onClose} 
-            className="absolute top-4 left-4 z-[200] bg-black/50 p-2 rounded-full text-white hover:bg-red-600 transition border border-white/10"
-        >
-            <X size={24} />
-        </button>
+    <div className="space-y-6 animate-fade-in">
+       {/* زر العودة */}
+       <button onClick={onBack} className="flex items-center text-white/70 hover:text-white transition bg-gray-900/50 px-4 py-2 rounded-full border border-white/10 w-fit">
+         <ArrowRight className="w-5 h-5 ml-2" /> العودة للرئيسية
+       </button>
 
-        <div className="w-full md:flex-1 h-full bg-black relative flex items-center justify-center">
-           <iframe 
-             src={embedUrl} 
-             className="w-full h-full md:w-[400px] md:max-w-full" 
-             title="Video" 
-             allowFullScreen
-             style={{ border: 'none' }}
-           ></iframe>
-        </div>
-
-        <div className="hidden md:flex w-full md:w-80 bg-gray-900 border-l border-white/10 flex-col relative p-6">
-           <div className="flex flex-col items-center mb-6 mt-4">
-             <img src={submission.profilePicUrl} className="w-16 h-16 rounded-full border-2 border-[var(--highlight-color)] mb-3 object-cover bg-black" alt="" />
-             <h2 className="text-lg font-bold text-white text-center">{submission.participantName}</h2>
-             <p className="text-[var(--highlight-color)] text-sm">{submission.tiktokUser}</p>
-             <p className="text-white/50 text-xs mt-1">{submission.flag} {submission.country}</p>
-           </div>
-
-           <div className="bg-white/5 p-4 rounded-xl text-center mb-auto border border-white/5">
-             <p className="text-white/50 text-xs uppercase tracking-widest mb-1">عدد الأصوات</p>
-             <p className="text-4xl font-black text-[var(--highlight-color)]">{submission.votes}</p>
-           </div>
-
-           {settings.stage !== 'Ended' && (
-               <ShinyButton 
-                 onClick={() => { if(cooldown === 0) onVote(submission); }}
-                 disabled={cooldown > 0}
-                 className={`w-full py-3 text-md mt-4 ${cooldown > 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
-                 style={{ backgroundColor: cooldown > 0 ? '#4b5563' : settings.mainColor }}
-               >
-                 {cooldown > 0 ? `انتظر ${cooldown}ث` : 'تصويت للمشارك'}
-               </ShinyButton>
-           )}
-        </div>
-
-        <div className="md:hidden absolute bottom-8 left-0 right-0 px-6 z-50 flex items-center justify-between gap-4">
-            <div className="bg-black/60 backdrop-blur-md rounded-full px-4 py-2 border border-white/10 flex items-center gap-2">
-                 <span className="text-white font-bold text-sm">{submission.votes} صوت</span>
+       {/* ترويسة المصمم */}
+       <GlassCard isGlassmorphism={settings.useGlassmorphism} color="bg-gray-900" className="flex flex-col md:flex-row items-center md:items-start p-8 gap-6 relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-highlight-color/20 to-transparent"></div>
+          
+          <img src={profileInfo.profilePic || generateAvatar(designerName)} alt={designerName} className="w-32 h-32 rounded-full border-4 shadow-2xl z-10 object-cover" style={{ borderColor: settings.mainColor }} />
+          
+          <div className="text-center md:text-right z-10 flex-grow pt-2">
+            <h2 className="text-4xl font-extrabold text-white mb-2">{designerName}</h2>
+            <p className="text-lg text-white/70 mb-4">{profileInfo.flag} {profileInfo.country}</p>
+            
+            <div className="flex flex-wrap justify-center md:justify-start gap-4">
+               <div className="bg-gray-800/80 px-6 py-3 rounded-lg border border-white/10 text-center">
+                 <p className="text-sm text-white/50 mb-1">إجمالي التصاميم</p>
+                 <p className="text-2xl font-bold text-white">{designerSubmissions.length}</p>
+               </div>
+               <div className="bg-gray-800/80 px-6 py-3 rounded-lg border border-white/10 text-center">
+                 <p className="text-sm text-white/50 mb-1">مجموع الأصوات</p>
+                 <p className="text-2xl font-bold" style={{ color: settings.highlightColor }}>{totalDesignerVotes.toLocaleString()}</p>
+               </div>
             </div>
-            {settings.stage !== 'Ended' && (
-                <button 
-                    onClick={() => { if(cooldown === 0) onVote(submission); }}
-                    disabled={cooldown > 0}
-                    className="flex-1 bg-[var(--highlight-color)] text-black font-bold py-3 rounded-full shadow-lg active:scale-95 transition"
-                >
-                     {cooldown > 0 ? `انتظر ${cooldown}ث` : '🔥 تصويت الآن'}
-                </button>
-            )}
+          </div>
+       </GlassCard>
+
+       <h3 className="text-2xl font-bold text-white border-b border-white/10 pb-2 mt-8">جميع تصاميم {designerName}</h3>
+
+       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
+          {designerSubmissions.map((sub) => (
+            <ContestCard key={sub.id} submission={sub} settings={settings} onVote={(s) => setVoteConfirmData(s)} onOpenVideo={handleOpenVideo} onDesignerClick={()=>{}} />
+          ))}
+       </div>
+
+       <Modal isOpen={videoModalOpen} onClose={() => setVideoModalOpen(false)} title={`تصميم: ${selectedSubmission?.participantName}`}>
+        {selectedSubmission && (
+          <div className="flex flex-col">
+            <div className="relative w-full aspect-[9/16] bg-black rounded-lg overflow-hidden mb-4 mx-auto max-w-sm border border-white/10 shadow-2xl">
+              <iframe title="TikTok Video" src={`https://www.tiktok.com/embed/v2/${selectedSubmission.videoUrl.split('/').pop().split('?')[0]}?lang=en-US`} className="w-full h-full" frameBorder="0" allowFullScreen></iframe>
+            </div>
+            <div className="bg-gray-800 p-4 rounded-lg border border-white/10">
+               <p className="font-bold text-lg text-highlight-color mb-2">{selectedSubmission.episode}</p>
+               <p className="text-sm text-white/90 mb-4 whitespace-pre-wrap leading-relaxed">{selectedSubmission.description}</p>
+               <button onClick={() => {setVideoModalOpen(false); setVoteConfirmData(selectedSubmission);}} className="w-full py-3 px-6 rounded-lg font-bold text-gray-900 transition" style={{ backgroundColor: settings.mainColor }}>
+                 صوت لهذا التصميم الآن
+               </button>
+            </div>
+          </div>
+        )}
+      </Modal>
+    </div>
+  );
+};
+
+const DesignersLibrary = ({ settings }) => {
+  const [selectedEpisode, setSelectedEpisode] = useState(EPISODES[0]);
+  const currentScenes = MOCK_LIBRARY_SCENES.filter(scene => scene.episode === selectedEpisode);
+
+  return (
+    <div className="space-y-6 animate-fade-in">
+      <div className="flex flex-col md:flex-row justify-between items-center bg-gray-900/50 p-6 rounded-xl border border-white/10">
+        <div>
+          <h2 className="text-3xl font-bold text-white mb-2 flex items-center">
+            <FolderOpen className="w-8 h-8 ml-3" style={{ color: settings.highlightColor }} />
+            مكتبة المصممين
+          </h2>
+          <p className="text-white/70">حمل مشاهد عالية الدقة خالية من الحقوق لتصاميمك المونتاجية.</p>
+        </div>
+        
+        <div className="mt-4 md:mt-0 w-full md:w-64">
+          <label className="block text-white/70 text-sm mb-1">اختر حلقة المشاهد:</label>
+          <div className="relative">
+            <select 
+              value={selectedEpisode} 
+              onChange={(e) => setSelectedEpisode(e.target.value)} 
+              className="appearance-none w-full p-3 rounded-lg bg-gray-800 border border-white/20 text-white focus:border-highlight-color pr-10 text-lg font-bold" 
+              style={{ backgroundImage: 'none' }}
+            >
+              {EPISODES.map((ep) => <option key={ep} value={ep}>{ep}</option>)}
+            </select>
+            <ChevronDown className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-white pointer-events-none" />
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {currentScenes.length > 0 ? (
+          currentScenes.map((scene) => (
+            <GlassCard key={scene.id} isGlassmorphism={settings.useGlassmorphism} color="bg-gray-800" className="flex flex-col">
+              <div className="w-full aspect-video bg-black rounded-lg mb-4 flex items-center justify-center relative overflow-hidden group">
+                 <Film className="w-12 h-12 text-white/30 group-hover:scale-110 transition duration-300" />
+                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent"></div>
+                 <p className="absolute bottom-3 right-3 text-white font-bold">{scene.title}</p>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-3 mt-auto">
+                <a href={scene.verticalUrl} target="_blank" rel="noreferrer" className="flex flex-col items-center justify-center p-3 rounded-lg bg-gray-700 hover:bg-gray-600 transition text-white border border-white/10">
+                  <Smartphone className="w-6 h-6 mb-1 text-blue-400" />
+                  <span className="text-xs font-bold text-center">عامودي (Reels)</span>
+                  <span className="text-[10px] text-white/50 flex items-center mt-1"><Download className="w-3 h-3 ml-1"/> تحميل</span>
+                </a>
+                <a href={scene.horizontalUrl} target="_blank" rel="noreferrer" className="flex flex-col items-center justify-center p-3 rounded-lg bg-gray-700 hover:bg-gray-600 transition text-white border border-white/10">
+                  <MonitorPlay className="w-6 h-6 mb-1 text-green-400" />
+                  <span className="text-xs font-bold text-center">أفقي (YouTube)</span>
+                  <span className="text-[10px] text-white/50 flex items-center mt-1"><Download className="w-3 h-3 ml-1"/> تحميل</span>
+                </a>
+              </div>
+            </GlassCard>
+          ))
+        ) : (
+          <div className="col-span-full text-center py-10 text-white/50">
+            لا توجد مشاهد متوفرة لهذه الحلقة حالياً.
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+const Home = ({ settings, allSubmissions, totalApproved, onVote, cooldown, setVoteConfirmData, onDesignerClick }) => {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterEpisode, setFilterEpisode] = useState('الكل');
+  const [videoModalOpen, setVideoModalOpen] = useState(false);
+  const [selectedSubmission, setSelectedSubmission] = useState(null);
+
+  const approvedSubmissions = useMemo(() => allSubmissions.filter((sub) => sub.status === 'Approved').sort((a, b) => b.votes - a.votes), [allSubmissions]);
+  
+  const filteredSubmissions = useMemo(() => {
+    return approvedSubmissions.filter((sub) => {
+      const matchSearch = sub.participantName.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                          sub.country.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          (sub.description && sub.description.toLowerCase().includes(searchTerm.toLowerCase()));
+      const matchEpisode = filterEpisode === 'الكل' || sub.episode === filterEpisode;
+      return matchSearch && matchEpisode;
+    });
+  }, [approvedSubmissions, searchTerm, filterEpisode]);
+
+  const handleOpenVideo = (submission) => { setSelectedSubmission(submission); setVideoModalOpen(true); };
+  const handleVoteFromCard = (submission) => {
+    if (cooldown > 0) { handleOpenVideo(submission); return; }
+    setVoteConfirmData(submission);
+  };
+
+  return (
+    <div className="space-y-8 animate-fade-in">
+      <GlassCard isGlassmorphism={settings.useGlassmorphism} color="bg-gray-800" className="p-4 flex flex-col md:flex-row gap-4 items-center">
+        <div className="w-full md:w-1/3">
+          <div className="relative">
+            <input type="text" placeholder="البحث باسم المصمم أو الوصف..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full p-3 pr-10 rounded-lg bg-gray-900/80 border border-white/10 text-white focus:border-highlight-color" />
+            <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-white/50" />
+          </div>
+        </div>
+        
+        <div className="w-full md:w-1/3">
+           <div className="relative">
+            <select value={filterEpisode} onChange={(e) => setFilterEpisode(e.target.value)} className="appearance-none w-full p-3 rounded-lg bg-gray-900/80 border border-white/10 text-white focus:border-highlight-color pr-10 font-bold" style={{ backgroundImage: 'none' }}>
+              <option value="الكل">عرض جميع الحلقات</option>
+              {EPISODES.map((ep) => <option key={ep} value={ep}>{ep}</option>)}
+            </select>
+            <ChevronDown className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-white pointer-events-none" />
+          </div>
         </div>
 
-      </div>
+        <div className="w-full md:w-1/3 flex items-center justify-end text-white">
+          <span className="text-lg font-semibold ml-2">المشاركات المعروضة:</span>
+          <span className="text-2xl font-extrabold" style={{ color: `var(--highlight-color-css)` }}>{filteredSubmissions.length}</span>
+        </div>
+      </GlassCard>
+
+      <LiveResultsView approvedSubmissions={filteredSubmissions} settings={settings} currentFilter={filterEpisode} onDesignerClick={onDesignerClick} />
+
+      <h3 className="text-2xl font-bold text-white border-b border-white/10 pb-2">
+        {filterEpisode === 'الكل' ? 'أحدث التصاميم (جميع الحلقات)' : `تصاميم ${filterEpisode}`}
+      </h3>
+
+      {filteredSubmissions.length === 0 ? (
+        <p className="text-white/70 text-center text-xl mt-10">لا توجد مشاركات مطابقة لمعايير البحث.</p>
+      ) : (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
+          {filteredSubmissions.map((sub) => (
+            <ContestCard key={sub.id} submission={sub} settings={settings} onVote={handleVoteFromCard} onOpenVideo={handleOpenVideo} onDesignerClick={onDesignerClick} />
+          ))}
+        </div>
+      )}
+
+      <Modal isOpen={videoModalOpen} onClose={() => setVideoModalOpen(false)} title={`تصميم: ${selectedSubmission?.participantName}`}>
+        {selectedSubmission && (
+          <div className="flex flex-col">
+            <div className="relative w-full aspect-[9/16] bg-black rounded-lg overflow-hidden mb-4 mx-auto max-w-sm border border-white/10 shadow-2xl">
+              <iframe title="TikTok Video" src={`https://www.tiktok.com/embed/v2/${selectedSubmission.videoUrl.split('/').pop().split('?')[0]}?lang=en-US`} className="w-full h-full" frameBorder="0" allowFullScreen></iframe>
+            </div>
+            
+            <div className="bg-gray-800 p-4 rounded-lg border border-white/10">
+               <div className="flex items-start mb-3 border-b border-white/10 pb-3 cursor-pointer hover:bg-gray-700/50 p-2 rounded transition" onClick={()=>{setVideoModalOpen(false); onDesignerClick(selectedSubmission.participantName);}}>
+                 <img src={selectedSubmission.profilePic || generateAvatar(selectedSubmission.participantName)} alt={selectedSubmission.participantName} className="w-10 h-10 rounded-full border border-white/20 ml-3 object-cover" />
+                 <div>
+                    <p className="font-bold text-lg text-white leading-none hover:text-highlight-color">{selectedSubmission.participantName}</p>
+                    <p className="text-xs text-white/50 mt-1">{selectedSubmission.country} {selectedSubmission.flag} • {selectedSubmission.episode}</p>
+                 </div>
+               </div>
+               
+               <p className="text-sm text-white/90 mb-4 whitespace-pre-wrap leading-relaxed">
+                 {selectedSubmission.description || "لم يتم كتابة وصف."}
+               </p>
+
+               <button onClick={() => {setVideoModalOpen(false); setVoteConfirmData(selectedSubmission);}} disabled={cooldown > 0} className="w-full py-3 px-6 rounded-lg font-bold text-gray-900 transition disabled:opacity-50 flex items-center justify-center" style={{ backgroundColor: settings.mainColor }}>
+                 {cooldown > 0 ? `انتظر ${cooldown} ثانية للتصويت` : 'صوت لهذا التصميم الآن'}
+               </button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 };
@@ -833,619 +889,350 @@ const VideoModal = ({ isOpen, onClose, submission, settings, onVote, cooldown })
 // 5. ADMIN PANEL
 // =========================================================================
 
-const AdminSettingsPanel = ({ settings, onSaveSettings }) => {
-  const [localSettings, setLocalSettings] = useState(settings);
-  const [isSaving, setIsSaving] = useState(false);
-  const [turkeyTime, setTurkeyTime] = useState('');
+const AdminSubmissionsPanel = ({ submissions, settings, isGlassmorphism, onUpdateSubmissionStatus }) => {
+  const [activeTab, setActiveTab] = useState('Pending');
+  const [submissionToEdit, setSubmissionToEdit] = useState(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setTurkeyTime(new Date().toLocaleTimeString('ar-SA', { timeZone: 'Europe/Istanbul' }));
-    }, 1000);
-    return () => clearInterval(timer);
-  }, []);
+  const filteredSubmissions = useMemo(() => {
+    let list = submissions.filter((sub) => sub.status === activeTab);
+    if (activeTab === 'Approved') list = list.sort((a, b) => b.votes - a.votes);
+    return list;
+  }, [submissions, activeTab]);
 
-  const handleOrgChange = (index, field, value) => {
-    const newOrgs = [...(localSettings.organizers || [])];
-    if(!newOrgs[index]) return;
-    newOrgs[index][field] = value;
-    setLocalSettings({ ...localSettings, organizers: newOrgs });
-  };
-  const addOrg = () => setLocalSettings({ ...localSettings, organizers: [...(localSettings.organizers || []), { name: '', role: '', imageUrl: '' }] });
-  const removeOrg = (index) => {
-    const newOrgs = localSettings.organizers.filter((_, i) => i !== index);
-    setLocalSettings({ ...localSettings, organizers: newOrgs });
-  };
-
-  const handleStageTextChange = (stage, text) => {
-    setLocalSettings({
-      ...localSettings,
-      stageTexts: { ...localSettings.stageTexts, [stage]: text }
-    });
-  };
-
-  return (
-    <GlassCard className="p-6 mb-8 animate-slideUp" isGlassmorphism>
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-            <SettingsIcon className="text-[var(--highlight-color)]" /> إعدادات النظام
-        </h2>
-        <div className="bg-white/10 px-4 py-2 rounded-lg flex items-center gap-2 text-sm">
-            <Clock size={16} className="text-[var(--highlight-color)]"/>
-            <span>توقيت تركيا: {turkeyTime}</span>
-        </div>
-      </div>
+  const handleSaveEdit = async (updatedSubmission) => {
+    try {
+      if (!db) return;
       
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <div className="space-y-4">
-          <h3 className="text-lg font-bold text-white border-b border-white/10 pb-2">الهوية البصرية</h3>
-          <InputField label="رابط الشعار (Logo)" id="logo" value={localSettings.logoUrl} onChange={(v) => setLocalSettings({...localSettings, logoUrl: v})} />
-          
-          <div className="mb-4">
-             <label className="block text-white mb-2 text-sm opacity-90">حجم الشعار (بكسل)</label>
-             <input type="range" min="30" max="300" value={localSettings.logoSize || 100} onChange={(e) => setLocalSettings({...localSettings, logoSize: e.target.value})} className="w-full"/>
-             <div className="text-right text-xs text-white/50">{localSettings.logoSize || 100}px</div>
-          </div>
-
-          <div className="flex gap-4">
-             <div className="flex-1">
-                <label className="block text-white mb-2 text-sm">اللون الرئيسي</label>
-                <div className="flex items-center gap-2 bg-gray-800 p-2 rounded border border-white/10">
-                   <input type="color" value={localSettings.mainColor} onChange={e => setLocalSettings({...localSettings, mainColor: e.target.value})} className="w-8 h-8 bg-transparent border-0 cursor-pointer"/>
-                   <span className="text-white text-xs">{localSettings.mainColor}</span>
-                </div>
-             </div>
-             <div className="flex-1">
-                <label className="block text-white mb-2 text-sm">لون التوهج</label>
-                <div className="flex items-center gap-2 bg-gray-800 p-2 rounded border border-white/10">
-                   <input type="color" value={localSettings.highlightColor} onChange={e => setLocalSettings({...localSettings, highlightColor: e.target.value})} className="w-8 h-8 bg-transparent border-0 cursor-pointer"/>
-                   <span className="text-white text-xs">{localSettings.highlightColor}</span>
-                </div>
-             </div>
-          </div>
-          
-          {/* --- ADDED: Content Fields --- */}
-          <h3 className="text-lg font-bold text-white border-b border-white/10 pb-2 mt-6">المحتوى والنصوص</h3>
-          <div className="space-y-4">
-             <div>
-                <label className="block text-white mb-2 text-sm opacity-90">عن المسابقة (Why Text)</label>
-                <textarea 
-                   value={localSettings.whyText || ''} 
-                   onChange={(e) => setLocalSettings({...localSettings, whyText: e.target.value})}
-                   className="w-full p-3 rounded-lg bg-gray-800/80 border border-white/10 text-white text-sm outline-none focus:border-[var(--highlight-color)] h-24"
-                   placeholder="اكتب نبذة عن المسابقة..."
-                />
-             </div>
-             <div>
-                <label className="block text-white mb-2 text-sm opacity-90">الشروط والأحكام (Terms)</label>
-                <textarea 
-                   value={localSettings.termsText || ''} 
-                   onChange={(e) => setLocalSettings({...localSettings, termsText: e.target.value})}
-                   className="w-full p-3 rounded-lg bg-gray-800/80 border border-white/10 text-white text-sm outline-none focus:border-[var(--highlight-color)] h-24"
-                   placeholder="اكتب الشروط والأحكام..."
-                />
-             </div>
-          </div>
-
-          <h3 className="text-lg font-bold text-white border-b border-white/10 pb-2 mt-6">التوقيت والمواعيد</h3>
-          <div className="flex gap-4">
-              <InputField label="وقت البدء" type="datetime-local" id="start" value={localSettings.startTime} onChange={(v) => setLocalSettings({...localSettings, startTime: v})} />
-              <InputField label="وقت الانتهاء" type="datetime-local" id="end" value={localSettings.endTime} onChange={(v) => setLocalSettings({...localSettings, endTime: v})} />
-          </div>
-        </div>
-
-        <div className="space-y-4">
-          <h3 className="text-lg font-bold text-white border-b border-white/10 pb-2">حالة المسابقة ونصوص التنبيه</h3>
-          <div className="grid grid-cols-2 gap-2 mb-4">
-             {Object.keys(STAGES).map(key => (
-               <button 
-                 key={key} 
-                 onClick={() => setLocalSettings({...localSettings, stage: key})}
-                 className={`p-2 rounded-lg text-sm font-bold border transition ${localSettings.stage === key ? 'bg-[var(--highlight-color)] text-black border-[var(--highlight-color)]' : 'bg-white/5 border-white/10 text-white/60 hover:bg-white/10'}`}
-               >
-                 {STAGES[key].label}
-               </button>
-             ))}
-          </div>
-          
-          <div className="space-y-2">
-            <label className="text-sm text-white/70">نصوص شريط التنبيه لكل حالة:</label>
-            {Object.keys(STAGES).map(key => (
-              <div key={key} className="flex items-center gap-2">
-                 <span className="text-xs w-20 text-white/50">{STAGES[key].label}</span>
-                 <input 
-                   type="text" 
-                   value={localSettings.stageTexts?.[key] || ''} 
-                   onChange={(e) => handleStageTextChange(key, e.target.value)}
-                   className="flex-1 bg-gray-800 border border-white/10 rounded p-2 text-xs text-white"
-                   placeholder={`نص حالة ${STAGES[key].label}`}
-                 />
-              </div>
-            ))}
-          </div>
-          
-          <div className="mb-4 mt-4">
-             <label className="block text-white mb-2 text-sm opacity-90">حجم خط التنبيه</label>
-             <input type="range" min="12" max="40" value={localSettings.marqueeSize || 18} onChange={(e) => setLocalSettings({...localSettings, marqueeSize: e.target.value})} className="w-full"/>
-             <div className="text-right text-xs text-white/50">{localSettings.marqueeSize || 18}px</div>
-          </div>
-
-          <h3 className="text-lg font-bold text-white border-b border-white/10 pb-2 mt-6">المنظمون</h3>
-          <div className="space-y-2 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
-            {(localSettings.organizers || []).map((org, i) => (
-              <div key={i} className="flex gap-2 bg-white/5 p-2 rounded-lg items-end border border-white/5">
-                <div className="flex-1 space-y-2">
-                  <input type="text" placeholder="الاسم" value={org.name} onChange={(e) => handleOrgChange(i, 'name', e.target.value)} className="w-full bg-gray-800 border border-white/10 rounded p-1 text-xs text-white" />
-                  <input type="text" placeholder="الدور" value={org.role} onChange={(e) => handleOrgChange(i, 'role', e.target.value)} className="w-full bg-gray-800 border border-white/10 rounded p-1 text-xs text-white" />
-                  <input type="text" placeholder="رابط الصورة" value={org.imageUrl} onChange={(e) => handleOrgChange(i, 'imageUrl', e.target.value)} className="w-full bg-gray-800 border border-white/10 rounded p-1 text-xs text-white/50" />
-                </div>
-                <button onClick={() => removeOrg(i)} className="p-2 bg-red-500/20 text-red-500 rounded hover:bg-red-500 hover:text-white"><Trash2 size={14} /></button>
-              </div>
-            ))}
-            <button onClick={addOrg} className="w-full py-2 bg-white/5 hover:bg-white/10 text-xs rounded border border-dashed border-white/20 flex items-center justify-center gap-1 text-white"><Plus size={14}/> إضافة منظم</button>
-          </div>
-        </div>
-      </div>
-
-      <div className="mt-6 pt-4 border-t border-white/10 text-right">
-        <ShinyButton onClick={() => { setIsSaving(true); onSaveSettings(localSettings).then(() => setIsSaving(false)); }} style={{backgroundColor: localSettings.mainColor}} className="text-white">
-            {isSaving ? 'جاري الحفظ...' : 'حفظ التغييرات'}
-        </ShinyButton>
-      </div>
-    </GlassCard>
-  );
-};
-
-const AdminSubmissionsPanel = ({ submissions, onUpdateStatus, onManualAdd }) => {
-  const [filter, setFilter] = useState('Pending');
-  const [editMode, setEditMode] = useState(null);
-  const [editData, setEditData] = useState({});
-  const [isAddModalOpen, setAddModal] = useState(false);
-  const [newSub, setNewSub] = useState({ displayName: '', tiktokUser: '@', country: 'العراق', url: '' });
-  
-  const fileInputRef = useRef(null);
-
-  const startEdit = (sub) => { setEditMode(sub.id); setEditData({ ...sub }); };
-  const saveEdit = async () => { await updateDoc(doc(db, PATHS.SUBMISSIONS, editMode), editData); setEditMode(null); };
-  const handleManualSubmit = async () => { await onManualAdd(newSub); setAddModal(false); setNewSub({ displayName: '', tiktokUser: '@', country: 'العراق', url: '' }); };
-
-  const exportToCSV = () => {
-    const headers = ['الاسم', 'اليوزر', 'البلد', 'عدد الأصوات', 'الحالة', 'رابط الفيديو', 'رابط الصورة', 'رابط المصغرة'];
-    const rows = submissions.map(sub => [
-      `"${sub.participantName}"`, 
-      sub.tiktokUser,
-      sub.country,
-      sub.votes,
-      sub.status,
-      sub.videoUrl,
-      sub.profilePicUrl,
-      sub.thumbnailUrl
-    ]);
-    const csvContent = "\uFEFF" + [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", `submissions_backup_${new Date().toLocaleDateString()}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
-  const handleFileUpload = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = async (event) => {
-      const text = event.target.result;
-      const lines = text.split('\n');
-      const dataLines = lines.slice(1);
-      let count = 0;
-      for (let line of dataLines) {
-        if (!line.trim()) continue;
-        const cols = line.split(',');
-        if (cols.length >= 3) {
-            const name = cols[0]?.replace(/"/g, '').trim() || 'Unknown';
-            const user = cols[1]?.trim() || '@user';
-            const country = cols[2]?.trim() || 'العراق';
-            const votes = parseInt(cols[3]) || 0;
-            const url = cols[5]?.trim() || '';
-            await onManualAdd({
-                displayName: name,
-                tiktokUser: user,
-                country: country,
-                url: url,
-                initialVotes: votes
-            });
-            count++;
+      // 1. تحديث هذا التصميم بحد ذاته
+      await retryOperation(() => setDoc(doc(db, PUBLIC_SUBMISSIONS_COLLECTION, updatedSubmission.id), updatedSubmission, { merge: true }));
+      
+      // 2. تحديث جميع الصور الشخصية للتصاميم الأخرى التي تمتلك نفس اسم المصمم (توحيد الهوية)
+      if (updatedSubmission.profilePic) {
+        const q = query(collection(db, PUBLIC_SUBMISSIONS_COLLECTION), where("participantName", "==", updatedSubmission.participantName));
+        const querySnapshot = await getDocs(q);
+        const updatePromises = [];
+        querySnapshot.forEach((document) => {
+           if(document.id !== updatedSubmission.id) {
+              updatePromises.push(updateDoc(doc(db, PUBLIC_SUBMISSIONS_COLLECTION, document.id), { profilePic: updatedSubmission.profilePic }));
+           }
+        });
+        if(updatePromises.length > 0) {
+            await Promise.all(updatePromises);
+            console.log("تم توحيد الصورة الشخصية لجميع تصاميم هذا المصمم.");
         }
       }
-      alert(`تم استيراد ${count} مشاركة بنجاح!`);
-    };
-    reader.readAsText(file);
-    e.target.value = ''; 
+
+      setIsEditModalOpen(false); setSubmissionToEdit(null);
+    } catch (e) { console.error("Error updating submission: ", e); }
   };
 
-  const filtered = submissions.filter(s => s.status === filter);
-
   return (
-    <GlassCard className="p-6" isGlassmorphism>
-      <div className="flex flex-wrap justify-between items-center mb-6 gap-4">
-        <h3 className="text-xl font-bold text-white">إدارة المشاركات</h3>
-        
-        <div className="flex gap-2">
-            <button onClick={exportToCSV} className="bg-blue-600/80 px-4 py-2 rounded-lg text-white text-sm font-bold flex items-center gap-2 hover:bg-blue-500 transition">
-                <Download size={16} /> تصدير (Excel)
-            </button>
-            <button onClick={() => fileInputRef.current.click()} className="bg-purple-600/80 px-4 py-2 rounded-lg text-white text-sm font-bold flex items-center gap-2 hover:bg-purple-500 transition">
-                <Upload size={16} /> استيراد
-            </button>
-            <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept=".csv" className="hidden" />
-            <button onClick={() => setAddModal(true)} className="bg-green-600 px-4 py-2 rounded-lg text-white text-sm font-bold flex items-center gap-2 hover:bg-green-500 transition">
-                <Plus size={16} /> إضافة
-            </button>
-        </div>
-      </div>
-      
-      <div className="flex gap-2 mb-4 border-b border-white/10 pb-4 overflow-x-auto">
-        {['Pending', 'Approved', 'Rejected'].map(s => (
-          <button key={s} onClick={() => setFilter(s)} className={`px-4 py-2 rounded-lg text-xs font-bold transition whitespace-nowrap ${filter === s ? 'bg-gray-700 text-white shadow' : 'bg-white/5 text-white/50 hover:bg-white/10'}`}>
-             {s} ({submissions.filter(sub => sub.status === s).length})
+    <GlassCard isGlassmorphism={isGlassmorphism} color="bg-gray-900" className="p-6 mb-6">
+      <div className="flex border-b border-white/20 mb-4 overflow-x-auto">
+        {['Pending', 'Approved', 'Rejected'].map((status) => (
+          <button key={status} onClick={() => setActiveTab(status)} className={`py-2 px-4 text-sm font-semibold transition-colors whitespace-nowrap ${activeTab === status ? 'border-b-2 text-highlight-color' : 'text-white/70'}`} style={{ borderColor: activeTab === status ? settings.mainColor : 'transparent' }}>
+            {status === 'Pending' ? 'المعلقة' : status === 'Approved' ? 'المقبولة' : 'المرفوضة'} ({submissions.filter((s) => s.status === status).length})
           </button>
         ))}
       </div>
-
-      <div className="space-y-3">
-        {filtered.length === 0 && <div className="text-center text-white/30 py-10 border-2 border-dashed border-white/5 rounded-xl">لا توجد مشاركات هنا</div>}
-        {filtered.map(sub => (
-          <div key={sub.id} className="bg-white/5 p-4 rounded-xl border border-white/5 flex flex-col md:flex-row gap-4 items-start md:items-center hover:border-white/10 transition">
-            {editMode === sub.id ? (
-              <div className="flex-1 grid grid-cols-2 gap-2 w-full">
-                 {/* الاسم واليوزر */}
-                 <input value={editData.participantName} onChange={e => setEditData({...editData, participantName: e.target.value})} placeholder="الاسم الظاهر" className="bg-gray-800 border border-white/20 rounded p-2 text-white text-sm" />
-                 <input value={editData.tiktokUser} onChange={e => setEditData({...editData, tiktokUser: e.target.value})} placeholder="@username" className="bg-gray-800 border border-white/20 rounded p-2 text-white text-sm" />
-                 
-                 {/* رابط الفيديو */}
-                 <input value={editData.videoUrl} onChange={e => setEditData({...editData, videoUrl: e.target.value})} placeholder="رابط الفيديو URL" className="col-span-2 bg-gray-800 border border-white/20 rounded p-2 text-white text-sm" />
-                 
-                 {/* رابط صورة البروفايل */}
-                 <input value={editData.profilePicUrl} onChange={e => setEditData({...editData, profilePicUrl: e.target.value})} placeholder="رابط صورة الحساب (Profile Pic)" className="col-span-2 bg-gray-800 border border-white/20 rounded p-2 text-white text-sm" />
-                 
-                 {/* رابط الصورة المصغرة */}
-                 <input value={editData.thumbnailUrl} onChange={e => setEditData({...editData, thumbnailUrl: e.target.value})} placeholder="رابط الصورة المصغرة (Thumbnail)" className="col-span-2 bg-gray-800 border border-white/20 rounded p-2 text-white text-sm" />
-                 
-                 <div className="col-span-2 flex gap-2 justify-end mt-2">
-                   <button onClick={() => setEditMode(null)} className="px-3 py-1 text-xs bg-gray-700 rounded text-white">إلغاء</button>
-                   <button onClick={saveEdit} className="px-3 py-1 text-xs bg-green-600 rounded text-white">حفظ</button>
-                 </div>
-              </div>
-            ) : (
-              <>
-                <img src={sub.thumbnailUrl} className="w-16 h-16 object-cover rounded-lg bg-black border border-white/10" alt="Thumb" onError={e => e.target.src='https://placehold.co/100x150/333/fff?text=?'} />
-                <div className="flex-1">
-                  <h4 className="font-bold text-white text-lg">{sub.participantName}</h4>
-                  <p className="text-xs text-[var(--highlight-color)]">{sub.tiktokUser}</p>
-                  <p className="text-xs text-white/50 mt-1">{sub.country} | الأصوات: {sub.votes}</p>
-                </div>
-                <div className="flex gap-2">
-                   <button onClick={() => startEdit(sub)} className="p-2 bg-blue-600/20 text-blue-400 rounded hover:bg-blue-600 hover:text-white"><Edit3 size={16} /></button>
-                   {sub.status !== 'Approved' && <button onClick={() => onUpdateStatus(sub.id, 'Approved')} className="p-2 bg-green-600/20 text-green-400 rounded hover:bg-green-600 hover:text-white"><CheckCircle size={16}/></button>}
-                   {sub.status !== 'Rejected' && <button onClick={() => onUpdateStatus(sub.id, 'Rejected')} className="p-2 bg-red-600/20 text-red-400 rounded hover:bg-red-600 hover:text-white"><X size={16}/></button>}
-                   <button onClick={() => { if(window.confirm('حذف نهائي؟')) onUpdateStatus(sub.id, 'Deleted'); }} className="p-2 bg-gray-800 text-gray-500 rounded hover:text-red-500"><Trash2 size={16}/></button>
-                </div>
-              </>
-            )}
+      <div className="grid grid-cols-12 gap-2 text-white/70 font-semibold text-xs md:text-sm border-b border-white/30 pb-2 mb-2">
+        <div className="col-span-3">المصمم</div>
+        <div className="col-span-2">الحلقة</div>
+        <div className="col-span-2">الأصوات</div>
+        <div className="col-span-3">الرابط</div>
+        <div className="col-span-2 text-left">إجراء</div>
+      </div>
+      <div className="max-h-96 overflow-y-auto custom-scrollbar">
+        {filteredSubmissions.map((sub) => (
+          <div key={sub.id} className="grid grid-cols-12 gap-2 items-center p-3 border-b border-white/10 hover:bg-gray-700/50 transition">
+            <div className="col-span-3 truncate text-sm flex items-center">
+              <img src={sub.profilePic || generateAvatar(sub.participantName)} className="w-6 h-6 rounded-full ml-2 object-cover" alt="" />
+              <span className="truncate">{sub.participantName}</span>
+            </div>
+            <div className="col-span-2 text-sm text-highlight-color font-bold">{sub.episode}</div>
+            <div className="col-span-2 text-sm">{sub.votes}</div>
+            <div className="col-span-3 text-xs truncate" dir="ltr"><a href={sub.videoUrl} target="_blank" rel="noreferrer" className="text-blue-400 hover:underline">Link</a></div>
+            <div className="col-span-2 flex justify-end space-x-1 space-x-reverse">
+              {activeTab !== 'Approved' && <button onClick={() => onUpdateSubmissionStatus(sub.id, 'Approved')} className="p-1 rounded bg-green-600 hover:bg-green-700"><CheckCircle className="w-4 h-4 text-white" /></button>}
+              {activeTab !== 'Rejected' && <button onClick={() => onUpdateSubmissionStatus(sub.id, 'Rejected')} className="p-1 rounded bg-red-600 hover:bg-red-700"><X className="w-4 h-4 text-white" /></button>}
+              <button onClick={() => { setSubmissionToEdit(sub); setIsEditModalOpen(true); }} className="p-1 rounded bg-gray-600 hover:bg-gray-500"><User className="w-4 h-4 text-white" /></button>
+            </div>
           </div>
         ))}
       </div>
+      
+      {submissionToEdit && (
+        <Modal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} title="تعديل المشاركة">
+          <div className="space-y-4">
+            <div><label className="text-white text-sm">اسم المصمم</label><input type="text" value={submissionToEdit.participantName} onChange={(e) => setSubmissionToEdit({...submissionToEdit, participantName: e.target.value})} className="w-full p-2 rounded bg-gray-800 text-white border border-white/20 focus:border-highlight-color" /></div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                 <label className="text-white text-sm">رابط الصورة الشخصية (للمصمم)</label>
+                 <input type="url" value={submissionToEdit.profilePic || ''} onChange={(e) => setSubmissionToEdit({...submissionToEdit, profilePic: e.target.value})} placeholder="https://..." dir="ltr" className="w-full p-2 rounded bg-gray-800 text-white border border-white/20 text-left focus:border-highlight-color" />
+                 <p className="text-[10px] text-white/50 mt-1">تعديل هذه الصورة سيحدثها في كل أعماله.</p>
+              </div>
+              <div>
+                 <label className="text-white text-sm">رابط صورة غلاف التصميم</label>
+                 <input type="url" value={submissionToEdit.thumbnailUrl || ''} onChange={(e) => setSubmissionToEdit({...submissionToEdit, thumbnailUrl: e.target.value})} placeholder="https://..." dir="ltr" className="w-full p-2 rounded bg-gray-800 text-white border border-white/20 text-left focus:border-highlight-color" />
+              </div>
+            </div>
 
-      <Modal isOpen={isAddModalOpen} onClose={() => setAddModal(false)} title="إضافة مشاركة يدوياً">
-        <InputField label="الاسم الظاهر" value={newSub.displayName} onChange={v => setNewSub({...newSub, displayName: v})} />
-        <InputField label="اسم المستخدم @" value={newSub.tiktokUser} onChange={v => setNewSub({...newSub, tiktokUser: v})} />
-        <InputField label="رابط الفيديو" value={newSub.url} onChange={v => setNewSub({...newSub, url: v})} />
-        <div className="mb-4">
-           <label className="text-white text-sm block mb-2">البلد</label>
-           <select value={newSub.country} onChange={e => setNewSub({...newSub, country: e.target.value})} className="w-full p-3 bg-gray-800 border border-white/20 rounded text-white">
-             {COUNTRIES.filter(c => c.code !== 'ALL').map(c => <option key={c.code} value={c.name} className="bg-black">{c.name}</option>)}
-           </select>
+            <div>
+               <label className="text-white text-sm">الوصف</label>
+               <textarea value={submissionToEdit.description || ''} onChange={(e) => setSubmissionToEdit({...submissionToEdit, description: e.target.value})} className="w-full p-2 rounded bg-gray-800 text-white border border-white/20 focus:border-highlight-color" rows="3" />
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+               <div>
+                  <label className="text-white text-sm">الحلقة</label>
+                  <select value={submissionToEdit.episode} onChange={(e) => setSubmissionToEdit({...submissionToEdit, episode: e.target.value})} className="w-full p-2 rounded bg-gray-800 text-white border border-white/20">
+                    {EPISODES.map(ep => <option key={ep} value={ep}>{ep}</option>)}
+                  </select>
+               </div>
+               <div><label className="text-white text-sm">الأصوات</label><input type="number" value={submissionToEdit.votes} onChange={(e) => setSubmissionToEdit({...submissionToEdit, votes: parseInt(e.target.value)||0})} className="w-full p-2 rounded bg-gray-800 text-white border border-white/20" /></div>
+            </div>
+
+            <button onClick={() => handleSaveEdit(submissionToEdit)} className="w-full p-3 rounded-lg text-gray-900 font-bold mt-4" style={{backgroundColor: settings.mainColor}}>حفظ التعديلات</button>
+          </div>
+        </Modal>
+      )}
+    </GlassCard>
+  );
+};
+
+const AdminSettingsPanel = ({ settings, isGlassmorphism, onSaveSettings }) => {
+  const [currentSettings, setCurrentSettings] = useState(settings);
+  useEffect(() => { setCurrentSettings(settings); }, [settings]);
+  
+  return (
+    <GlassCard isGlassmorphism={isGlassmorphism} color="bg-gray-900" className="p-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="space-y-4">
+          <h4 className="text-lg font-semibold" style={{ color: settings.mainColor }}>الهوية البصرية</h4>
+          <div><label className="text-white text-sm">العنوان</label><input type="text" value={currentSettings.title} onChange={(e) => setCurrentSettings({...currentSettings, title: e.target.value})} className="w-full p-2 rounded bg-gray-800 text-white border border-white/20" /></div>
+          <div><label className="text-white text-sm">رابط الشعار</label><input type="text" value={currentSettings.logoUrl} onChange={(e) => setCurrentSettings({...currentSettings, logoUrl: e.target.value})} className="w-full p-2 rounded bg-gray-800 text-white border border-white/20" /></div>
+          <div><label className="text-white text-sm">شريط التنبيهات</label><input type="text" value={currentSettings.marqueeText} onChange={(e) => setCurrentSettings({...currentSettings, marqueeText: e.target.value})} className="w-full p-2 rounded bg-gray-800 text-white border border-white/20" /></div>
+          
+          <div className="flex gap-4">
+             <div><label className="text-white text-sm block">لون أساسي</label><input type="color" value={currentSettings.mainColor} onChange={(e) => setCurrentSettings({...currentSettings, mainColor: e.target.value})} className="w-10 h-10 rounded cursor-pointer" /></div>
+             <div><label className="text-white text-sm block">لون التوهج</label><input type="color" value={currentSettings.highlightColor} onChange={(e) => setCurrentSettings({...currentSettings, highlightColor: e.target.value})} className="w-10 h-10 rounded cursor-pointer" /></div>
+          </div>
         </div>
-        <ShinyButton onClick={handleManualSubmit} className="w-full bg-green-600 text-white">إضافة</ShinyButton>
-      </Modal>
+        <div className="space-y-4">
+           <h4 className="text-lg font-semibold" style={{ color: settings.mainColor }}>النصوص</h4>
+           <div><label className="text-white text-sm">الشروط</label><textarea value={currentSettings.termsText} onChange={(e) => setCurrentSettings({...currentSettings, termsText: e.target.value})} className="w-full p-2 rounded bg-gray-800 text-white border border-white/20 h-24" /></div>
+           <div><label className="text-white text-sm">من نحن (لماذا)</label><textarea value={currentSettings.whyText} onChange={(e) => setCurrentSettings({...currentSettings, whyText: e.target.value})} className="w-full p-2 rounded bg-gray-800 text-white border border-white/20 h-24" /></div>
+        </div>
+      </div>
+      <button onClick={() => onSaveSettings(currentSettings)} className="w-full mt-6 p-3 rounded font-bold text-gray-900" style={{ backgroundColor: currentSettings.mainColor }}>حفظ الإعدادات</button>
     </GlassCard>
   );
 };
 
 // =========================================================================
-// 6. MAIN APP
+// 6. LAYOUT & MAIN APP
 // =========================================================================
 
-const ContestApp = () => {
-  const navigate = useNavigate();
-  const { user } = useAuth();
+const Header = ({ settings, activeView, setActiveView, isAdminMode, clearDesignerSelection }) => (
+  <header className="sticky top-0 z-40 border-b" style={{ backgroundColor: settings.useGlassmorphism ? 'rgba(0,0,0,0.8)' : '#000000', borderColor: 'rgba(255, 255, 255, 0.1)', backdropFilter: settings.useGlassmorphism ? 'blur(12px)' : 'none' }}>
+    <div className="container mx-auto px-4 py-3">
+      <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+        <div className="flex items-center cursor-pointer" onClick={() => {setActiveView('home'); clearDesignerSelection();}}>
+          <img src={settings.logoUrl} alt="Logo" className="h-10 w-auto rounded-lg mr-4 ml-4" onError={(e) => (e.target.style.display = 'none')} />
+          <h1 className="text-2xl font-black text-white">{settings.title}</h1>
+        </div>
+        
+        {!isAdminMode && (
+          <nav className="flex items-center space-x-2 space-x-reverse bg-gray-900/80 p-1 rounded-full border border-white/10 overflow-x-auto max-w-full">
+            <button onClick={() => {setActiveView('home'); clearDesignerSelection();}} className={`flex items-center px-4 py-2 rounded-full text-sm font-bold transition whitespace-nowrap ${activeView === 'home' ? 'text-gray-900 shadow-md' : 'text-white hover:bg-white/10'}`} style={{ backgroundColor: activeView === 'home' ? settings.highlightColor : 'transparent' }}>
+              <HomeIcon className="w-4 h-4 ml-1" /> الرئيسية
+            </button>
+            <button onClick={() => {setActiveView('submit'); clearDesignerSelection();}} className={`flex items-center px-4 py-2 rounded-full text-sm font-bold transition whitespace-nowrap ${activeView === 'submit' ? 'text-gray-900 shadow-md' : 'text-white hover:bg-white/10'}`} style={{ backgroundColor: activeView === 'submit' ? settings.highlightColor : 'transparent' }}>
+              <UploadCloud className="w-4 h-4 ml-1" /> إرسال مشاركة
+            </button>
+            <button onClick={() => {setActiveView('library'); clearDesignerSelection();}} className={`flex items-center px-4 py-2 rounded-full text-sm font-bold transition whitespace-nowrap ${activeView === 'library' ? 'text-white shadow-md' : 'text-white hover:bg-white/10'}`} style={{ backgroundColor: activeView === 'library' ? settings.mainColor : 'transparent' }}>
+              <FolderOpen className="w-4 h-4 ml-1" /> مكتبة المصممين
+            </button>
+          </nav>
+        )}
+      </div>
+    </div>
+  </header>
+);
+
+const App = () => {
   const [settings, setSettings] = useState(null);
   const [submissions, setSubmissions] = useState([]);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [countryFilter, setCountryFilter] = useState('الكل');
+  const [loading, setLoading] = useState(true);
+  const [adminMode, setAdminMode] = useState(false);
+  const [authModalOpen, setAuthModalOpen] = useState(false);
   
-  const [modals, setModals] = useState({ adminAuth: false, voteConfirm: null, videoPlayer: null, info: null });
+  const [activeView, setActiveView] = useState('home');
+  const [selectedDesignerProfile, setSelectedDesignerProfile] = useState(null); // State for Profile View
+
+  const [voteConfirmData, setVoteConfirmData] = useState(null);
+  const { userId, isAuthReady } = useAuth();
   const [cooldown, setCooldown] = useState(0);
 
   useEffect(() => {
-    const link = document.createElement('link');
-    link.href = 'https://fonts.googleapis.com/css2?family=Cairo:wght@200;400;700;900&display=swap';
-    link.rel = 'stylesheet';
-    document.head.appendChild(link);
-
-    const style = document.createElement('style');
-    style.innerHTML = `
-      body, button, input, select, textarea, h1, h2, h3, h4, h5, h6, p, span {
-        font-family: 'Cairo', sans-serif !important;
-      }
-      @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(10px); }
-        to { opacity: 1; transform: translateY(0); }
-      }
-      .animate-fadeIn {
-        animation: fadeIn 0.5s ease-out forwards;
-      }
-      .custom-scrollbar::-webkit-scrollbar { width: 6px; }
-      .custom-scrollbar::-webkit-scrollbar-track { background: #111; }
-      .custom-scrollbar::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
-    `;
-    document.head.appendChild(style);
-
-    return () => {
-      document.head.removeChild(link);
-      document.head.removeChild(style);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!isFirebaseInitialized) { setSettings(DEFAULT_SETTINGS); return; }
-    const unsub1 = onSnapshot(doc(db, PATHS.SETTINGS), (s) => {
-      if(s.exists()) setSettings(s.data());
-      else setDoc(doc(db, PATHS.SETTINGS), DEFAULT_SETTINGS);
-    });
-    const unsub2 = onSnapshot(collection(db, PATHS.SUBMISSIONS), (s) => {
-      setSubmissions(s.docs.map(d => ({id: d.id, ...d.data()})));
-    });
-    return () => { unsub1(); unsub2(); };
-  }, []);
-
-  useEffect(() => {
     if (settings) {
-      const root = document.documentElement;
-      root.style.setProperty('--highlight-color', settings.highlightColor);
-      root.style.setProperty('--main-color', settings.mainColor);
+      document.documentElement.style.setProperty('--main-color-css', settings.mainColor);
+      document.documentElement.style.setProperty('--highlight-color-css', settings.highlightColor);
+      document.documentElement.style.fontFamily = `${settings.appFont}, sans-serif`;
+      document.documentElement.style.backgroundColor = '#000000';
     }
   }, [settings]);
 
   useEffect(() => {
-    const lastVoteTime = localStorage.getItem('lastVoteTime_AliWeek');
-    if (lastVoteTime) {
-        const now = Date.now();
-        const diffInSeconds = Math.floor((now - parseInt(lastVoteTime)) / 1000);
-        if (diffInSeconds < 30) {
-            setCooldown(30 - diffInSeconds);
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has('admin') && urlParams.get('admin') === 'true') {
+      if (auth?.currentUser) setAdminMode(true); else setAuthModalOpen(true);
+    }
+  }, [isAuthReady]);
+
+  const initDataRef = useRef(false);
+  useEffect(() => {
+    if (!db || !isAuthReady || initDataRef.current) return;
+    initDataRef.current = true;
+    const initializeFirestore = async () => {
+      try {
+        const settingsDocRef = doc(db, PUBLIC_SETTINGS_PATH);
+        const settingsSnap = await retryOperation(() => getDoc(settingsDocRef));
+        if (!settingsSnap.exists()) await retryOperation(() => setDoc(settingsDocRef, DEFAULT_SETTINGS));
+
+        const subColRef = collection(db, PUBLIC_SUBMISSIONS_COLLECTION);
+        const subSnap = await retryOperation(() => getDocs(query(subColRef, limit(1))));
+        if (subSnap.empty) {
+          for (const sub of MOCK_SUBMISSIONS) {
+            await retryOperation(() => setDoc(doc(db, PUBLIC_SUBMISSIONS_COLLECTION, sub.id), { ...sub, submittedAt: serverTimestamp() }));
+          }
         }
-    }
-  }, []);
+      } catch (e) { console.error('Init Error', e); }
+      setLoading(false);
+    };
+    initializeFirestore();
+  }, [isAuthReady]);
 
-  const processedSubmissions = useMemo(() => {
-    let list = submissions.filter(s => s.status === 'Approved');
-    if (searchQuery) list = list.filter(s => 
-      s.tiktokUser.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (s.participantName && s.participantName.toLowerCase().includes(searchQuery.toLowerCase()))
-    );
-    if (countryFilter !== 'الكل') list = list.filter(s => s.country === countryFilter);
-    return list.sort((a, b) => b.votes - a.votes);
-  }, [submissions, searchQuery, countryFilter]);
+  useEffect(() => {
+    if (!db || !isAuthReady) return;
+    const unsubscribeSettings = onSnapshot(doc(db, PUBLIC_SETTINGS_PATH), (docSnap) => {
+        setSettings(docSnap.exists() ? docSnap.data() : DEFAULT_SETTINGS); setLoading(false);
+    });
+    const unsubscribeSubmissions = onSnapshot(collection(db, PUBLIC_SUBMISSIONS_COLLECTION), (snapshot) => {
+        setSubmissions(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+    });
+    return () => { unsubscribeSettings(); unsubscribeSubmissions(); };
+  }, [isAuthReady]);
 
-  const handleSaveSettings = async (newS) => await setDoc(doc(db, PATHS.SETTINGS), newS, { merge: true });
-  const handleStatus = async (id, st) => {
-    if (st === 'Deleted') {
-       // هذا الأمر يقوم بحذف المستند نهائياً من قاعدة البيانات
-       await deleteDoc(doc(db, PATHS.SUBMISSIONS, id));
-    } 
-    else {
-       // هذا الأمر يقوم بتحديث الحالة فقط (قبول/رفض)
-       await updateDoc(doc(db, PATHS.SUBMISSIONS, id), { status: st });
-    }
-  };
-  const handleManualAdd = async (data) => {
-      const countryData = COUNTRIES.find(c => c.name === data.country) || { flag: '🌍' };
-      await addDoc(collection(db, PATHS.SUBMISSIONS), {
-        participantName: data.displayName,
-        tiktokUser: data.tiktokUser,
-        country: data.country,
-        flag: countryData.flag,
-        videoUrl: data.url || '',
-        profilePicUrl: `https://ui-avatars.com/api/?name=${data.displayName}&background=random`,
-        thumbnailUrl: 'https://placehold.co/600x900/222/fff?text=Video',
-        status: 'Approved',
-        votes: data.initialVotes || 0,
-        submittedAt: serverTimestamp()
-      });
-  };
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const timer = setInterval(() => setCooldown((prev) => prev - 1), 1000);
+    return () => clearInterval(timer);
+  }, [cooldown]);
+
+  const handleAdminLogout = () => { setAdminMode(false); if (auth) signOut(auth); window.history.replaceState({}, document.title, window.location.pathname); };
   
-  const confirmVote = async () => {
-    if (modals.voteConfirm) {
-      await updateDoc(doc(db, PATHS.SUBMISSIONS, modals.voteConfirm.id), { votes: increment(1) });
+  const handleConfirmVote = async (submission) => {
+    setVoteConfirmData(null); 
+    if (cooldown > 0) return;
+    try {
+      if (!db) return;
+      await retryOperation(() => updateDoc(doc(db, PUBLIC_SUBMISSIONS_COLLECTION, submission.id), { votes: increment(1) }));
       setCooldown(30);
-      localStorage.setItem('lastVoteTime_AliWeek', Date.now().toString());
-      setModals(p => ({...p, voteConfirm: null}));
-    }
+    } catch (e) { console.error(e); }
   };
 
-  function useAuth() {
-    const [u, setU] = useState(null);
-    useEffect(() => isFirebaseInitialized ? onAuthStateChanged(auth, setU) : null, []);
-    return { user: u };
+  const handleDesignerClick = (designerName) => {
+    setSelectedDesignerProfile(designerName);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const clearDesignerSelection = () => {
+    setSelectedDesignerProfile(null);
+  };
+
+  if (loading || !settings) {
+    return (
+      <div className="flex items-center justify-center h-screen" style={{ backgroundColor: '#000000' }} dir="rtl">
+        <Loader className="w-10 h-10 text-white animate-spin ml-4" />
+        <span className="text-white text-xl">جار تحميل المنصة...</span>
+      </div>
+    );
   }
 
-  useEffect(() => { if(cooldown > 0) setTimeout(() => setCooldown(c=>c-1), 1000); }, [cooldown]);
-
-  if (!settings) return <div className="h-screen bg-black flex items-center justify-center gap-3"><Loader className="animate-spin text-red-500"/><span className="text-white">جاري التحميل...</span></div>;
-
   return (
-    <div className="min-h-screen bg-[#050505] text-white font-sans selection:bg-[var(--highlight-color)] selection:text-black">
-       <Routes>
-         <Route path="/admin" element={user ? (
-            <div className="container mx-auto px-4 py-8 animate-fadeIn">
-              <div className="flex justify-between items-center mb-8 bg-gray-900 p-4 rounded-2xl border border-white/10">
-                 <div className="flex items-center gap-3">
-                    <img src={settings.logoUrl} className="object-contain bg-black/20 rounded p-1" style={{ height: `${settings.logoSize || 100}px` }} alt="Logo"/>
-                    <span className="font-bold text-xl hidden md:block">لوحة التحكم</span>
-                 </div>
-                 <div className="flex gap-3">
-                    <button onClick={() => navigate('/')} className="px-4 py-2 bg-white/5 rounded-lg text-sm hover:bg-white/10">الموقع</button>
-                    <button onClick={() => signOut(auth).then(() => navigate('/'))} className="text-red-400 hover:text-white flex gap-2 items-center bg-red-500/10 px-4 py-2 rounded-lg"><LogOut size={18}/> خروج</button>
-                 </div>
-              </div>
-              <AdminSettingsPanel settings={settings} onSaveSettings={handleSaveSettings} />
-              <AdminSubmissionsPanel submissions={submissions} onUpdateStatus={handleStatus} onManualAdd={handleManualAdd} />
-            </div>
-         ) : <div className="h-screen flex flex-col items-center justify-center gap-4"><SettingsIcon className="w-12 h-12 text-red-500"/><button onClick={() => setModals(p=>({...p, adminAuth: true}))} className="text-white underline">تسجيل الدخول</button></div>} />
+    <div dir="rtl" className="min-h-screen font-sans text-white pb-10" style={{ backgroundColor: '#000000' }}>
+      <Header settings={settings} activeView={activeView} setActiveView={setActiveView} isAdminMode={adminMode} clearDesignerSelection={clearDesignerSelection} />
 
-         <Route path="/" element={
-           <>
-             <header className="sticky top-0 z-40 bg-black/80 backdrop-blur-lg border-b border-white/10">
-                <div className="container mx-auto px-4 py-3 flex justify-between items-center">
-                   <div className="flex items-center gap-3" onClick={() => window.location.reload()}>
-                      <img src={settings.logoUrl} className="object-contain rounded-lg" style={{ height: `${settings.logoSize || 100}px` }} alt="Logo"/>
-                   </div>
+      <main className="container mx-auto p-4 pt-6">
+        {!adminMode && <AlertBanner settings={settings} />}
+
+        {adminMode ? (
+          <div>
+             <div className="flex justify-between items-center mb-6 bg-gray-900 p-4 rounded-lg border border-white/10">
+               <h2 className="text-2xl font-bold text-white flex items-center"><SettingsIcon className="w-6 h-6 ml-2" /> لوحة التحكم</h2>
+               <button onClick={handleAdminLogout} className="py-2 px-4 rounded bg-red-600 text-white flex"><LogOut className="w-4 h-4 ml-2"/> خروج</button>
+             </div>
+             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-2">
+                   <AdminSubmissionsPanel submissions={submissions} settings={settings} isGlassmorphism={settings.useGlassmorphism} onUpdateSubmissionStatus={async (id, s) => { await updateDoc(doc(db, PUBLIC_SUBMISSIONS_COLLECTION, id), {status: s}) }} />
                 </div>
-             </header>
+                <div>
+                   <AdminSettingsPanel settings={settings} isGlassmorphism={settings.useGlassmorphism} onSaveSettings={async (newSet) => { await setDoc(doc(db, PUBLIC_SETTINGS_PATH), newSet) }} />
+                </div>
+             </div>
+          </div>
+        ) : (
+          <>
+            {selectedDesignerProfile ? (
+              <DesignerProfile 
+                designerName={selectedDesignerProfile} 
+                allSubmissions={submissions} 
+                settings={settings} 
+                onVote={(sub) => cooldown > 0 ? null : setVoteConfirmData(sub)} 
+                onBack={clearDesignerSelection}
+                setVoteConfirmData={setVoteConfirmData}
+              />
+            ) : (
+              <>
+                {activeView === 'home' && <Home settings={settings} allSubmissions={submissions} totalApproved={submissions.filter(s=>s.status==='Approved').length} onVote={(sub) => cooldown > 0 ? null : setVoteConfirmData(sub)} cooldown={cooldown} setVoteConfirmData={setVoteConfirmData} onDesignerClick={handleDesignerClick} />}
+                {activeView === 'submit' && <SubmissionForm settings={settings} userId={userId} allSubmissions={submissions} />}
+                {activeView === 'library' && <DesignersLibrary settings={settings} />}
+              </>
+            )}
+          </>
+        )}
+      </main>
 
-             <main className="container mx-auto px-4 py-8 min-h-[80vh]">
-                <AlertBanner settings={settings} />
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80" style={{display: authModalOpen && !adminMode ? 'flex' : 'none'}}>
+        <div className="bg-gray-900 p-6 rounded-xl w-full max-w-sm">
+           <h2 className="text-white font-bold text-xl mb-4 text-center">تسجيل دخول المدير</h2>
+           <button onClick={()=> {setAdminMode(true); setAuthModalOpen(false);}} className="w-full p-3 rounded bg-highlight-color font-bold text-black">دخول تجريبي (Mock Auth)</button>
+        </div>
+      </div>
 
-                {settings.stage === 'Submission' && <SubmissionForm settings={settings} />}
-                
-                {(settings.stage === 'Voting' || settings.stage === 'Ended') && (
-                  <>
-                    {settings.stage === 'Voting' ? (
-                        <VotingLeaderboard submissions={submissions.filter(s => s.status === 'Approved')} />
-                    ) : (
-                        <div className="animate-slideUp">
-                            <CelebrationHeader />
-                            <WinnersPodium winners={processedSubmissions.slice(0, 3)} />
-                            {processedSubmissions.length > 3 && (
-                                <ResultsTable submissions={processedSubmissions.slice(3)} />
-                            )}
-                        </div>
-                    )}
-                    
-                    {settings.stage === 'Voting' && (
-                        <>
-                            <div className="flex items-center gap-2 mb-6 mt-10 border-b border-white/10 pb-4">
-                                <div className="h-8 w-1 bg-[var(--highlight-color)] rounded-full"></div>
-                                <h2 className="text-2xl font-bold">تصفح المشاركات</h2>
-                                <span className="bg-white/10 px-3 py-1 rounded-full text-xs text-white/60 mr-auto">
-                                    {processedSubmissions.length} فيديو
-                                </span>
-                            </div>
+      <Modal isOpen={voteConfirmData !== null} onClose={() => setVoteConfirmData(null)} title="تأكيد التصويت">
+        {voteConfirmData && (
+          <div className="text-center">
+            <p className="text-white text-xl mb-6">هل أنت متأكد من التصويت لـ <span className="font-extrabold mx-2" style={{ color: settings.highlightColor }}>{voteConfirmData.participantName}</span> في <span className="text-main-color">{voteConfirmData.episode}</span>؟</p>
+            
+            <div className="bg-gray-800 p-4 rounded-lg mb-6 border border-white/10 flex items-center justify-center">
+              <img src={voteConfirmData.profilePic || generateAvatar(voteConfirmData.participantName)} className="w-12 h-12 rounded-full border-2 ml-3 object-cover" style={{borderColor: settings.highlightColor}} alt="Profile"/>
+              <p className="text-sm text-white/80 text-right line-clamp-2">{voteConfirmData.description}</p>
+            </div>
 
-                            <SearchFilterBar onSearch={setSearchQuery} onFilter={setCountryFilter} />
-
-                            {processedSubmissions.length === 0 ? (
-                                <div className="text-center py-20 border border-dashed border-white/10 rounded-xl bg-white/5">
-                                    <p className="text-white/40">لا توجد مشاركات مطابقة للبحث</p>
-                                </div>
-                            ) : (
-                                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
-                                {processedSubmissions.map(sub => (
-                                    <VideoCard 
-                                    key={sub.id} 
-                                    submission={sub} 
-                                    settings={settings} 
-                                    cooldown={cooldown} 
-                                    onVote={(s) => { if(cooldown > 0) return; setModals(p=>({...p, voteConfirm: s})) }} 
-                                    onClick={() => setModals(p=>({...p, videoPlayer: sub}))} 
-                                    />
-                                ))}
-                                </div>
-                            )}
-                        </>
-                    )}
-                  </>
-                )}
-
-                {settings.stage === 'Paused' && (
-                    <div className="text-center py-32">
-                        <div className="inline-block p-6 bg-white/5 rounded-full mb-6"><Clock className="w-16 h-16 text-white/30" /></div>
-                        <h1 className="text-4xl font-bold mb-4 text-white">المسابقة متوقفة حالياً</h1>
-                        <p className="text-white/50 text-lg">نعود قريباً للصيانة أو فرز النتائج</p>
-                    </div>
-                )}
-             </main>
-
-             <footer className="bg-[#0a0a0a] border-t border-white/10 py-12 mt-20 text-center text-white/50 text-sm">
-               <div className="flex justify-center gap-8 mb-6 font-bold">
-                 {['why','terms','organizers'].map(type => (
-                   <button key={type} onClick={() => setModals(p=>({...p, info: type}))} className="hover:text-[var(--highlight-color)] transition">
-                     {type === 'why' ? 'عن المسابقة' : type === 'terms' ? 'الشروط والأحكام' : 'المنظمون'}
-                   </button>
-                 ))}
-               </div>
-               <p className="text-xs text-white/20">&copy; 2025 {settings.title}. All rights reserved.</p>
-             </footer>
-           </>
-         } />
-       </Routes>
-
-       {/* MODALS */}
-       <Modal isOpen={!!modals.voteConfirm} onClose={() => setModals(p=>({...p, voteConfirm: null}))} title="تأكيد التصويت">
-         <div className="text-center py-4">
-             <img src={modals.voteConfirm?.profilePicUrl} className="w-20 h-20 rounded-full mx-auto mb-4 border-2 border-[var(--highlight-color)] object-cover bg-black" alt=""/>
-             <p className="text-lg mb-1">هل تود التصويت لـ <span className="font-bold text-white">{modals.voteConfirm?.participantName}</span>؟</p>
-             <p className="text-sm text-[var(--highlight-color)] mb-6">{modals.voteConfirm?.tiktokUser}</p>
-             <ShinyButton onClick={confirmVote} style={{backgroundColor: settings.mainColor}} className="w-full text-white">تأكيد التصويت</ShinyButton>
-         </div>
-       </Modal>
-
-       <VideoModal 
-         isOpen={!!modals.videoPlayer} 
-         submission={modals.videoPlayer} 
-         onClose={() => setModals(p=>({...p, videoPlayer: null}))} 
-         settings={settings} 
-         cooldown={cooldown}
-         onVote={(s) => { setModals(p=>({...p, voteConfirm: s, videoPlayer: null})); }} 
-       />
-       
-       {modals.adminAuth && (
-         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/90 p-4 backdrop-blur-sm animate-fadeIn">
-            <GlassCard className="w-full max-w-md p-8 border-[var(--highlight-color)]" color="bg-gray-900">
-               <div className="flex justify-center mb-6"><SettingsIcon className="w-12 h-12 text-[var(--highlight-color)]"/></div>
-               <h2 className="text-white font-bold mb-6 text-center text-xl">تسجيل دخول المدير</h2>
-               <form onSubmit={(e) => { e.preventDefault(); signInWithEmailAndPassword(auth, e.target.email.value, e.target.pass.value).then(() => setModals(p=>({...p, adminAuth: false}))).catch(()=>alert('خطأ في البيانات')); }}>
-                 <input name="email" placeholder="البريد الإلكتروني" className="w-full p-3 mb-3 bg-gray-800 border border-white/20 rounded text-white outline-none focus:border-[var(--highlight-color)]" />
-                 <input name="pass" type="password" placeholder="كلمة المرور" className="w-full p-3 mb-6 bg-gray-800 border border-white/20 rounded text-white outline-none focus:border-[var(--highlight-color)]" />
-                 <button className="w-full bg-[var(--highlight-color)] py-3 rounded font-bold text-black hover:brightness-110 transition">دخول</button>
-                 <button type="button" onClick={() => setModals(p=>({...p, adminAuth: false}))} className="w-full mt-4 text-white/50 text-sm hover:text-white">إلغاء</button>
-               </form>
-            </GlassCard>
-         </div>
-       )}
-       
-       <Modal isOpen={!!modals.info} onClose={() => setModals(p=>({...p, info: null}))} title="المعلومات">
-         {modals.info === 'why' && <p className="text-lg leading-relaxed text-gray-300 whitespace-pre-line">{settings.whyText}</p>}
-         {modals.info === 'terms' && <p className="text-lg leading-relaxed text-gray-300 whitespace-pre-line">{settings.termsText}</p>}
-         {modals.info === 'organizers' && (settings.organizers || []).map((o, i) => (
-           <div key={i} className="flex items-center gap-4 bg-white/5 p-3 rounded-xl border border-white/5">
-             <img src={o.imageUrl || 'https://placehold.co/100x100/333/fff?text=Org'} className="w-14 h-14 rounded-full bg-black object-cover" alt=""/>
-             <div><p className="font-bold text-lg">{o.name}</p><p className="text-sm text-[var(--highlight-color)]">{o.role}</p></div>
-           </div>
-         ))}
-       </Modal>
+            <p className="text-sm text-white/70 mb-8">(يمكنك التصويت مرة كل 30 ثانية)</p>
+            <div className="flex justify-around">
+              <button onClick={() => setVoteConfirmData(null)} className="py-3 px-8 rounded-lg bg-red-600 hover:bg-red-700 text-white font-semibold transition">إلغاء</button>
+              <button onClick={() => handleConfirmVote(voteConfirmData)} className="py-3 px-8 rounded-lg text-gray-900 font-semibold transition" style={{ backgroundColor: settings.mainColor }} disabled={cooldown > 0}>تأكيد التصويت</button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 };
 
-export default function App() {
-  return (
-    <BrowserRouter>
-      <ContestApp />
-    </BrowserRouter>
-  );
-}
+export default App;

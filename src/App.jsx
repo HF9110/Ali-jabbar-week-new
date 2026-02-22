@@ -54,7 +54,9 @@ import {
   Code,
   BarChart2,
   TrendingUp,
-  Users
+  Users,
+  Instagram,
+  Music
 } from 'lucide-react';
 
 // =========================================================================
@@ -143,10 +145,15 @@ const DEFAULT_SETTINGS = {
   appFont: 'Cairo',
   title: 'HF Live',
   logoUrl: 'https://placehold.co/120x40/fe2c55/25f4ee?text=HF+Live',
+  logoSize: 40, // حجم الشعار الافتراضي
   marqueeText: 'أهلاً بكم في مسابقة تصاميم المسلسل الرمضاني. التصويت والمشاركات مفتوحة دائماً!',
   useGlassmorphism: true,
   termsText: 'الشروط والأحكام:\n- يجب أن يكون التصميم من مشاهد المسلسل حصراً.\n- يمنع استخدام حقوق موسيقية غير مصرح بها.\n- يرجى اختيار رقم الحلقة الصحيح عند الإرسال.',
   whyText: 'لماذا هذه المسابقة؟\nلدعم المصممين وصناع المحتوى العراقي والعربي خلال شهر رمضان المبارك، واختيار أفضل الإبداعات للمشاهد الرمضانية.',
+  adminName: 'مدير المسابقة',
+  adminBio: 'مرحباً بكم في مسابقتنا الرمضانية. نحن هنا لدعم صناع المحتوى والمصممين المبدعين وعرض أعمالهم للجمهور.',
+  adminTikTok: '',
+  adminInsta: '',
 };
 
 const generateAvatar = (name) => `https://ui-avatars.com/api/?name=${encodeURIComponent(name || 'Unknown')}&background=random&color=fff&size=128&bold=true`;
@@ -154,6 +161,7 @@ const generateAvatar = (name) => `https://ui-avatars.com/api/?name=${encodeURICo
 const MOCK_SUBMISSIONS = [
   { id: '1', username: 'al3eal1', participantName: '👑 الـعـيـال 👑', description: 'تصميم حزين لمشهد النهاية مع موسيقى هادئة جداً', country: 'العراق', episode: 'الحلقة 1', votes: 890, status: 'Approved', videoUrl: 'https://www.tiktok.com/@al3eal1/video/7609691265935969558', thumbnailUrl: 'https://placehold.co/600x900/111827/ffffff?text=Ep+1', profilePic: generateAvatar('العيال'), flag: '🇮🇶', submittedAt: new Date(Date.now() - 100000) },
   { id: '2', username: 'sara_khaled', participantName: 'Sara Khaled ✨', description: 'تعديل اكشن سريع للمواجهة في بداية الحلقة', country: 'السعودية', episode: 'الحلقة 1', votes: 750, status: 'Approved', videoUrl: 'https://www.tiktok.com/@tiktok/video/7279148301138855211', thumbnailUrl: 'https://placehold.co/600x900/111827/ffffff?text=Ep+1', profilePic: generateAvatar('Sara'), flag: '🇸🇦', submittedAt: new Date(Date.now() - 200000) },
+  { id: '3', username: 'al3eal1', participantName: '👑 الـعـيـال 👑', description: 'مونتاج الحلقة الثانية', country: 'العراق', episode: 'الحلقة 2', votes: 500, status: 'Approved', videoUrl: 'https://www.tiktok.com/@al3eal1/video/7609691265935969559', thumbnailUrl: 'https://placehold.co/600x900/111827/ffffff?text=Ep+2', profilePic: generateAvatar('العيال'), flag: '🇮🇶', submittedAt: new Date(Date.now() - 50000) },
 ];
 
 const MOCK_LIBRARY_SCENES = Array.from({ length: 30 }, (_, index) => {
@@ -203,14 +211,14 @@ const AlertBanner = ({ settings }) => (
   </div>
 );
 
-const Modal = ({ isOpen, onClose, title, children }) => {
+const Modal = ({ isOpen, onClose, title, children, isGlassmorphism = true }) => {
   if (!isOpen) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onClick={onClose}>
-      <GlassCard isGlassmorphism className="w-full max-w-2xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+      <GlassCard isGlassmorphism={isGlassmorphism} color="bg-gray-900" className="w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <div className="flex justify-between items-center pb-3 border-b border-white/20">
           <h2 className="text-2xl font-bold text-white">{title}</h2>
-          <button onClick={onClose} className="text-white hover:text-highlight-color transition"><X className="w-6 h-6" /></button>
+          <button onClick={onClose} className="text-white hover:text-highlight-color transition bg-white/10 p-1 rounded-full"><X className="w-6 h-6" /></button>
         </div>
         <div className="pt-4 text-white text-lg leading-relaxed space-y-4">{children}</div>
       </GlassCard>
@@ -219,41 +227,40 @@ const Modal = ({ isOpen, onClose, title, children }) => {
 };
 
 // =========================================================================
-// 4. MAIN VIEWS (HOME, SUBMIT, LIBRARY, RESULTS, PROFILE)
+// 4. MAIN VIEWS (HOME, SUBMIT, LIBRARY, RESULTS, PROFILE, FOOTER)
 // =========================================================================
 
-const StatsCard = ({ submission, settings, onDesignerClick }) => {
-  const { participantName, username, flag, country, episode, votes, profilePic, submittedAt } = submission;
-  const safeUsername = username || participantName; // Fallback
-  const submittedDate = submittedAt instanceof Date ? submittedAt : (submittedAt && typeof submittedAt.toDate === 'function' ? submittedAt.toDate() : new Date());
-  const formattedDate = submittedDate.toLocaleDateString('ar-EG', { day: 'numeric', month: 'short' });
-
+const StatsCard = ({ designerItem, settings, currentFilter, onDesignerClick }) => {
   return (
     <div className="relative w-full h-40 group [perspective:1000px]">
       <style>{`.flip-container { transition: transform 0.6s; transform-style: preserve-3d; } .flip-container.flipped { transform: rotateY(180deg); } .front, .back { backface-visibility: hidden; position: absolute; top: 0; left: 0; width: 100%; height: 100%; } .back { transform: rotateY(180deg); }`}</style>
       <div className="flip-container h-full group-hover:flipped">
         <div className="front">
           <GlassCard isGlassmorphism={settings.useGlassmorphism} color="bg-gray-800" className="h-full p-2 flex flex-col items-center justify-center overflow-hidden relative">
-            <span className="absolute top-1 right-1 bg-black/50 text-[10px] px-1 rounded text-highlight-color font-bold">{episode}</span>
+            <span className="absolute top-1 right-1 bg-black/50 text-[10px] px-1 rounded text-highlight-color font-bold">
+              {currentFilter === 'الكل' ? `${designerItem.episodesCount} مشاركات` : designerItem.singleEpisode}
+            </span>
             <img
-              src={profilePic || generateAvatar(participantName)}
-              alt={`Profile of ${participantName}`}
-              onClick={() => onDesignerClick(safeUsername)}
-              className="w-12 h-12 object-cover rounded-full mb-1 border-2 cursor-pointer hover:scale-110 transition"
+              src={designerItem.profilePic}
+              alt={`Profile`}
+              onClick={() => onDesignerClick(designerItem.username)}
+              className="w-12 h-12 object-cover rounded-full mb-1 border-2 cursor-pointer hover:scale-110 transition mt-2"
               style={{ borderColor: `var(--highlight-color-css)` }}
             />
-            <p className="text-xl font-extrabold text-white mt-1" style={{ color: `var(--highlight-color-css)` }}>{votes.toLocaleString()}</p>
-            <p onClick={() => onDesignerClick(safeUsername)} className="text-xs font-bold text-white truncate w-full text-center mt-1 cursor-pointer hover:underline">{participantName}</p>
-            <p className="text-[10px] text-white/70">{flag} {country}</p>
+            <p className="text-xl font-extrabold text-white mt-1" style={{ color: `var(--highlight-color-css)` }}>{designerItem.votes.toLocaleString()}</p>
+            <p onClick={() => onDesignerClick(designerItem.username)} className="text-xs font-bold text-white truncate w-full text-center mt-1 cursor-pointer hover:underline">{designerItem.participantName}</p>
+            <p className="text-[10px] text-white/70">{designerItem.flag} {designerItem.country}</p>
           </GlassCard>
         </div>
         <div className="back">
           <GlassCard isGlassmorphism={settings.useGlassmorphism} color="bg-gray-800" className="h-full p-2 flex flex-col items-center justify-center text-center">
-            <p className="text-xs text-white/70 mb-1">تاريخ التقديم:</p>
-            <p className="text-sm font-semibold text-white">{formattedDate}</p>
+            <p className="text-xs text-white/70 mb-1">المصمم:</p>
+            <p className="text-sm font-semibold text-white" dir="ltr">@{designerItem.username}</p>
             <div className="h-px w-1/2 my-2 mx-auto" style={{ backgroundColor: `var(--main-color-css)` }} />
-            <p className="text-xs text-white/70 mb-1">إجمالي الأصوات:</p>
-            <p className="text-2xl font-extrabold text-white" style={{ color: `var(--highlight-color-css)` }}>{votes.toLocaleString()}</p>
+            <p className="text-xs text-white/70 mb-1">
+               {currentFilter === 'الكل' ? 'مجموع التصويت الكلي:' : `التصويت في ${currentFilter}:`}
+            </p>
+            <p className="text-2xl font-extrabold text-white" style={{ color: `var(--highlight-color-css)` }}>{designerItem.votes.toLocaleString()}</p>
           </GlassCard>
         </div>
       </div>
@@ -266,28 +273,50 @@ const LiveResultsView = ({ approvedSubmissions, settings, currentFilter, onDesig
   const [isHovering, setIsHovering] = useState(false);
   const perSlide = 4;
 
-  const rankedSubmissions = useMemo(() => approvedSubmissions.sort((a, b) => b.votes - a.votes), [approvedSubmissions]);
-  const topThree = rankedSubmissions.slice(0, 3);
-  const remainingSubmissions = rankedSubmissions.slice(3);
-  const numSlides = Math.ceil(remainingSubmissions.length / perSlide);
+  const rankedDesigners = useMemo(() => {
+    const map = {};
+    approvedSubmissions.forEach(sub => {
+      const key = sub.username || sub.participantName;
+      if (!map[key]) {
+        map[key] = {
+          id: key,
+          participantName: sub.participantName,
+          username: sub.username || sub.participantName,
+          country: sub.country,
+          flag: sub.flag,
+          profilePic: sub.profilePic || generateAvatar(sub.participantName),
+          votes: 0,
+          episodesCount: 0,
+          singleEpisode: sub.episode
+        };
+      }
+      map[key].votes += (sub.votes || 0);
+      map[key].episodesCount += 1;
+    });
+    return Object.values(map).sort((a, b) => b.votes - a.votes);
+  }, [approvedSubmissions]);
+
+  const topThree = rankedDesigners.slice(0, 3);
+  const remainingDesigners = rankedDesigners.slice(3);
+  const numSlides = Math.ceil(remainingDesigners.length / perSlide);
 
   const nextSlide = () => setCurrentIndex((prev) => (prev + 1) % numSlides);
   const prevSlide = () => setCurrentIndex((prev) => (prev - 1 + numSlides) % numSlides);
 
-  const currentSlideSubmissions = remainingSubmissions.slice(currentIndex * perSlide, currentIndex * perSlide + perSlide);
+  const currentSlideDesigners = remainingDesigners.slice(currentIndex * perSlide, currentIndex * perSlide + perSlide);
 
   useEffect(() => {
     if (numSlides <= 1 || isHovering) return;
     const autoSlideTimer = setInterval(() => { nextSlide(); }, 5000);
     return () => clearInterval(autoSlideTimer);
-  }, [numSlides, isHovering, approvedSubmissions]);
+  }, [numSlides, isHovering, rankedDesigners]);
 
-  if (rankedSubmissions.length === 0) return null;
+  if (rankedDesigners.length === 0) return null;
 
-  const CompactPodiumItem = ({ submission, rank, settings }) => {
-    const { participantName, username, country, flag, episode, votes, profilePic } = submission;
-    const safeUsername = username || participantName;
+  const CompactPodiumItem = ({ designerItem, rank, settings }) => {
+    const { participantName, username, country, flag, votes, profilePic, episodesCount, singleEpisode } = designerItem;
     const rankColor = { 1: settings.highlightColor, 2: settings.mainColor, 3: '#5b1f28' }[rank];
+    const episodeText = currentFilter === 'الكل' ? `${episodesCount} مشاركات` : singleEpisode;
 
     return (
       <div className="relative flex flex-col items-center p-3 text-center w-full transform hover:scale-105 transition duration-300 rounded-lg mt-4"
@@ -299,18 +328,18 @@ const LiveResultsView = ({ approvedSubmissions, settings, currentFilter, onDesig
           #{rank}
         </p>
         <p className="text-[10px] font-bold text-white absolute top-0 left-0 p-1 rounded-br-lg bg-black/50">
-          {episode}
+          {episodeText}
         </p>
         
         <img 
-           src={profilePic || generateAvatar(participantName)} 
+           src={profilePic} 
            alt={`Rank ${rank}`} 
-           onClick={() => onDesignerClick(safeUsername)}
-           className="w-14 h-14 object-cover rounded-full mb-2 border-2 mt-3 cursor-pointer hover:scale-110 transition" 
+           onClick={() => onDesignerClick(username)}
+           className="w-14 h-14 object-cover rounded-full mb-2 border-2 mt-4 cursor-pointer hover:scale-110 transition" 
            style={{ borderColor: rankColor }} 
         />
         <p className="text-lg font-extrabold text-white" style={{ color: rankColor }}>{votes.toLocaleString()}</p>
-        <p onClick={() => onDesignerClick(safeUsername)} className="text-sm font-bold text-white truncate w-full cursor-pointer hover:underline">{participantName}</p>
+        <p onClick={() => onDesignerClick(username)} className="text-sm font-bold text-white truncate w-full cursor-pointer hover:underline">{participantName}</p>
         <p className="text-[10px] text-white/70">{flag} {country}</p>
       </div>
     );
@@ -319,26 +348,26 @@ const LiveResultsView = ({ approvedSubmissions, settings, currentFilter, onDesig
   return (
     <GlassCard isGlassmorphism={settings.useGlassmorphism} color="bg-gray-800" className="p-4 mb-6 shadow-2xl">
       <h2 className="text-2xl font-extrabold text-white mb-4 border-b border-white/20 pb-2" style={{ color: `var(--highlight-color-css)` }}>
-        أوائل المصممين {currentFilter !== 'الكل' ? `(${currentFilter})` : ''}
+        أوائل المصممين {currentFilter !== 'الكل' ? `(${currentFilter})` : '(في جميع الحلقات)'}
       </h2>
       
       <div className="flex justify-around gap-2 mb-6 items-end">
-        {topThree[1] && <div className="w-1/3"><CompactPodiumItem submission={topThree[1]} rank={2} settings={settings} /></div>}
-        {topThree[0] && <div className="w-1/3 z-10 -mt-4"><CompactPodiumItem submission={topThree[0]} rank={1} settings={settings} /></div>}
-        {topThree[2] && <div className="w-1/3"><CompactPodiumItem submission={topThree[2]} rank={3} settings={settings} /></div>}
+        {topThree[1] && <div className="w-1/3"><CompactPodiumItem designerItem={topThree[1]} rank={2} settings={settings} /></div>}
+        {topThree[0] && <div className="w-1/3 z-10 -mt-4"><CompactPodiumItem designerItem={topThree[0]} rank={1} settings={settings} /></div>}
+        {topThree[2] && <div className="w-1/3"><CompactPodiumItem designerItem={topThree[2]} rank={3} settings={settings} /></div>}
       </div>
 
-      {remainingSubmissions.length > 0 && (
+      {remainingDesigners.length > 0 && (
         <div className="relative flex items-center justify-center mt-8 border-t border-white/10 pt-4" onMouseEnter={() => setIsHovering(true)} onMouseLeave={() => setIsHovering(false)}>
           <button onClick={prevSlide} className="p-2 rounded-full bg-white/10 hover:bg-white/30 text-white transition disabled:opacity-50 z-10" disabled={numSlides <= 1}>
             <ChevronRight className="w-6 h-6" />
           </button>
           <div className="flex-grow mx-4 overflow-hidden">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 transition-transform duration-500">
-              {currentSlideSubmissions.map((sub) => (
-                <StatsCard key={sub.id} submission={sub} settings={settings} onDesignerClick={onDesignerClick}/>
+              {currentSlideDesigners.map((designer) => (
+                <StatsCard key={designer.id} designerItem={designer} settings={settings} currentFilter={currentFilter} onDesignerClick={onDesignerClick}/>
               ))}
-              {[...Array(perSlide - currentSlideSubmissions.length)].map((_, i) => (
+              {[...Array(perSlide - currentSlideDesigners.length)].map((_, i) => (
                 <div key={`filler-${i}`} className="w-full hidden md:block"></div>
               ))}
             </div>
@@ -353,15 +382,14 @@ const LiveResultsView = ({ approvedSubmissions, settings, currentFilter, onDesig
 };
 
 
-// نظام الإرسال الجديد الذكي المعتمد على كود التضمين (Embed Code)
 const SubmissionForm = ({ settings, userId, allSubmissions }) => {
   const [step, setStep] = useState(1);
   const [embedCode, setEmbedCode] = useState('');
   const [fetchedData, setFetchedData] = useState(null);
   
   const [formData, setFormData] = useState({ 
-    participantName: '', // الاسم الظاهر (Display Name)
-    username: '',        // اليوزر نيم الحقيقي (Unique ID)
+    participantName: '', 
+    username: '',        
     description: '', 
     thumbnailUrl: '',
     country: COUNTRIES[0].name, 
@@ -390,7 +418,6 @@ const SubmissionForm = ({ settings, userId, allSubmissions }) => {
     }
 
     try {
-      // 1. تحليل كود الـ HTML المنسوخ برمجياً
       const parser = new DOMParser();
       const doc = parser.parseFromString(embedCode, 'text/html');
       const bq = doc.querySelector('blockquote.tiktok-embed');
@@ -403,24 +430,19 @@ const SubmissionForm = ({ settings, userId, allSubmissions }) => {
       const videoUrl = bq.getAttribute('cite');
       const videoId = bq.getAttribute('data-video-id');
       
-      // استخراج اسم المستخدم (اليوزر نيم @)
       const userTag = bq.querySelector('section > a[title^="@"]');
       const username = userTag ? userTag.getAttribute('title').replace('@', '') : 'مجهول';
 
-      // استخراج الاسم الظاهر (Display Name) من رابط الموسيقى (Sound Original)
-      // عادة تيك توك تضع الاسم الظاهر في عنوان الصوت إذا كان الصوت أصلياً
       const musicTag = Array.from(bq.querySelectorAll('a')).find(a => a.getAttribute('title')?.startsWith('♬'));
-      let displayName = username; // القيمة الافتراضية هي اليوزر في حال لم نجد الاسم الظاهر
+      let displayName = username; 
       if (musicTag) {
           const titleText = musicTag.getAttribute('title');
-          // استخراج ما بعد "original sound - " أو "الصوت الأصلي - "
           const match = titleText.match(/original sound - (.*)/i) || titleText.match(/الصوت الأصلي - (.*)/i) || titleText.match(/♬ (.*)/i);
           if (match && match[1]) {
               displayName = match[1].replace('original sound -', '').trim();
           }
       }
 
-      // استخراج وصف الفيديو بدقة
       const section = bq.querySelector('section');
       let desc = '';
       if (section) {
@@ -432,7 +454,6 @@ const SubmissionForm = ({ settings, userId, allSubmissions }) => {
       }
       desc = desc.replace(/•/g, '').trim();
 
-      // 2. الفلترة: التحقق من وجود رابط التصميم مسبقاً
       const cleanUrl = normalizeTikTokUrl(videoUrl);
       const exists = allSubmissions.some(sub => normalizeTikTokUrl(sub.videoUrl) === cleanUrl);
       if (exists) {
@@ -440,7 +461,6 @@ const SubmissionForm = ({ settings, userId, allSubmissions }) => {
         return;
       }
 
-      // 3. الفلترة: البحث عن صورة المصمم في قاعدة البيانات عبر اليوزر (لتوحيد الهوية)
       const existingUser = allSubmissions.find(sub => (sub.username || sub.participantName).toLowerCase() === username.toLowerCase());
       const profilePic = existingUser ? existingUser.profilePic : generateAvatar(displayName);
 
@@ -451,7 +471,7 @@ const SubmissionForm = ({ settings, userId, allSubmissions }) => {
         participantName: displayName,
         description: desc,
         profilePic,
-        thumbnailUrl: '' // سيتم محاولة جلبه في الخلفية
+        thumbnailUrl: '' 
       };
 
       setFetchedData(parsedData);
@@ -461,9 +481,8 @@ const SubmissionForm = ({ settings, userId, allSubmissions }) => {
         username: username, 
         description: desc 
       }));
-      setStep(2); // الانتقال للخطوة الثانية مباشرة
+      setStep(2); 
 
-      // محاولة جلب الصورة المصغرة الأصلية في الخلفية بصمت
       const oembedApi = `https://www.tiktok.com/oembed?url=${encodeURIComponent(cleanUrl)}`;
       const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(oembedApi)}`;
       fetch(proxyUrl)
@@ -496,8 +515,8 @@ const SubmissionForm = ({ settings, userId, allSubmissions }) => {
       const countryData = COUNTRIES.find((c) => c.name === formData.country);
       
       const newSubmission = {
-        participantName: formData.participantName, // الاسم الظاهر مع الايموجي
-        username: formData.username,               // اليوزر نيم للمطابقة
+        participantName: formData.participantName, 
+        username: formData.username,               
         description: formData.description,
         videoUrl: fetchedData.videoUrl,
         episode: formData.episode,
@@ -546,7 +565,7 @@ const SubmissionForm = ({ settings, userId, allSubmissions }) => {
               dir="ltr" 
               required 
             />
-            <p className="text-xs text-white/50 mt-2">انسخ كود التضمين من خيار المشاركة في تيك توك {'>'} تضمين (Embed)، وسيتم استخراج جميع بياناتك (الاسم الظاهر واليوزر) فوراً!</p>
+            <p className="text-xs text-white/50 mt-2">انسخ كود التضمين من خيار المشاركة في تيك توك &gt; تضمين (Embed)، وسيتم استخراج جميع بياناتك (الاسم الظاهر واليوزر) فوراً!</p>
           </div>
 
           <button type="submit" disabled={!embedCode} className="w-full p-4 rounded-lg font-bold text-lg text-gray-900 transition duration-300 disabled:opacity-50 mt-4 flex items-center justify-center hover:opacity-90" style={{ backgroundColor: `var(--highlight-color-css)` }}>
@@ -559,7 +578,6 @@ const SubmissionForm = ({ settings, userId, allSubmissions }) => {
         <form onSubmit={handleFinalSubmit} className="space-y-6 animate-fade-in">
           
           <div className="bg-gray-800 p-4 rounded-xl border border-white/20 flex flex-col md:flex-row gap-4 items-start">
-            {/* العرض المباشر (المشغل المصغر) */}
             <div className="w-32 h-56 rounded-lg overflow-hidden bg-black flex-shrink-0 relative border border-white/10 shadow-lg">
               <iframe src={`https://www.tiktok.com/embed/v2/${fetchedData.videoId}?lang=ar`} className="w-full h-full" frameBorder="0" allowFullScreen></iframe>
             </div>
@@ -671,12 +689,10 @@ const ContestCard = ({ submission, settings, onVote, onOpenVideo, onDesignerClic
   );
 };
 
-// --- المكون الجديد: صفحة بروفايل المصمم ---
 const DesignerProfile = ({ designerId, allSubmissions, settings, onVote, onBack, setVoteConfirmData }) => {
   const [videoModalOpen, setVideoModalOpen] = useState(false);
   const [selectedSubmission, setSelectedSubmission] = useState(null);
 
-  // جلب كل تصميمات هذا المصمم باستخدام اليوزر (أو الاسم كحل بديل للقديم)
   const designerSubmissions = useMemo(() => 
     allSubmissions.filter(sub => sub.status === 'Approved' && (sub.username === designerId || sub.participantName === designerId)).sort((a,b) => b.votes - a.votes)
   , [allSubmissions, designerId]);
@@ -697,12 +713,10 @@ const DesignerProfile = ({ designerId, allSubmissions, settings, onVote, onBack,
 
   return (
     <div className="space-y-6 animate-fade-in">
-       {/* زر العودة */}
        <button onClick={onBack} className="flex items-center text-white/70 hover:text-white transition bg-gray-900/50 px-4 py-2 rounded-full border border-white/10 w-fit">
          <ArrowRight className="w-5 h-5 ml-2" /> العودة للرئيسية
        </button>
 
-       {/* ترويسة المصمم المحدثة */}
        <GlassCard isGlassmorphism={settings.useGlassmorphism} color="bg-gray-900" className="flex flex-col md:flex-row items-center md:items-start p-8 gap-6 relative overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-highlight-color/20 to-transparent"></div>
           
@@ -733,7 +747,7 @@ const DesignerProfile = ({ designerId, allSubmissions, settings, onVote, onBack,
           ))}
        </div>
 
-       <Modal isOpen={videoModalOpen} onClose={() => setVideoModalOpen(false)} title={`تصميم: ${selectedSubmission?.participantName}`}>
+       <Modal isOpen={videoModalOpen} onClose={() => setVideoModalOpen(false)} title={`تصميم: ${selectedSubmission?.participantName}`} settings={settings}>
         {selectedSubmission && (
           <div className="flex flex-col">
             <div className="relative w-full aspect-[9/16] bg-black rounded-lg overflow-hidden mb-4 mx-auto max-w-sm border border-white/10 shadow-2xl">
@@ -826,16 +840,18 @@ const Home = ({ settings, allSubmissions, totalApproved, onVote, cooldown, setVo
 
   const approvedSubmissions = useMemo(() => allSubmissions.filter((sub) => sub.status === 'Approved').sort((a, b) => b.votes - a.votes), [allSubmissions]);
   
-  const filteredSubmissions = useMemo(() => {
-    return approvedSubmissions.filter((sub) => {
-      const matchSearch = sub.participantName.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          (sub.username && sub.username.toLowerCase().includes(searchTerm.toLowerCase())) ||
-                          sub.country.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          (sub.description && sub.description.toLowerCase().includes(searchTerm.toLowerCase()));
-      const matchEpisode = filterEpisode === 'الكل' || sub.episode === filterEpisode;
-      return matchSearch && matchEpisode;
+  const leaderboardSubmissions = useMemo(() => {
+    return approvedSubmissions.filter((sub) => filterEpisode === 'الكل' || sub.episode === filterEpisode);
+  }, [approvedSubmissions, filterEpisode]);
+
+  const filteredGridSubmissions = useMemo(() => {
+    return leaderboardSubmissions.filter((sub) => {
+      return sub.participantName.toLowerCase().includes(searchTerm.toLowerCase()) || 
+             (sub.username && sub.username.toLowerCase().includes(searchTerm.toLowerCase())) ||
+             sub.country.toLowerCase().includes(searchTerm.toLowerCase()) ||
+             (sub.description && sub.description.toLowerCase().includes(searchTerm.toLowerCase()));
     });
-  }, [approvedSubmissions, searchTerm, filterEpisode]);
+  }, [leaderboardSubmissions, searchTerm]);
 
   const handleOpenVideo = (submission) => { setSelectedSubmission(submission); setVideoModalOpen(true); };
   const handleVoteFromCard = (submission) => {
@@ -865,27 +881,27 @@ const Home = ({ settings, allSubmissions, totalApproved, onVote, cooldown, setVo
 
         <div className="w-full md:w-1/3 flex items-center justify-end text-white">
           <span className="text-lg font-semibold ml-2">المشاركات المعروضة:</span>
-          <span className="text-2xl font-extrabold" style={{ color: `var(--highlight-color-css)` }}>{filteredSubmissions.length}</span>
+          <span className="text-2xl font-extrabold" style={{ color: `var(--highlight-color-css)` }}>{filteredGridSubmissions.length}</span>
         </div>
       </GlassCard>
 
-      <LiveResultsView approvedSubmissions={filteredSubmissions} settings={settings} currentFilter={filterEpisode} onDesignerClick={onDesignerClick} />
+      <LiveResultsView approvedSubmissions={leaderboardSubmissions} settings={settings} currentFilter={filterEpisode} onDesignerClick={onDesignerClick} />
 
       <h3 className="text-2xl font-bold text-white border-b border-white/10 pb-2">
         {filterEpisode === 'الكل' ? 'أحدث التصاميم (جميع الحلقات)' : `تصاميم ${filterEpisode}`}
       </h3>
 
-      {filteredSubmissions.length === 0 ? (
+      {filteredGridSubmissions.length === 0 ? (
         <p className="text-white/70 text-center text-xl mt-10">لا توجد مشاركات مطابقة لمعايير البحث.</p>
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
-          {filteredSubmissions.map((sub) => (
+          {filteredGridSubmissions.map((sub) => (
             <ContestCard key={sub.id} submission={sub} settings={settings} onVote={handleVoteFromCard} onOpenVideo={handleOpenVideo} onDesignerClick={onDesignerClick} />
           ))}
         </div>
       )}
 
-      <Modal isOpen={videoModalOpen} onClose={() => setVideoModalOpen(false)} title={`تصميم: ${selectedSubmission?.participantName}`}>
+      <Modal isOpen={videoModalOpen} onClose={() => setVideoModalOpen(false)} title={`تصميم: ${selectedSubmission?.participantName}`} settings={settings}>
         {selectedSubmission && (
           <div className="flex flex-col">
             <div className="relative w-full aspect-[9/16] bg-black rounded-lg overflow-hidden mb-4 mx-auto max-w-sm border border-white/10 shadow-2xl">
@@ -917,17 +933,14 @@ const Home = ({ settings, allSubmissions, totalApproved, onVote, cooldown, setVo
 };
 
 // =========================================================================
-// 5. ADMIN PANEL - لوحات التحكم الشاملة
+// 5. ADMIN PANEL
 // =========================================================================
 
-// --- 5.A: لوحة الإحصائيات الشاملة ---
 const AdminStatsPanel = ({ submissions, settings, isGlassmorphism }) => {
   const totalVotes = submissions.reduce((sum, sub) => sum + (sub.votes || 0), 0);
   const approved = submissions.filter(s => s.status === 'Approved');
   const pending = submissions.filter(s => s.status === 'Pending');
-  const rejected = submissions.filter(s => s.status === 'Rejected');
 
-  // حساب أفضل المصممين بناءً على اليوزر
   const designersMap = {};
   approved.forEach(sub => {
     const key = sub.username || sub.participantName;
@@ -965,7 +978,6 @@ const AdminStatsPanel = ({ submissions, settings, isGlassmorphism }) => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-         {/* جدول أفضل 5 مصممين */}
          <div className="bg-gray-800/50 p-4 rounded-xl border border-white/5">
             <h4 className="text-lg font-bold text-white mb-4">أفضل 5 مصممين (حسب الأصوات الكلية)</h4>
             <div className="space-y-3">
@@ -990,7 +1002,6 @@ const AdminStatsPanel = ({ submissions, settings, isGlassmorphism }) => {
   );
 };
 
-// --- 5.B: لوحة إدارة المشاركات (جدول موسع) ---
 const AdminSubmissionsPanel = ({ submissions, settings, isGlassmorphism, onUpdateSubmissionStatus }) => {
   const [activeTab, setActiveTab] = useState('Pending');
   const [submissionToEdit, setSubmissionToEdit] = useState(null);
@@ -1007,7 +1018,6 @@ const AdminSubmissionsPanel = ({ submissions, settings, isGlassmorphism, onUpdat
       if (!db) return;
       await retryOperation(() => setDoc(doc(db, PUBLIC_SUBMISSIONS_COLLECTION, updatedSubmission.id), updatedSubmission, { merge: true }));
       
-      // توحيد الهوية: تحديث الصورة لباقي مشاركات هذا اليوزر
       if (updatedSubmission.profilePic && updatedSubmission.username) {
         const q = query(collection(db, PUBLIC_SUBMISSIONS_COLLECTION), where("username", "==", updatedSubmission.username));
         const querySnapshot = await getDocs(q);
@@ -1033,7 +1043,6 @@ const AdminSubmissionsPanel = ({ submissions, settings, isGlassmorphism, onUpdat
         ))}
       </div>
       
-      {/* جدول البيانات الموسع */}
       <div className="overflow-x-auto w-full">
         <table className="w-full text-right text-white/80 min-w-[800px]">
           <thead className="bg-white/5 text-white font-bold border-b border-white/20 text-sm">
@@ -1087,7 +1096,7 @@ const AdminSubmissionsPanel = ({ submissions, settings, isGlassmorphism, onUpdat
       </div>
       
       {submissionToEdit && (
-        <Modal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} title="تعديل بيانات التصميم">
+        <Modal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} title="تعديل بيانات التصميم" settings={settings}>
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div><label className="text-white text-sm">الاسم الظاهر</label><input type="text" value={submissionToEdit.participantName} onChange={(e) => setSubmissionToEdit({...submissionToEdit, participantName: e.target.value})} className="w-full p-2 rounded bg-gray-800 text-white border border-white/20 focus:border-highlight-color" /></div>
@@ -1138,7 +1147,12 @@ const AdminSettingsPanel = ({ settings, isGlassmorphism, onSaveSettings }) => {
         <div className="space-y-4">
           <h4 className="text-lg font-semibold border-b border-white/10 pb-2" style={{ color: settings.mainColor }}>الإعدادات البصرية للموقع</h4>
           <div><label className="text-white text-sm">العنوان الرئيسي</label><input type="text" value={currentSettings.title} onChange={(e) => setCurrentSettings({...currentSettings, title: e.target.value})} className="w-full p-2 rounded bg-gray-800 text-white border border-white/20" /></div>
-          <div><label className="text-white text-sm">رابط الشعار العُلوي</label><input type="text" value={currentSettings.logoUrl} onChange={(e) => setCurrentSettings({...currentSettings, logoUrl: e.target.value})} className="w-full p-2 rounded bg-gray-800 text-white border border-white/20" dir="ltr" /></div>
+          
+          <div className="grid grid-cols-2 gap-4">
+            <div><label className="text-white text-sm">رابط الشعار العُلوي</label><input type="text" value={currentSettings.logoUrl} onChange={(e) => setCurrentSettings({...currentSettings, logoUrl: e.target.value})} className="w-full p-2 rounded bg-gray-800 text-white border border-white/20" dir="ltr" /></div>
+            <div><label className="text-white text-sm">حجم الشعار (الارتفاع px)</label><input type="number" min="20" max="200" value={currentSettings.logoSize || 40} onChange={(e) => setCurrentSettings({...currentSettings, logoSize: parseInt(e.target.value) || 40})} className="w-full p-2 rounded bg-gray-800 text-white border border-white/20" /></div>
+          </div>
+          
           <div><label className="text-white text-sm">شريط الإعلانات (يظهر أعلى الموقع)</label><input type="text" value={currentSettings.marqueeText} onChange={(e) => setCurrentSettings({...currentSettings, marqueeText: e.target.value})} className="w-full p-2 rounded bg-gray-800 text-white border border-white/20" /></div>
           
           <div className="flex gap-4 p-4 bg-gray-800/50 rounded-lg border border-white/10">
@@ -1151,6 +1165,17 @@ const AdminSettingsPanel = ({ settings, isGlassmorphism, onSaveSettings }) => {
            <div><label className="text-white text-sm">شروط الانضمام</label><textarea value={currentSettings.termsText} onChange={(e) => setCurrentSettings({...currentSettings, termsText: e.target.value})} className="w-full p-2 rounded bg-gray-800 text-white border border-white/20 h-32" /></div>
            <div><label className="text-white text-sm">نبذة عن المسابقة</label><textarea value={currentSettings.whyText} onChange={(e) => setCurrentSettings({...currentSettings, whyText: e.target.value})} className="w-full p-2 rounded bg-gray-800 text-white border border-white/20 h-32" /></div>
         </div>
+
+        {/* معلومات المشرف الجديدة */}
+        <div className="space-y-4 md:col-span-2 mt-4 pt-4 border-t border-white/10">
+           <h4 className="text-lg font-semibold mb-2" style={{ color: settings.mainColor }}>حولنا (معلومات المشرف)</h4>
+           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+             <div><label className="text-white text-sm">اسم المشرف / العنوان</label><input type="text" value={currentSettings.adminName || ''} onChange={(e) => setCurrentSettings({...currentSettings, adminName: e.target.value})} className="w-full p-2 rounded bg-gray-800 text-white border border-white/20" placeholder="مثال: علي جبار" /></div>
+             <div className="md:col-span-2"><label className="text-white text-sm">الوصف (نبذة شخصية تظهر في نافذة حولنا)</label><textarea value={currentSettings.adminBio || ''} onChange={(e) => setCurrentSettings({...currentSettings, adminBio: e.target.value})} className="w-full p-2 rounded bg-gray-800 text-white border border-white/20 h-24" placeholder="اكتب نبذة تظهر للمتابعين..."/></div>
+             <div><label className="text-white text-sm">حساب تيك توك (رابط كامل)</label><input type="url" value={currentSettings.adminTikTok || ''} onChange={(e) => setCurrentSettings({...currentSettings, adminTikTok: e.target.value})} dir="ltr" className="w-full p-2 rounded bg-gray-800 text-white border border-white/20" placeholder="https://www.tiktok.com/@..." /></div>
+             <div><label className="text-white text-sm">حساب انستغرام (رابط كامل)</label><input type="url" value={currentSettings.adminInsta || ''} onChange={(e) => setCurrentSettings({...currentSettings, adminInsta: e.target.value})} dir="ltr" className="w-full p-2 rounded bg-gray-800 text-white border border-white/20" placeholder="https://www.instagram.com/..." /></div>
+           </div>
+        </div>
       </div>
       <button onClick={() => onSaveSettings(currentSettings)} className="w-full mt-8 p-4 rounded-lg font-bold text-gray-900 text-lg transition hover:opacity-90 shadow-lg" style={{ backgroundColor: currentSettings.mainColor }}>حفظ وتطبيق الإعدادات فوراً</button>
     </GlassCard>
@@ -1161,12 +1186,12 @@ const AdminSettingsPanel = ({ settings, isGlassmorphism, onSaveSettings }) => {
 // 6. LAYOUT & MAIN APP
 // =========================================================================
 
-const Header = ({ settings, activeView, setActiveView, isAdminMode, clearDesignerSelection }) => (
+const Header = ({ settings, activeView, setActiveView, isAdminMode, clearDesignerSelection, onOpenAbout }) => (
   <header className="sticky top-0 z-40 border-b" style={{ backgroundColor: settings.useGlassmorphism ? 'rgba(0,0,0,0.8)' : '#000000', borderColor: 'rgba(255, 255, 255, 0.1)', backdropFilter: settings.useGlassmorphism ? 'blur(12px)' : 'none' }}>
     <div className="container mx-auto px-4 py-3">
       <div className="flex flex-col md:flex-row justify-between items-center gap-4">
         <div className="flex items-center cursor-pointer" onClick={() => {setActiveView('home'); clearDesignerSelection();}}>
-          <img src={settings.logoUrl} alt="Logo" className="h-10 w-auto rounded-lg mr-4 ml-4 shadow-md" onError={(e) => (e.target.style.display = 'none')} />
+          <img src={settings.logoUrl} alt="Logo" className="rounded-lg mr-4 ml-4 shadow-md transition-all duration-300" style={{ height: `${settings.logoSize || 40}px`, width: 'auto', display: settings.logoUrl ? 'block' : 'none' }} onError={(e) => (e.target.style.display = 'none')} />
           <h1 className="text-2xl font-black text-white">{settings.title}</h1>
         </div>
         
@@ -1181,11 +1206,23 @@ const Header = ({ settings, activeView, setActiveView, isAdminMode, clearDesigne
             <button onClick={() => {setActiveView('library'); clearDesignerSelection();}} className={`flex items-center px-4 py-2 rounded-full text-sm font-bold transition whitespace-nowrap ${activeView === 'library' ? 'text-white shadow-md' : 'text-white hover:bg-white/10'}`} style={{ backgroundColor: activeView === 'library' ? settings.mainColor : 'transparent' }}>
               <FolderOpen className="w-4 h-4 ml-1" /> مكتبة المصممين
             </button>
+            {/* زر نافذة حولنا المنبثقة (Popup Modal) */}
+            <button onClick={onOpenAbout} className="flex items-center px-4 py-2 rounded-full text-sm font-bold transition whitespace-nowrap text-white hover:bg-white/10">
+              <User className="w-4 h-4 ml-1" /> حولنا
+            </button>
           </nav>
         )}
       </div>
     </div>
   </header>
+);
+
+const Footer = ({ settings }) => (
+  <footer className="bg-gray-900/80 p-6 mt-16 border-t border-white/10 text-center">
+    <p className="text-sm text-white/40">
+      &copy; {new Date().getFullYear()} {settings.title}. جميع الحقوق محفوظة.
+    </p>
+  </footer>
 );
 
 const App = () => {
@@ -1194,7 +1231,8 @@ const App = () => {
   const [loading, setLoading] = useState(true);
   const [adminMode, setAdminMode] = useState(false);
   const [authModalOpen, setAuthModalOpen] = useState(false);
-  const [adminActiveTab, setAdminActiveTab] = useState('stats'); // Tabs لمدير النظام
+  const [adminActiveTab, setAdminActiveTab] = useState('stats');
+  const [isAboutModalOpen, setIsAboutModalOpen] = useState(false);
   
   const [activeView, setActiveView] = useState('home');
   const [selectedDesignerProfile, setSelectedDesignerProfile] = useState(null);
@@ -1290,10 +1328,10 @@ const App = () => {
   }
 
   return (
-    <div dir="rtl" className="min-h-screen font-sans text-white pb-10" style={{ backgroundColor: '#000000' }}>
-      <Header settings={settings} activeView={activeView} setActiveView={setActiveView} isAdminMode={adminMode} clearDesignerSelection={clearDesignerSelection} />
+    <div dir="rtl" className="min-h-screen font-sans text-white flex flex-col" style={{ backgroundColor: '#000000' }}>
+      <Header settings={settings} activeView={activeView} setActiveView={setActiveView} isAdminMode={adminMode} clearDesignerSelection={clearDesignerSelection} onOpenAbout={() => setIsAboutModalOpen(true)} />
 
-      <main className="container mx-auto p-4 pt-6">
+      <main className="container mx-auto p-4 pt-6 flex-grow">
         {!adminMode && <AlertBanner settings={settings} />}
 
         {adminMode ? (
@@ -1341,6 +1379,36 @@ const App = () => {
         )}
       </main>
 
+      {!adminMode && <Footer settings={settings} />}
+
+      {/* نافذة "حول المسابقة / عني" المنبثقة بتصميم Glassmorphism */}
+      <Modal isOpen={isAboutModalOpen} onClose={() => setIsAboutModalOpen(false)} title="حول المبادرة" settings={settings}>
+         <div className="flex flex-col items-center justify-center p-6 bg-white/5 rounded-2xl border border-white/10 mx-auto text-center">
+            <div className="w-20 h-20 bg-gray-800 rounded-full flex items-center justify-center mb-4 border border-white/20 shadow-lg">
+               <Crown className="w-10 h-10" style={{ color: settings.highlightColor }} />
+            </div>
+            <h3 className="text-3xl font-extrabold text-white mb-3" style={{ color: settings.highlightColor }}>
+               {settings.adminName || 'إدارة المسابقة'}
+            </h3>
+            <p className="text-white/80 leading-relaxed mb-8 text-lg">
+               {settings.adminBio || 'وصف المشرف سيظهر هنا. قم بتعديله من لوحة التحكم.'}
+            </p>
+            <div className="flex flex-wrap justify-center gap-4">
+               {settings.adminTikTok && (
+                 <a href={settings.adminTikTok} target="_blank" rel="noreferrer" className="flex items-center px-6 py-3 bg-gray-900 rounded-full hover:scale-105 transition border border-white/10 text-white font-bold shadow-lg">
+                   <Music className="w-5 h-5 ml-2 text-pink-500" /> TikTok
+                 </a>
+               )}
+               {settings.adminInsta && (
+                 <a href={settings.adminInsta} target="_blank" rel="noreferrer" className="flex items-center px-6 py-3 bg-gray-900 rounded-full hover:scale-105 transition border border-white/10 text-white font-bold shadow-lg">
+                   <Instagram className="w-5 h-5 ml-2 text-purple-500" /> Instagram
+                 </a>
+               )}
+            </div>
+         </div>
+      </Modal>
+
+      {/* نافذة الدخول للإدارة */}
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm" style={{display: authModalOpen && !adminMode ? 'flex' : 'none'}}>
         <div className="bg-gray-900 p-8 rounded-2xl w-full max-w-sm border border-white/10 shadow-2xl">
            <div className="flex justify-center mb-4"><Lock className="w-12 h-12 text-highlight-color"/></div>
@@ -1349,7 +1417,7 @@ const App = () => {
         </div>
       </div>
 
-      <Modal isOpen={voteConfirmData !== null} onClose={() => setVoteConfirmData(null)} title="تأكيد التصويت النهائي">
+      <Modal isOpen={voteConfirmData !== null} onClose={() => setVoteConfirmData(null)} title="تأكيد التصويت النهائي" settings={settings}>
         {voteConfirmData && (
           <div className="text-center">
             <p className="text-white text-xl mb-6">هل أنت متأكد من منح صوتك لـ <span className="font-extrabold mx-2 px-2 py-1 bg-black/30 rounded" style={{ color: settings.highlightColor }} dir="ltr">{voteConfirmData.participantName}</span> عن مشاركته في <span className="text-main-color font-bold">{voteConfirmData.episode}</span>؟</p>

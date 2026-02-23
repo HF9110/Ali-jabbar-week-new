@@ -55,9 +55,20 @@ import {
   BarChart2,
   TrendingUp,
   Users,
-  Instagram,
-  Music
+  Instagram
 } from 'lucide-react';
+
+// --- إضافة مكون خاص لشعار تيك توك الرسمي (SVG) ---
+const TikTokIcon = ({ className }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 448 512"
+    className={className}
+    fill="currentColor"
+  >
+    <path d="M448,209.91a210.06,210.06,0,0,1-122.77-39.25V349.38A162.55,162.55,0,1,1,185,188.31V278.2a74.62,74.62,0,1,0,52.23,71.18V0l88,0a121.18,121.18,0,0,0,1.86,22.17h0A122.18,122.18,0,0,0,381,102.39a121.43,121.43,0,0,0,67,20.14Z" />
+  </svg>
+);
 
 // =========================================================================
 // 1. FIREBASE & INITIALIZATION
@@ -145,8 +156,8 @@ const DEFAULT_SETTINGS = {
   appFont: 'Cairo',
   title: 'HF Live',
   logoUrl: 'https://placehold.co/120x40/fe2c55/25f4ee?text=HF+Live',
-  logoSize: 40, // حجم الشعار الافتراضي
-  marqueeText: 'أهلاً بكم في مسابقة تصاميم المسلسل الرمضاني. التصويت والمشاركات مفتوحة دائماً!',
+  logoSize: 40,
+  marqueeText: 'أهلاً بكم في مسابقة تصاميم المسلسل الرمضاني. التصويت والمشاركات مفتوحة دائماً شاركنا إبداعك وكن من الفائزين!',
   useGlassmorphism: true,
   termsText: 'الشروط والأحكام:\n- يجب أن يكون التصميم من مشاهد المسلسل حصراً.\n- يمنع استخدام حقوق موسيقية غير مصرح بها.\n- يرجى اختيار رقم الحلقة الصحيح عند الإرسال.',
   whyText: 'لماذا هذه المسابقة؟\nلدعم المصممين وصناع المحتوى العراقي والعربي خلال شهر رمضان المبارك، واختيار أفضل الإبداعات للمشاهد الرمضانية.',
@@ -159,9 +170,9 @@ const DEFAULT_SETTINGS = {
 const generateAvatar = (name) => `https://ui-avatars.com/api/?name=${encodeURIComponent(name || 'Unknown')}&background=random&color=fff&size=128&bold=true`;
 
 const MOCK_SUBMISSIONS = [
-  { id: '1', username: 'al3eal1', participantName: '👑 الـعـيـال 👑', description: 'تصميم حزين لمشهد النهاية مع موسيقى هادئة جداً', country: 'العراق', episode: 'الحلقة 1', votes: 890, status: 'Approved', videoUrl: 'https://www.tiktok.com/@al3eal1/video/7609691265935969558', thumbnailUrl: 'https://placehold.co/600x900/111827/ffffff?text=Ep+1', profilePic: generateAvatar('العيال'), flag: '🇮🇶', submittedAt: new Date(Date.now() - 100000) },
-  { id: '2', username: 'sara_khaled', participantName: 'Sara Khaled ✨', description: 'تعديل اكشن سريع للمواجهة في بداية الحلقة', country: 'السعودية', episode: 'الحلقة 1', votes: 750, status: 'Approved', videoUrl: 'https://www.tiktok.com/@tiktok/video/7279148301138855211', thumbnailUrl: 'https://placehold.co/600x900/111827/ffffff?text=Ep+1', profilePic: generateAvatar('Sara'), flag: '🇸🇦', submittedAt: new Date(Date.now() - 200000) },
-  { id: '3', username: 'al3eal1', participantName: '👑 الـعـيـال 👑', description: 'مونتاج الحلقة الثانية', country: 'العراق', episode: 'الحلقة 2', votes: 500, status: 'Approved', videoUrl: 'https://www.tiktok.com/@al3eal1/video/7609691265935969559', thumbnailUrl: 'https://placehold.co/600x900/111827/ffffff?text=Ep+2', profilePic: generateAvatar('العيال'), flag: '🇮🇶', submittedAt: new Date(Date.now() - 50000) },
+  { id: '1', platform: 'tiktok', username: 'al3eal1', participantName: '👑 الـعـيـال 👑', description: 'تصميم حزين لمشهد النهاية مع موسيقى هادئة جداً', country: 'العراق', episode: 'الحلقة 1', votes: 890, status: 'Approved', videoUrl: 'https://www.tiktok.com/@al3eal1/video/7609691265935969558', thumbnailUrl: 'https://placehold.co/600x900/111827/ffffff?text=Ep+1', profilePic: generateAvatar('العيال'), flag: '🇮🇶', submittedAt: new Date(Date.now() - 100000) },
+  { id: '2', platform: 'tiktok', username: 'sara_khaled', participantName: 'Sara Khaled ✨', description: 'تعديل اكشن سريع للمواجهة في بداية الحلقة', country: 'السعودية', episode: 'الحلقة 1', votes: 750, status: 'Approved', videoUrl: 'https://www.tiktok.com/@tiktok/video/7279148301138855211', thumbnailUrl: 'https://placehold.co/600x900/111827/ffffff?text=Ep+1', profilePic: generateAvatar('Sara'), flag: '🇸🇦', submittedAt: new Date(Date.now() - 200000) },
+  { id: '3', platform: 'instagram', username: 'ig_designer', participantName: 'مصمم انستا', description: 'تصميم ريلز سريع للحلقة الثانية', country: 'الإمارات', episode: 'الحلقة 2', votes: 500, status: 'Approved', videoUrl: 'https://www.instagram.com/reel/C1x2y3z4/', thumbnailUrl: 'https://placehold.co/600x900/111827/ffffff?text=IG+Reel', profilePic: generateAvatar('IG'), flag: '🇦🇪', submittedAt: new Date(Date.now() - 50000) },
 ];
 
 const MOCK_LIBRARY_SCENES = Array.from({ length: 30 }, (_, index) => {
@@ -195,9 +206,21 @@ const GlassCard = ({ children, className = '', isGlassmorphism = true, color = '
   return <div className={`p-4 rounded-xl ${color} ${glassClasses} ${className}`}>{children}</div>;
 };
 
-// شريط التنبيهات مع تأثير الحركة الانسيابية (Marquee)
+// استخراج الرابط المباشر للـ iframe الخاص بتيك توك وانستغرام
+const getVideoEmbedUrl = (url) => {
+  if (!url) return '';
+  if (url.includes('instagram.com')) {
+    const match = url.match(/(?:p|reel|tv)\/([A-Za-z0-9_-]+)/);
+    // إضافة خيارات إضافية لإخفاء بعض العناصر في الانستغرام إن أمكن
+    return match ? `https://www.instagram.com/p/${match[1]}/embed` : url;
+  } else {
+    const match = url.match(/video\/(\d+)/);
+    return match ? `https://www.tiktok.com/embed/v2/${match[1]}?lang=ar` : url;
+  }
+};
+
 const AlertBanner = ({ settings }) => (
-  <div className="p-3 text-white border-r-4 rounded-lg flex items-center mb-6 shadow-2xl overflow-hidden relative"
+  <div className="text-white border-r-4 rounded-lg flex items-center mb-6 shadow-2xl overflow-hidden relative"
     style={{
       '--pulse-shadow': `0 0 10px 2px ${settings.highlightColor}`,
       backgroundColor: settings.mainColor,
@@ -206,32 +229,19 @@ const AlertBanner = ({ settings }) => (
     <style>{`
       @keyframes pulse-effect { 0%, 100% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.7); } 50% { box-shadow: var(--pulse-shadow); } } 
       .pulse-animation { animation: pulse-effect 2s infinite ease-in-out; }
-      
-      @keyframes marquee-rtl {
-        0% { right: 100%; transform: translateX(0%); }
-        100% { right: 0%; transform: translateX(100%); }
-      }
-      
-      .animate-marquee-rtl {
-        display: inline-block;
-        white-space: nowrap;
-        position: absolute;
-        animation: marquee-rtl 15s linear infinite;
-      }
-      
-      .animate-marquee-rtl:hover {
-        animation-play-state: paused;
-      }
+      @keyframes marquee-rtl { 0% { transform: translateX(-100vw); } 100% { transform: translateX(100vw); } }
+      .marquee-text { position: absolute; right: 0; white-space: nowrap; animation: marquee-rtl 25s linear infinite; display: inline-block; will-change: transform; }
     `}</style>
     
-    <div className="pulse-animation p-1 rounded-full border-2 mr-2 flex-shrink-0 z-10 bg-inherit" style={{ borderColor: settings.highlightColor }}>
-      <Film className="w-6 h-6" />
+    <div className="flex items-center z-10 p-3 pl-6 relative" style={{ backgroundColor: settings.mainColor, boxShadow: '-15px 0 15px -10px rgba(0,0,0,0.4)' }}>
+      <div className="pulse-animation p-1 rounded-full border-2 ml-4 flex-shrink-0" style={{ borderColor: settings.highlightColor }}>
+        <Film className="w-6 h-6" />
+      </div>
+      <span className="font-bold text-xl whitespace-nowrap">إعلان</span>
     </div>
-    <span className="font-bold ml-4 text-xl whitespace-nowrap z-10 relative">إعلان</span>
     
-    {/* حاوية النص المتحرك - تأخذ المساحة المتبقية وتقص الزائد */}
-    <div className="flex-grow overflow-hidden relative h-8 flex items-center pr-2" style={{ maskImage: 'linear-gradient(to right, transparent, black 2%, black 98%, transparent)' }}>
-      <span className="animate-marquee-rtl text-lg cursor-default">{settings.marqueeText}</span>
+    <div className="flex-grow overflow-hidden relative h-12 flex items-center">
+        <span className="marquee-text text-lg">{settings.marqueeText}</span>
     </div>
   </div>
 );
@@ -252,7 +262,7 @@ const Modal = ({ isOpen, onClose, title, children, isGlassmorphism = true }) => 
 };
 
 // =========================================================================
-// 4. MAIN VIEWS (HOME, SUBMIT, LIBRARY, RESULTS, PROFILE, FOOTER)
+// 4. MAIN VIEWS
 // =========================================================================
 
 const StatsCard = ({ designerItem, settings, currentFilter, onDesignerClick }) => {
@@ -293,7 +303,7 @@ const StatsCard = ({ designerItem, settings, currentFilter, onDesignerClick }) =
   );
 };
 
-const LiveResultsView = ({ approvedSubmissions, settings, currentFilter, onDesignerClick }) => {
+const LiveResultsView = ({ approvedSubmissions, settings, currentFilter, currentPlatformFilter, onDesignerClick }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isHovering, setIsHovering] = useState(false);
   const perSlide = 4;
@@ -370,10 +380,16 @@ const LiveResultsView = ({ approvedSubmissions, settings, currentFilter, onDesig
     );
   };
 
+  const getPlatformLabel = () => {
+     if (currentPlatformFilter === 'tiktok') return 'على تيك توك';
+     if (currentPlatformFilter === 'instagram') return 'على الانستغرام';
+     return '';
+  };
+
   return (
     <GlassCard isGlassmorphism={settings.useGlassmorphism} color="bg-gray-800" className="p-4 mb-6 shadow-2xl">
       <h2 className="text-2xl font-extrabold text-white mb-4 border-b border-white/20 pb-2" style={{ color: `var(--highlight-color-css)` }}>
-        أوائل المصممين {currentFilter !== 'الكل' ? `(${currentFilter})` : '(في جميع الحلقات)'}
+        أوائل المصممين {currentFilter !== 'الكل' ? `(${currentFilter})` : '(في جميع الحلقات)'} <span className="text-white/50 text-lg">{getPlatformLabel()}</span>
       </h2>
       
       <div className="flex justify-around gap-2 mb-6 items-end">
@@ -409,6 +425,7 @@ const LiveResultsView = ({ approvedSubmissions, settings, currentFilter, onDesig
 
 const SubmissionForm = ({ settings, userId, allSubmissions }) => {
   const [step, setStep] = useState(1);
+  const [selectedPlatform, setSelectedPlatform] = useState('tiktok'); // اختيار المنصة مبدئياً
   const [embedCode, setEmbedCode] = useState('');
   const [fetchedData, setFetchedData] = useState(null);
   
@@ -424,105 +441,146 @@ const SubmissionForm = ({ settings, userId, allSubmissions }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState(null);
   const [error, setError] = useState(null);
+  const [fetchError, setFetchError] = useState(false);
 
-  const normalizeTikTokUrl = (url) => {
+  const normalizeUrl = (url) => {
     try {
       const urlObj = new URL(url);
       return urlObj.origin + urlObj.pathname;
     } catch (e) { return url; }
   };
 
-  const handleParseEmbed = (e) => {
+  const handleParseEmbed = async (e) => {
     e.preventDefault();
     setError(null);
     setSuccessMessage(null);
+    setFetchError(false);
 
-    if (!embedCode.includes('blockquote') || !embedCode.includes('tiktok-embed')) {
-      setError('الرجاء إدخال كود التضمين (Embed Code) الصحيح من تيك توك كما هو موضح.');
+    const input = embedCode.trim();
+    let targetUrl = '';
+    let parsedUsername = 'مجهول';
+    let parsedDisplayName = '';
+    let parsedDescription = '';
+
+    // التحليل بناءً على المنصة المختارة
+    if (selectedPlatform === 'tiktok') {
+        if (!input.includes('tiktok.com')) {
+          setError('الرجاء إدخال رابط أو كود تضمين صحيح من تيك توك.');
+          return;
+        }
+
+        if (input.includes('<blockquote')) {
+          const parser = new DOMParser();
+          const doc = parser.parseFromString(input, 'text/html');
+          const bq = doc.querySelector('blockquote.tiktok-embed');
+          if (bq) {
+            targetUrl = bq.getAttribute('cite') || '';
+            const userTag = bq.querySelector('section > a[title^="@"]');
+            if (userTag) parsedUsername = userTag.getAttribute('title').replace('@', '');
+
+            const musicTag = Array.from(bq.querySelectorAll('a')).find(a => a.getAttribute('title')?.startsWith('♬'));
+            parsedDisplayName = parsedUsername;
+            if (musicTag) {
+                const match = musicTag.getAttribute('title').match(/original sound - (.*)/i) || musicTag.getAttribute('title').match(/الصوت الأصلي - (.*)/i) || musicTag.getAttribute('title').match(/♬ (.*)/i);
+                if (match && match[1]) parsedDisplayName = match[1].replace('original sound -', '').trim();
+            }
+
+            const section = bq.querySelector('section');
+            if (section) {
+                Array.from(section.childNodes).forEach(n => { if (n.nodeType === Node.TEXT_NODE) parsedDescription += n.textContent; });
+            }
+            parsedDescription = parsedDescription.replace(/•/g, '').trim();
+          }
+        } else {
+           // اذا ادخل رابط مباشر
+           const urlMatch = input.match(/https?:\/\/(?:www\.)?tiktok\.com\/[^\s"']+/i);
+           if (urlMatch) targetUrl = urlMatch[0];
+        }
+
+    } else if (selectedPlatform === 'instagram') {
+        if (!input.includes('instagram.com')) {
+          setError('الرجاء إدخال رابط أو كود تضمين صحيح من انستغرام.');
+          return;
+        }
+
+        if (input.includes('<blockquote')) {
+          const parser = new DOMParser();
+          const doc = parser.parseFromString(input, 'text/html');
+          const bq = doc.querySelector('.instagram-media');
+          if (bq) {
+             targetUrl = bq.getAttribute('data-instgrm-permalink') || '';
+             // محاولة استخراج اليوزر من الروابط داخل الانستغرام
+             const links = Array.from(bq.querySelectorAll('a'));
+             const userLink = links.find(a => a.href.includes('instagram.com') && !a.href.includes('/p/') && !a.href.includes('/reel/') && !a.href.includes('/tv/'));
+             if (userLink) {
+                 const urlParts = new URL(userLink.href).pathname.split('/').filter(p => p);
+                 if (urlParts.length > 0) parsedUsername = urlParts[0];
+             }
+          }
+        } else {
+           const urlMatch = input.match(/https?:\/\/(?:www\.)?instagram\.com\/(?:p|reel|tv)\/[^\s"']+/i);
+           if (urlMatch) targetUrl = urlMatch[0];
+        }
+        
+        parsedDisplayName = parsedUsername; // في الانستا نعتبر الاسم هو اليوزر مبدئياً
+    }
+
+    if (!targetUrl) {
+      setError('لم نتمكن من استخراج الرابط. الرجاء التأكد من الكود أو الرابط المدخل.');
       return;
     }
 
-    try {
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(embedCode, 'text/html');
-      const bq = doc.querySelector('blockquote.tiktok-embed');
-      
-      if (!bq) {
-        setError('تعذر استخراج البيانات. تأكد من نسخ كود التضمين بالكامل.');
-        return;
-      }
-
-      const videoUrl = bq.getAttribute('cite');
-      const videoId = bq.getAttribute('data-video-id');
-      
-      const userTag = bq.querySelector('section > a[title^="@"]');
-      const username = userTag ? userTag.getAttribute('title').replace('@', '') : 'مجهول';
-
-      const musicTag = Array.from(bq.querySelectorAll('a')).find(a => a.getAttribute('title')?.startsWith('♬'));
-      let displayName = username; 
-      if (musicTag) {
-          const titleText = musicTag.getAttribute('title');
-          const match = titleText.match(/original sound - (.*)/i) || titleText.match(/الصوت الأصلي - (.*)/i) || titleText.match(/♬ (.*)/i);
-          if (match && match[1]) {
-              displayName = match[1].replace('original sound -', '').trim();
-          }
-      }
-
-      const section = bq.querySelector('section');
-      let desc = '';
-      if (section) {
-        Array.from(section.childNodes).forEach(node => {
-          if (node.nodeType === Node.TEXT_NODE) {
-            desc += node.textContent;
-          }
-        });
-      }
-      desc = desc.replace(/•/g, '').trim();
-
-      const cleanUrl = normalizeTikTokUrl(videoUrl);
-      const exists = allSubmissions.some(sub => normalizeTikTokUrl(sub.videoUrl) === cleanUrl);
-      if (exists) {
-        setError('عذراً، رابط هذا التصميم موجود ومشارك في المسابقة مسبقاً!');
-        return;
-      }
-
-      const existingUser = allSubmissions.find(sub => (sub.username || sub.participantName).toLowerCase() === username.toLowerCase());
-      const profilePic = existingUser ? existingUser.profilePic : generateAvatar(displayName);
-
-      const parsedData = {
-        videoUrl: cleanUrl,
-        videoId,
-        username: username,
-        participantName: displayName,
-        description: desc,
-        profilePic,
-        thumbnailUrl: '' 
-      };
-
-      setFetchedData(parsedData);
-      setFormData(prev => ({ 
-        ...prev, 
-        participantName: displayName, 
-        username: username, 
-        description: desc 
-      }));
-      setStep(2); 
-
-      const oembedApi = `https://www.tiktok.com/oembed?url=${encodeURIComponent(cleanUrl)}`;
-      const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(oembedApi)}`;
-      fetch(proxyUrl)
-        .then(res => res.json())
-        .then(proxyData => {
-            const data = JSON.parse(proxyData.contents);
-            if(data.thumbnail_url) {
-                setFetchedData(prev => ({...prev, thumbnailUrl: data.thumbnail_url}));
-                setFormData(prev => ({...prev, thumbnailUrl: data.thumbnail_url}));
-            }
-        }).catch(() => {});
-
-    } catch (err) {
-      setError('حدث خطأ أثناء تحليل الكود. يرجى التأكد من النسخ الصحيح.');
+    const cleanUrl = normalizeUrl(targetUrl);
+    const exists = allSubmissions.some(sub => normalizeUrl(sub.videoUrl) === cleanUrl);
+    if (exists) {
+      setError('عذراً، هذا التصميم موجود ومشارك في المسابقة مسبقاً!');
+      return;
     }
+
+    let parsedData = { 
+       platform: selectedPlatform, 
+       videoUrl: cleanUrl, 
+       username: parsedUsername, 
+       participantName: parsedDisplayName, 
+       description: parsedDescription, 
+       profilePic: '', 
+       thumbnailUrl: '' 
+    };
+
+    // التحقق من وجود صورة مسبقة لنفس اليوزر في النظام
+    const existingUser = allSubmissions.find(sub => (sub.username || sub.participantName).toLowerCase() === (parsedData.username || '').toLowerCase());
+    parsedData.profilePic = existingUser ? existingUser.profilePic : generateAvatar(parsedData.participantName);
+
+    if (selectedPlatform === 'tiktok') {
+        try {
+          const oembedApi = `https://www.tiktok.com/oembed?url=${encodeURIComponent(cleanUrl)}`;
+          const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(oembedApi)}`;
+          const res = await fetch(proxyUrl);
+          const proxyData = await res.json();
+          if (proxyData.contents) {
+              const data = JSON.parse(proxyData.contents);
+              parsedData.thumbnailUrl = data.thumbnail_url || '';
+              if (!parsedData.participantName || parsedData.participantName === 'مجهول') parsedData.participantName = data.author_name || '';
+              if (!parsedData.description) parsedData.description = data.title || '';
+          }
+        } catch (e) {
+          setFetchError(true);
+        }
+    } else {
+        // انستغرام: لا يمكن الجلب الخارجي بسهولة، لذلك نضع صورة افتراضية
+        parsedData.thumbnailUrl = `https://placehold.co/600x900/e1306c/ffffff?text=Instagram`;
+        setFetchError(true); // لفتح الحقول اليدوية للمستخدم للتعديل
+    }
+
+    setFetchedData(parsedData);
+    setFormData(prev => ({ 
+      ...prev, 
+      participantName: parsedData.participantName || '', 
+      username: parsedData.username || '', 
+      description: parsedData.description || '',
+      thumbnailUrl: parsedData.thumbnailUrl || ''
+    }));
+    setStep(2); 
   };
 
   const handleFinalSubmit = async (e) => {
@@ -530,7 +588,7 @@ const SubmissionForm = ({ settings, userId, allSubmissions }) => {
     setError(null); 
     
     if (!formData.participantName || !formData.description) {
-      setError('الرجاء التأكد من وجود اسم المصمم ووصف التصميم.');
+      setError('الرجاء التأكد من تعبئة اسم المصمم ووصف التصميم.');
       return;
     }
 
@@ -544,6 +602,7 @@ const SubmissionForm = ({ settings, userId, allSubmissions }) => {
         username: formData.username,               
         description: formData.description,
         videoUrl: fetchedData.videoUrl,
+        platform: fetchedData.platform, 
         episode: formData.episode,
         country: formData.country,
         userId: userId || 'anonymous',
@@ -551,7 +610,7 @@ const SubmissionForm = ({ settings, userId, allSubmissions }) => {
         votes: 0,
         flag: countryData.flag,
         profilePic: fetchedData.profilePic, 
-        thumbnailUrl: formData.thumbnailUrl || `https://placehold.co/600x900/111827/ffffff?text=${encodeURIComponent(formData.episode)}`,
+        thumbnailUrl: formData.thumbnailUrl || `https://placehold.co/600x900/${fetchedData.platform === 'instagram' ? 'e1306c' : '111827'}/ffffff?text=${encodeURIComponent(formData.episode)}`,
         submittedAt: serverTimestamp(),
       };
 
@@ -576,25 +635,41 @@ const SubmissionForm = ({ settings, userId, allSubmissions }) => {
       {error && <div className="bg-red-600/70 p-4 rounded-lg mb-4 text-white text-center font-semibold">{error}</div>}
       
       {step === 1 && (
-        <form onSubmit={handleParseEmbed} className="space-y-4 animate-fade-in">
+        <form onSubmit={handleParseEmbed} className="space-y-6 animate-fade-in">
+          
+          {/* اختيار المنصة */}
+          <div>
+            <label className="block text-white mb-2 font-medium">اختر منصة التصميم:</label>
+            <div className="flex gap-4">
+              <button type="button" onClick={() => {setSelectedPlatform('tiktok'); setEmbedCode('');}} className={`flex-1 py-3 rounded-lg font-bold flex items-center justify-center gap-2 transition ${selectedPlatform === 'tiktok' ? 'bg-white text-black shadow-lg' : 'bg-gray-800 text-white/50 border border-white/10'}`}>
+                <TikTokIcon className="w-5 h-5"/> تيك توك
+              </button>
+              <button type="button" onClick={() => {setSelectedPlatform('instagram'); setEmbedCode('');}} className={`flex-1 py-3 rounded-lg font-bold flex items-center justify-center gap-2 transition ${selectedPlatform === 'instagram' ? 'bg-gradient-to-r from-pink-500 to-purple-500 text-white shadow-lg' : 'bg-gray-800 text-white/50 border border-white/10'}`}>
+                <Instagram className="w-5 h-5"/> انستغرام
+              </button>
+            </div>
+          </div>
+
           <div>
             <label className="block text-white mb-2 font-medium flex items-center">
               <Code className="w-5 h-5 ml-2 text-highlight-color" />
-              الصق كود التضمين (Embed HTML) هنا
+              الرابط أو كود التضمين (Embed)
             </label>
             <textarea 
               value={embedCode} 
               onChange={(e) => setEmbedCode(e.target.value)} 
               className="w-full p-4 rounded-lg bg-gray-800/80 border border-white/20 text-white focus:border-highlight-color transition shadow-inner h-32 text-left" 
-              placeholder={`<blockquote class="tiktok-embed" cite="...">...`}
+              placeholder={selectedPlatform === 'tiktok' ? `<blockquote class="tiktok-embed" cite="...">...` : `https://www.instagram.com/reel/...`}
               dir="ltr" 
               required 
             />
-            <p className="text-xs text-white/50 mt-2">انسخ كود التضمين من خيار المشاركة في تيك توك &gt; تضمين (Embed)، وسيتم استخراج جميع بياناتك (الاسم الظاهر واليوزر) فوراً!</p>
+            <p className="text-xs text-white/50 mt-2">
+              {selectedPlatform === 'tiktok' ? "يفضل نسخ كود التضمين من تيك توك لاستخراج بياناتك بدقة وسرعة." : "ضع رابط الريلز هنا. سيتم طلب كتابة بياناتك في الخطوة التالية."}
+            </p>
           </div>
 
-          <button type="submit" disabled={!embedCode} className="w-full p-4 rounded-lg font-bold text-lg text-gray-900 transition duration-300 disabled:opacity-50 mt-4 flex items-center justify-center hover:opacity-90" style={{ backgroundColor: `var(--highlight-color-css)` }}>
-            تحليل وقراءة البيانات
+          <button type="submit" disabled={!embedCode} className="w-full p-4 rounded-lg font-bold text-lg text-gray-900 transition duration-300 disabled:opacity-50 mt-4 flex items-center justify-center hover:opacity-90 shadow-lg" style={{ backgroundColor: `var(--highlight-color-css)` }}>
+            متابعة وتحليل البيانات
           </button>
         </form>
       )}
@@ -604,27 +679,31 @@ const SubmissionForm = ({ settings, userId, allSubmissions }) => {
           
           <div className="bg-gray-800 p-4 rounded-xl border border-white/20 flex flex-col md:flex-row gap-4 items-start">
             <div className="w-32 h-56 rounded-lg overflow-hidden bg-black flex-shrink-0 relative border border-white/10 shadow-lg">
-              <iframe src={`https://www.tiktok.com/embed/v2/${fetchedData.videoId}?lang=ar`} className="w-full h-full" frameBorder="0" allowFullScreen></iframe>
+               <iframe src={getVideoEmbedUrl(fetchedData.videoUrl)} className="w-full h-full" frameBorder="0" scrolling="no" allowFullScreen></iframe>
             </div>
             
             <div className="flex flex-col flex-grow w-full space-y-3">
-               <span className="text-xs text-green-400 font-bold flex items-center"><CheckCircle className="w-4 h-4 ml-1"/> تم التحليل بنجاح</span>
+               {fetchError ? (
+                  <span className="text-xs text-yellow-400 font-bold flex items-center"><AlertTriangle className="w-4 h-4 ml-1"/> يرجى تعبئة التفاصيل يدوياً ({selectedPlatform})</span>
+               ) : (
+                  <span className="text-xs text-green-400 font-bold flex items-center"><CheckCircle className="w-4 h-4 ml-1"/> تم التحليل بنجاح من {selectedPlatform}</span>
+               )}
                
                <div className="flex items-center gap-3">
                   <img src={fetchedData.profilePic} className="w-12 h-12 rounded-full border border-white/20 object-cover" alt="Profile" />
                   <div className="flex-grow">
-                    <label className="text-[10px] text-white/50">الاسم الظاهر (يمكن تعديله)</label>
+                    <label className="text-[10px] text-white/50">الاسم الظاهر</label>
                     <input type="text" value={formData.participantName} onChange={(e) => setFormData({...formData, participantName: e.target.value})} className="w-full p-2 rounded bg-gray-900 text-white font-bold border border-white/10 focus:border-highlight-color" required/>
                   </div>
                </div>
                
                <div className="bg-gray-900/50 p-2 rounded border border-white/5">
-                 <span className="text-[10px] text-white/50 block">اليوزر (للفلترة وربط الحساب)</span>
-                 <span className="text-sm font-mono text-white/80" dir="ltr">@{formData.username}</span>
+                 <span className="text-[10px] text-white/50 block">اليوزر (يستخدم لربط الحساب)</span>
+                 <input type="text" value={formData.username} onChange={(e) => setFormData({...formData, username: e.target.value})} className="w-full bg-transparent text-sm font-mono text-white/80 focus:outline-none" dir="ltr" placeholder="username"/>
                </div>
 
                <div>
-                 <label className="text-[10px] text-white/50">الوصف المستخرج</label>
+                 <label className="text-[10px] text-white/50">وصف الفيديو</label>
                  <textarea value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} className="w-full p-2 rounded bg-gray-900 text-white text-sm border border-white/10 focus:border-highlight-color h-20" required/>
                </div>
             </div>
@@ -666,17 +745,21 @@ const SubmissionForm = ({ settings, userId, allSubmissions }) => {
 };
 
 const ContestCard = ({ submission, settings, onVote, onOpenVideo, onDesignerClick }) => {
-  const { participantName, username, description, country, flag, episode, thumbnailUrl, profilePic, votes } = submission;
+  const { participantName, username, description, country, flag, episode, thumbnailUrl, profilePic, votes, platform, videoUrl } = submission;
   const safeUsername = username || participantName;
+  const isIg = platform === 'instagram' || (videoUrl && videoUrl.includes('instagram'));
 
   return (
     <GlassCard isGlassmorphism={settings.useGlassmorphism} color="bg-gray-900" className="flex flex-col h-full overflow-hidden hover:shadow-highlight transition duration-300 relative group">
       <div className="absolute top-2 left-2 z-10 px-2 py-1 rounded-md text-xs font-bold text-gray-900 shadow-md" style={{ backgroundColor: settings.highlightColor }}>
         {episode}
       </div>
+      <div className="absolute top-2 right-2 z-10 p-1.5 rounded-md bg-black/60 shadow-md backdrop-blur-sm">
+        {isIg ? <Instagram className="w-4 h-4 text-pink-500" /> : <TikTokIcon className="w-4 h-4 text-white" />}
+      </div>
       
       <div className="relative overflow-hidden w-full aspect-[2/3] rounded-lg mb-3 cursor-pointer" onClick={() => onOpenVideo(submission)}>
-        <img src={thumbnailUrl} alt="Video Thumbnail" className="w-full h-full object-cover transition duration-300 transform group-hover:scale-105 opacity-80" onError={(e) => (e.target.src = 'https://placehold.co/600x900/111827/ffffff?text=Video')} />
+        <img src={thumbnailUrl} alt="Video Thumbnail" className="w-full h-full object-cover transition duration-300 transform group-hover:scale-105 opacity-80" onError={(e) => (e.target.src = isIg ? 'https://placehold.co/600x900/e1306c/ffffff?text=Instagram' : 'https://placehold.co/600x900/111827/ffffff?text=TikTok')} />
         
         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent flex flex-col justify-end p-2 pb-4">
            <div className="flex items-center justify-center h-full">
@@ -706,7 +789,7 @@ const ContestCard = ({ submission, settings, onVote, onOpenVideo, onDesignerClic
             <span className="text-sm font-bold" style={{ color: settings.highlightColor }}>{votes.toLocaleString()} صوت</span>
         </div>
 
-        <button onClick={() => onVote(submission)} className="w-full py-2 px-4 rounded-lg font-bold text-gray-900 transition duration-300 hover:scale-[1.02] active:scale-95" style={{ backgroundColor: `var(--main-color-css)` }}>
+        <button onClick={() => onVote(submission)} className="w-full py-2 px-4 rounded-lg font-bold text-gray-900 transition duration-300 hover:scale-[1.02] active:scale-95 shadow-lg" style={{ backgroundColor: `var(--main-color-css)` }}>
           صوت للتصميم
         </button>
       </div>
@@ -776,12 +859,15 @@ const DesignerProfile = ({ designerId, allSubmissions, settings, onVote, onBack,
         {selectedSubmission && (
           <div className="flex flex-col">
             <div className="relative w-full aspect-[9/16] bg-black rounded-lg overflow-hidden mb-4 mx-auto max-w-sm border border-white/10 shadow-2xl">
-              <iframe title="TikTok Video" src={`https://www.tiktok.com/embed/v2/${selectedSubmission.videoUrl.split('/').pop().split('?')[0]}?lang=en-US`} className="w-full h-full" frameBorder="0" allowFullScreen></iframe>
+              <iframe src={getVideoEmbedUrl(selectedSubmission.videoUrl)} className="w-full h-full" frameBorder="0" scrolling="no" allowFullScreen></iframe>
             </div>
             <div className="bg-gray-800 p-4 rounded-lg border border-white/10">
-               <p className="font-bold text-lg text-highlight-color mb-2">{selectedSubmission.episode}</p>
+               <div className="flex items-center gap-2 mb-2">
+                 {selectedSubmission.platform === 'instagram' ? <Instagram className="w-5 h-5 text-pink-500" /> : <TikTokIcon className="w-5 h-5 text-white" />}
+                 <p className="font-bold text-lg text-highlight-color">{selectedSubmission.episode}</p>
+               </div>
                <p className="text-sm text-white/90 mb-4 whitespace-pre-wrap leading-relaxed">{selectedSubmission.description}</p>
-               <button onClick={() => {setVideoModalOpen(false); setVoteConfirmData(selectedSubmission);}} className="w-full py-3 px-6 rounded-lg font-bold text-gray-900 transition" style={{ backgroundColor: settings.mainColor }}>
+               <button onClick={() => {setVideoModalOpen(false); setVoteConfirmData(selectedSubmission);}} className="w-full py-3 px-6 rounded-lg font-bold text-gray-900 transition shadow-lg" style={{ backgroundColor: settings.mainColor }}>
                  صوت لهذا التصميم الآن
                </button>
             </div>
@@ -860,14 +946,19 @@ const DesignersLibrary = ({ settings }) => {
 const Home = ({ settings, allSubmissions, totalApproved, onVote, cooldown, setVoteConfirmData, onDesignerClick }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterEpisode, setFilterEpisode] = useState('الكل');
+  const [filterPlatform, setFilterPlatform] = useState('الكل');
   const [videoModalOpen, setVideoModalOpen] = useState(false);
   const [selectedSubmission, setSelectedSubmission] = useState(null);
 
   const approvedSubmissions = useMemo(() => allSubmissions.filter((sub) => sub.status === 'Approved').sort((a, b) => b.votes - a.votes), [allSubmissions]);
   
   const leaderboardSubmissions = useMemo(() => {
-    return approvedSubmissions.filter((sub) => filterEpisode === 'الكل' || sub.episode === filterEpisode);
-  }, [approvedSubmissions, filterEpisode]);
+    return approvedSubmissions.filter((sub) => {
+       const matchEpisode = filterEpisode === 'الكل' || sub.episode === filterEpisode;
+       const matchPlatform = filterPlatform === 'الكل' || sub.platform === filterPlatform || (!sub.platform && filterPlatform === 'tiktok');
+       return matchEpisode && matchPlatform;
+    });
+  }, [approvedSubmissions, filterEpisode, filterPlatform]);
 
   const filteredGridSubmissions = useMemo(() => {
     return leaderboardSubmissions.filter((sub) => {
@@ -886,34 +977,50 @@ const Home = ({ settings, allSubmissions, totalApproved, onVote, cooldown, setVo
 
   return (
     <div className="space-y-8 animate-fade-in">
-      <GlassCard isGlassmorphism={settings.useGlassmorphism} color="bg-gray-800" className="p-4 flex flex-col md:flex-row gap-4 items-center">
-        <div className="w-full md:w-1/3">
+      <GlassCard isGlassmorphism={settings.useGlassmorphism} color="bg-gray-800" className="p-4 grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
+        
+        {/* 1. البحث */}
+        <div>
           <div className="relative">
-            <input type="text" placeholder="البحث باسم المصمم أو الوصف..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full p-3 pr-10 rounded-lg bg-gray-900/80 border border-white/10 text-white focus:border-highlight-color" />
+            <input type="text" placeholder="البحث..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full p-3 pr-10 rounded-lg bg-gray-900/80 border border-white/10 text-white focus:border-highlight-color" />
             <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-white/50" />
           </div>
         </div>
         
-        <div className="w-full md:w-1/3">
+        {/* 2. فلتر المنصات (جديد) */}
+        <div>
+           <div className="relative">
+            <select value={filterPlatform} onChange={(e) => setFilterPlatform(e.target.value)} className="appearance-none w-full p-3 rounded-lg bg-gray-900/80 border border-white/10 text-white focus:border-highlight-color pr-10 font-bold" style={{ backgroundImage: 'none' }}>
+              <option value="الكل">جميع المنصات</option>
+              <option value="tiktok">تيك توك 🎵</option>
+              <option value="instagram">انستغرام 📷</option>
+            </select>
+            <ChevronDown className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-white pointer-events-none" />
+          </div>
+        </div>
+
+        {/* 3. فلتر الحلقات */}
+        <div>
            <div className="relative">
             <select value={filterEpisode} onChange={(e) => setFilterEpisode(e.target.value)} className="appearance-none w-full p-3 rounded-lg bg-gray-900/80 border border-white/10 text-white focus:border-highlight-color pr-10 font-bold" style={{ backgroundImage: 'none' }}>
-              <option value="الكل">عرض جميع الحلقات</option>
+              <option value="الكل">جميع الحلقات</option>
               {EPISODES.map((ep) => <option key={ep} value={ep}>{ep}</option>)}
             </select>
             <ChevronDown className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-white pointer-events-none" />
           </div>
         </div>
 
-        <div className="w-full md:w-1/3 flex items-center justify-end text-white">
-          <span className="text-lg font-semibold ml-2">المشاركات المعروضة:</span>
+        {/* 4. العداد */}
+        <div className="flex items-center justify-end text-white border-r border-white/10 pr-4">
+          <span className="text-sm font-semibold ml-2">النتائج:</span>
           <span className="text-2xl font-extrabold" style={{ color: `var(--highlight-color-css)` }}>{filteredGridSubmissions.length}</span>
         </div>
       </GlassCard>
 
-      <LiveResultsView approvedSubmissions={leaderboardSubmissions} settings={settings} currentFilter={filterEpisode} onDesignerClick={onDesignerClick} />
+      <LiveResultsView approvedSubmissions={leaderboardSubmissions} settings={settings} currentFilter={filterEpisode} currentPlatformFilter={filterPlatform} onDesignerClick={onDesignerClick} />
 
       <h3 className="text-2xl font-bold text-white border-b border-white/10 pb-2">
-        {filterEpisode === 'الكل' ? 'أحدث التصاميم (جميع الحلقات)' : `تصاميم ${filterEpisode}`}
+        {filterEpisode === 'الكل' ? 'أحدث التصاميم' : `تصاميم ${filterEpisode}`}
       </h3>
 
       {filteredGridSubmissions.length === 0 ? (
@@ -930,7 +1037,7 @@ const Home = ({ settings, allSubmissions, totalApproved, onVote, cooldown, setVo
         {selectedSubmission && (
           <div className="flex flex-col">
             <div className="relative w-full aspect-[9/16] bg-black rounded-lg overflow-hidden mb-4 mx-auto max-w-sm border border-white/10 shadow-2xl">
-              <iframe title="TikTok Video" src={`https://www.tiktok.com/embed/v2/${selectedSubmission.videoUrl.split('/').pop().split('?')[0]}?lang=en-US`} className="w-full h-full" frameBorder="0" allowFullScreen></iframe>
+              <iframe src={getVideoEmbedUrl(selectedSubmission.videoUrl)} className="w-full h-full" frameBorder="0" scrolling="no" allowFullScreen></iframe>
             </div>
             
             <div className="bg-gray-800 p-4 rounded-lg border border-white/10">
@@ -946,7 +1053,7 @@ const Home = ({ settings, allSubmissions, totalApproved, onVote, cooldown, setVo
                  {selectedSubmission.description || "لم يتم كتابة وصف."}
                </p>
 
-               <button onClick={() => {setVideoModalOpen(false); setVoteConfirmData(selectedSubmission);}} disabled={cooldown > 0} className="w-full py-3 px-6 rounded-lg font-bold text-gray-900 transition disabled:opacity-50 flex items-center justify-center" style={{ backgroundColor: settings.mainColor }}>
+               <button onClick={() => {setVideoModalOpen(false); setVoteConfirmData(selectedSubmission);}} disabled={cooldown > 0} className="w-full py-3 px-6 rounded-lg font-bold text-gray-900 transition disabled:opacity-50 flex items-center justify-center shadow-lg" style={{ backgroundColor: settings.mainColor }}>
                  {cooldown > 0 ? `انتظر ${cooldown} ثانية للتصويت` : 'صوت لهذا التصميم الآن'}
                </button>
             </div>
@@ -1031,6 +1138,7 @@ const AdminSubmissionsPanel = ({ submissions, settings, isGlassmorphism, onUpdat
   const [activeTab, setActiveTab] = useState('Pending');
   const [submissionToEdit, setSubmissionToEdit] = useState(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [processingId, setProcessingId] = useState(null); // حالة لتحميل زر الموافقة
 
   const filteredSubmissions = useMemo(() => {
     let list = submissions.filter((sub) => sub.status === activeTab);
@@ -1056,6 +1164,41 @@ const AdminSubmissionsPanel = ({ submissions, settings, isGlassmorphism, onUpdat
       }
       setIsEditModalOpen(false); setSubmissionToEdit(null);
     } catch (e) { console.error("Error updating", e); }
+  };
+
+  // دالة الموافقة الذكية (تجلب الصورة المصغرة إن لم تكن موجودة قبل الموافقة)
+  const handleApprove = async (sub) => {
+    setProcessingId(sub.id);
+    let updatedThumbnailUrl = sub.thumbnailUrl;
+
+    try {
+      // إذا كان تيك توك والصورة الحالية هي الصورة المؤقتة (placehold.co)
+      if (sub.platform === 'tiktok' && sub.thumbnailUrl.includes('placehold.co')) {
+        const oembedApi = `https://www.tiktok.com/oembed?url=${encodeURIComponent(sub.videoUrl)}`;
+        const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(oembedApi)}`;
+        const res = await fetch(proxyUrl);
+        const proxyData = await res.json();
+        if (proxyData.contents) {
+            const data = JSON.parse(proxyData.contents);
+            if (data.thumbnail_url) {
+                updatedThumbnailUrl = data.thumbnail_url;
+            }
+        }
+      }
+      
+      // تحديث الحالة للقبول مع الصورة المحدثة (إن وجدت)
+      await retryOperation(() => updateDoc(doc(db, PUBLIC_SUBMISSIONS_COLLECTION, sub.id), { 
+          status: 'Approved',
+          thumbnailUrl: updatedThumbnailUrl
+      }));
+
+    } catch (err) {
+      console.error("Failed to fetch thumbnail on approve", err);
+      // في حال الفشل، نقوم بالموافقة على أية حال بالصورة القديمة
+      await retryOperation(() => updateDoc(doc(db, PUBLIC_SUBMISSIONS_COLLECTION, sub.id), { status: 'Approved' }));
+    } finally {
+      setProcessingId(null);
+    }
   };
 
   return (
@@ -1095,7 +1238,10 @@ const AdminSubmissionsPanel = ({ submissions, settings, isGlassmorphism, onUpdat
                       </div>
                    </td>
                    <td className="p-4 max-w-xs">
-                      <span className="text-gray-900 font-bold text-xs px-2 py-1 rounded inline-block mb-1" style={{backgroundColor: settings.highlightColor}}>{sub.episode}</span>
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-gray-900 font-bold text-xs px-2 py-1 rounded inline-block" style={{backgroundColor: settings.highlightColor}}>{sub.episode}</span>
+                        {sub.platform === 'instagram' || sub.videoUrl.includes('instagram') ? <Instagram className="w-4 h-4 text-pink-500" /> : <TikTokIcon className="w-4 h-4 text-white" />}
+                      </div>
                       <p className="text-xs text-white/80 line-clamp-2 leading-relaxed" title={sub.description}>{sub.description}</p>
                    </td>
                    <td className="p-4 text-center font-bold text-xl text-white">
@@ -1108,7 +1254,11 @@ const AdminSubmissionsPanel = ({ submissions, settings, isGlassmorphism, onUpdat
                    </td>
                    <td className="p-4">
                       <div className="flex justify-end gap-2">
-                        {activeTab !== 'Approved' && <button onClick={() => onUpdateSubmissionStatus(sub.id, 'Approved')} className="p-2 rounded bg-green-600 hover:bg-green-500 transition shadow-lg" title="موافقة و نشر"><CheckCircle className="w-5 h-5 text-white" /></button>}
+                        {activeTab !== 'Approved' && (
+                           <button onClick={() => handleApprove(sub)} disabled={processingId === sub.id} className="p-2 rounded bg-green-600 hover:bg-green-500 transition shadow-lg disabled:opacity-50" title="موافقة و نشر">
+                             {processingId === sub.id ? <Loader className="w-5 h-5 text-white animate-spin" /> : <CheckCircle className="w-5 h-5 text-white" />}
+                           </button>
+                        )}
                         {activeTab !== 'Rejected' && <button onClick={() => onUpdateSubmissionStatus(sub.id, 'Rejected')} className="p-2 rounded bg-red-600 hover:bg-red-500 transition shadow-lg" title="رفض المشاركة"><X className="w-5 h-5 text-white" /></button>}
                         <button onClick={() => { setSubmissionToEdit(sub); setIsEditModalOpen(true); }} className="p-2 rounded bg-gray-600 hover:bg-gray-500 transition shadow-lg" title="تعديل تفاصيل المشاركة"><SettingsIcon className="w-5 h-5 text-white" /></button>
                       </div>
@@ -1191,7 +1341,7 @@ const AdminSettingsPanel = ({ settings, isGlassmorphism, onSaveSettings }) => {
            <div><label className="text-white text-sm">نبذة عن المسابقة</label><textarea value={currentSettings.whyText} onChange={(e) => setCurrentSettings({...currentSettings, whyText: e.target.value})} className="w-full p-2 rounded bg-gray-800 text-white border border-white/20 h-32" /></div>
         </div>
 
-        {/* معلومات المشرف الجديدة */}
+        {/* معلومات المشرف */}
         <div className="space-y-4 md:col-span-2 mt-4 pt-4 border-t border-white/10">
            <h4 className="text-lg font-semibold mb-2" style={{ color: settings.mainColor }}>حولنا (معلومات المشرف)</h4>
            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1231,7 +1381,6 @@ const Header = ({ settings, activeView, setActiveView, isAdminMode, clearDesigne
             <button onClick={() => {setActiveView('library'); clearDesignerSelection();}} className={`flex items-center px-4 py-2 rounded-full text-sm font-bold transition whitespace-nowrap ${activeView === 'library' ? 'text-white shadow-md' : 'text-white hover:bg-white/10'}`} style={{ backgroundColor: activeView === 'library' ? settings.mainColor : 'transparent' }}>
               <FolderOpen className="w-4 h-4 ml-1" /> مكتبة المصممين
             </button>
-            {/* زر نافذة حولنا المنبثقة (Popup Modal) */}
             <button onClick={onOpenAbout} className="flex items-center px-4 py-2 rounded-full text-sm font-bold transition whitespace-nowrap text-white hover:bg-white/10">
               <User className="w-4 h-4 ml-1" /> حولنا
             </button>
@@ -1407,26 +1556,32 @@ const App = () => {
       {!adminMode && <Footer settings={settings} />}
 
       {/* نافذة "حول المسابقة / عني" المنبثقة بتصميم Glassmorphism */}
-      <Modal isOpen={isAboutModalOpen} onClose={() => setIsAboutModalOpen(false)} title="حول المبادرة" settings={settings}>
-         <div className="flex flex-col items-center justify-center p-6 bg-white/5 rounded-2xl border border-white/10 mx-auto text-center">
-            <div className="w-20 h-20 bg-gray-800 rounded-full flex items-center justify-center mb-4 border border-white/20 shadow-lg">
-               <Crown className="w-10 h-10" style={{ color: settings.highlightColor }} />
+      <Modal isOpen={isAboutModalOpen} onClose={() => setIsAboutModalOpen(false)} title="" isGlassmorphism={true}>
+         <div className="flex flex-col items-center justify-center p-2 text-center relative mt-4">
+            
+            <div className="w-24 h-24 bg-gray-800 rounded-full flex items-center justify-center mb-4 border-2 shadow-2xl" style={{ borderColor: settings.highlightColor }}>
+               <Crown className="w-12 h-12" style={{ color: settings.highlightColor }} />
             </div>
-            <h3 className="text-3xl font-extrabold text-white mb-3" style={{ color: settings.highlightColor }}>
+            
+            <h3 className="text-4xl font-extrabold text-white mb-2" style={{ color: settings.highlightColor }}>
                {settings.adminName || 'إدارة المسابقة'}
             </h3>
-            <p className="text-white/80 leading-relaxed mb-8 text-lg">
-               {settings.adminBio || 'وصف المشرف سيظهر هنا. قم بتعديله من لوحة التحكم.'}
+            
+            <div className="h-1 w-16 bg-white/20 rounded-full mb-6"></div>
+            
+            <p className="text-white/90 leading-relaxed mb-8 text-lg whitespace-pre-wrap px-4">
+               {settings.adminBio || 'وصف المشرف سيظهر هنا. قم بتعديله من لوحة التحكم لتوضيح رسالة المسابقة وأهدافها للجمهور.'}
             </p>
-            <div className="flex flex-wrap justify-center gap-4">
+            
+            <div className="flex flex-wrap justify-center gap-4 w-full">
                {settings.adminTikTok && (
-                 <a href={settings.adminTikTok} target="_blank" rel="noreferrer" className="flex items-center px-6 py-3 bg-gray-900 rounded-full hover:scale-105 transition border border-white/10 text-white font-bold shadow-lg">
-                   <Music className="w-5 h-5 ml-2 text-pink-500" /> TikTok
+                 <a href={settings.adminTikTok} target="_blank" rel="noreferrer" className="flex-1 flex items-center justify-center px-6 py-4 bg-gray-800/80 rounded-xl hover:bg-gray-700 transition border border-white/10 text-white font-bold shadow-lg">
+                   <TikTokIcon className="w-6 h-6 ml-2 text-white" /> تيك توك
                  </a>
                )}
                {settings.adminInsta && (
-                 <a href={settings.adminInsta} target="_blank" rel="noreferrer" className="flex items-center px-6 py-3 bg-gray-900 rounded-full hover:scale-105 transition border border-white/10 text-white font-bold shadow-lg">
-                   <Instagram className="w-5 h-5 ml-2 text-purple-500" /> Instagram
+                 <a href={settings.adminInsta} target="_blank" rel="noreferrer" className="flex-1 flex items-center justify-center px-6 py-4 bg-gray-800/80 rounded-xl hover:bg-gray-700 transition border border-white/10 text-white font-bold shadow-lg">
+                   <Instagram className="w-6 h-6 ml-2 text-purple-500" /> انستغرام
                  </a>
                )}
             </div>
@@ -1442,7 +1597,7 @@ const App = () => {
         </div>
       </div>
 
-      <Modal isOpen={voteConfirmData !== null} onClose={() => setVoteConfirmData(null)} title="تأكيد التصويت النهائي" settings={settings}>
+      <Modal isOpen={voteConfirmData !== null} onClose={() => setVoteConfirmData(null)} title="تأكيد التصويت النهائي" isGlassmorphism={true}>
         {voteConfirmData && (
           <div className="text-center">
             <p className="text-white text-xl mb-6">هل أنت متأكد من منح صوتك لـ <span className="font-extrabold mx-2 px-2 py-1 bg-black/30 rounded" style={{ color: settings.highlightColor }} dir="ltr">{voteConfirmData.participantName}</span> عن مشاركته في <span className="text-main-color font-bold">{voteConfirmData.episode}</span>؟</p>

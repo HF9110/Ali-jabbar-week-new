@@ -16,6 +16,7 @@ import {
   setDoc,
   query,
   updateDoc,
+  deleteDoc,
   addDoc,
   getDocs,
   limit,
@@ -55,7 +56,9 @@ import {
   BarChart2,
   TrendingUp,
   Users,
-  Instagram
+  Instagram,
+  Trash2,
+  RotateCcw
 } from 'lucide-react';
 
 // --- إضافة مكون خاص لشعار تيك توك الرسمي (SVG) ---
@@ -124,31 +127,37 @@ const retryOperation = async (operation, maxRetries = 3, delay = 1000) => {
 };
 
 // =========================================================================
-// 2. CONSTANTS (EPISODES, COUNTRIES, MOCK DATA)
+// 2. CONSTANTS & HELPERS
 // =========================================================================
 
 const EPISODES = Array.from({ length: 30 }, (_, i) => `الحلقة ${i + 1}`);
 
 const COUNTRIES = [
-  { name: 'العراق', code: 'IQ', flag: '🇮🇶' },
-  { name: 'السعودية', code: 'SA', flag: '🇸🇦' },
-  { name: 'الأردن', code: 'JO', flag: '🇯🇴' },
-  { name: 'الإمارات', code: 'AE', flag: '🇦🇪' },
-  { name: 'مصر', code: 'EG', flag: '🇪🇬' },
-  { name: 'سوريا', code: 'SY', flag: '🇸🇾' },
-  { name: 'المغرب', code: 'MA', flag: '🇲🇦' },
-  { name: 'الجزائر', code: 'DZ', flag: '🇩🇿' },
-  { name: 'الكويت', code: 'KW', flag: '🇰🇼' },
-  { name: 'عُمان', code: 'OM', flag: '🇴🇲' },
-  { name: 'قطر', code: 'QA', flag: '🇶🇦' },
-  { name: 'البحرين', code: 'BH', flag: '🇧🇭' },
-  { name: 'لبنان', code: 'LB', flag: '🇱🇧' },
-  { name: 'تونس', code: 'TN', flag: '🇹🇳' },
-  { name: 'فلسطين', code: 'PS', flag: '🇵🇸' },
-  { name: 'اليمن', code: 'YE', flag: '🇾🇪' },
-  { name: 'ليبيا', code: 'LY', flag: '🇱🇾' },
-  { name: 'السودان', code: 'SD', flag: '🇸🇩' },
+  { name: 'العراق', code: 'IQ' },
+  { name: 'السعودية', code: 'SA' },
+  { name: 'الأردن', code: 'JO' },
+  { name: 'الإمارات', code: 'AE' },
+  { name: 'مصر', code: 'EG' },
+  { name: 'سوريا', code: 'SY' },
+  { name: 'المغرب', code: 'MA' },
+  { name: 'الجزائر', code: 'DZ' },
+  { name: 'الكويت', code: 'KW' },
+  { name: 'عُمان', code: 'OM' },
+  { name: 'قطر', code: 'QA' },
+  { name: 'البحرين', code: 'BH' },
+  { name: 'لبنان', code: 'LB' },
+  { name: 'تونس', code: 'TN' },
+  { name: 'فلسطين', code: 'PS' },
+  { name: 'اليمن', code: 'YE' },
+  { name: 'ليبيا', code: 'LY' },
+  { name: 'السودان', code: 'SD' },
 ];
+
+// دالة لجلب صورة العلم بشكل آمن للعمل على جميع أنظمة التشغيل (ويندوز/ماك/هواتف)
+const getFlagUrl = (countryName) => {
+  const code = COUNTRIES.find((c) => c.name === countryName)?.code?.toLowerCase() || 'un';
+  return `https://flagcdn.com/w20/${code}.png`;
+};
 
 const DEFAULT_SETTINGS = {
   mainColor: '#fe2c55',
@@ -169,11 +178,7 @@ const DEFAULT_SETTINGS = {
 
 const generateAvatar = (name) => `https://ui-avatars.com/api/?name=${encodeURIComponent(name || 'Unknown')}&background=random&color=fff&size=128&bold=true`;
 
-const MOCK_SUBMISSIONS = [
-  { id: '1', platform: 'tiktok', username: 'al3eal1', participantName: '👑 الـعـيـال 👑', description: 'تصميم حزين لمشهد النهاية مع موسيقى هادئة جداً', country: 'العراق', episode: 'الحلقة 1', votes: 890, status: 'Approved', videoUrl: 'https://www.tiktok.com/@al3eal1/video/7609691265935969558', thumbnailUrl: 'https://placehold.co/600x900/111827/ffffff?text=Ep+1', profilePic: generateAvatar('العيال'), flag: '🇮🇶', submittedAt: new Date(Date.now() - 100000) },
-  { id: '2', platform: 'tiktok', username: 'sara_khaled', participantName: 'Sara Khaled ✨', description: 'تعديل اكشن سريع للمواجهة في بداية الحلقة', country: 'السعودية', episode: 'الحلقة 1', votes: 750, status: 'Approved', videoUrl: 'https://www.tiktok.com/@tiktok/video/7279148301138855211', thumbnailUrl: 'https://placehold.co/600x900/111827/ffffff?text=Ep+1', profilePic: generateAvatar('Sara'), flag: '🇸🇦', submittedAt: new Date(Date.now() - 200000) },
-  { id: '3', platform: 'instagram', username: 'ig_designer', participantName: 'مصمم انستا', description: 'تصميم ريلز سريع للحلقة الثانية', country: 'الإمارات', episode: 'الحلقة 2', votes: 500, status: 'Approved', videoUrl: 'https://www.instagram.com/reel/C1x2y3z4/', thumbnailUrl: 'https://placehold.co/600x900/111827/ffffff?text=IG+Reel', profilePic: generateAvatar('IG'), flag: '🇦🇪', submittedAt: new Date(Date.now() - 50000) },
-];
+const MOCK_SUBMISSIONS = []; // تم إفراغ البيانات الوهمية لتعتمد على قاعدة البيانات
 
 const MOCK_LIBRARY_SCENES = Array.from({ length: 30 }, (_, index) => {
   const episodeName = `الحلقة ${index + 1}`;
@@ -211,7 +216,6 @@ const getVideoEmbedUrl = (url) => {
   if (!url) return '';
   if (url.includes('instagram.com')) {
     const match = url.match(/(?:p|reel|tv)\/([A-Za-z0-9_-]+)/);
-    // إضافة خيارات إضافية لإخفاء بعض العناصر في الانستغرام إن أمكن
     return match ? `https://www.instagram.com/p/${match[1]}/embed` : url;
   } else {
     const match = url.match(/video\/(\d+)/);
@@ -284,7 +288,9 @@ const StatsCard = ({ designerItem, settings, currentFilter, onDesignerClick }) =
             />
             <p className="text-xl font-extrabold text-white mt-1" style={{ color: `var(--highlight-color-css)` }}>{designerItem.votes.toLocaleString()}</p>
             <p onClick={() => onDesignerClick(designerItem.username)} className="text-xs font-bold text-white truncate w-full text-center mt-1 cursor-pointer hover:underline">{designerItem.participantName}</p>
-            <p className="text-[10px] text-white/70">{designerItem.flag} {designerItem.country}</p>
+            <p className="text-[10px] text-white/70 flex items-center gap-1 justify-center mt-1">
+               <img src={getFlagUrl(designerItem.country)} className="w-3 h-2" alt={designerItem.country}/> {designerItem.country}
+            </p>
           </GlassCard>
         </div>
         <div className="back">
@@ -318,7 +324,6 @@ const LiveResultsView = ({ approvedSubmissions, settings, currentFilter, current
           participantName: sub.participantName,
           username: sub.username || sub.participantName,
           country: sub.country,
-          flag: sub.flag,
           profilePic: sub.profilePic || generateAvatar(sub.participantName),
           votes: 0,
           episodesCount: 0,
@@ -349,7 +354,7 @@ const LiveResultsView = ({ approvedSubmissions, settings, currentFilter, current
   if (rankedDesigners.length === 0) return null;
 
   const CompactPodiumItem = ({ designerItem, rank, settings }) => {
-    const { participantName, username, country, flag, votes, profilePic, episodesCount, singleEpisode } = designerItem;
+    const { participantName, username, country, votes, profilePic, episodesCount, singleEpisode } = designerItem;
     const rankColor = { 1: settings.highlightColor, 2: settings.mainColor, 3: '#5b1f28' }[rank];
     const episodeText = currentFilter === 'الكل' ? `${episodesCount} مشاركات` : singleEpisode;
 
@@ -375,7 +380,9 @@ const LiveResultsView = ({ approvedSubmissions, settings, currentFilter, current
         />
         <p className="text-lg font-extrabold text-white" style={{ color: rankColor }}>{votes.toLocaleString()}</p>
         <p onClick={() => onDesignerClick(username)} className="text-sm font-bold text-white truncate w-full cursor-pointer hover:underline">{participantName}</p>
-        <p className="text-[10px] text-white/70">{flag} {country}</p>
+        <p className="text-[10px] text-white/70 flex items-center justify-center gap-1">
+          <img src={getFlagUrl(country)} className="w-3 h-2" alt={country} /> {country}
+        </p>
       </div>
     );
   };
@@ -425,9 +432,11 @@ const LiveResultsView = ({ approvedSubmissions, settings, currentFilter, current
 
 const SubmissionForm = ({ settings, userId, allSubmissions }) => {
   const [step, setStep] = useState(1);
-  const [selectedPlatform, setSelectedPlatform] = useState('tiktok'); // اختيار المنصة مبدئياً
+  const [selectedPlatform, setSelectedPlatform] = useState('tiktok'); 
   const [embedCode, setEmbedCode] = useState('');
   const [fetchedData, setFetchedData] = useState(null);
+  const [isFetching, setIsFetching] = useState(false); // تم تفعيل حالة التحميل للزر
+  const [fetchError, setFetchError] = useState(false);
   
   const [formData, setFormData] = useState({ 
     participantName: '', 
@@ -441,7 +450,6 @@ const SubmissionForm = ({ settings, userId, allSubmissions }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState(null);
   const [error, setError] = useState(null);
-  const [fetchError, setFetchError] = useState(false);
 
   const normalizeUrl = (url) => {
     try {
@@ -455,132 +463,138 @@ const SubmissionForm = ({ settings, userId, allSubmissions }) => {
     setError(null);
     setSuccessMessage(null);
     setFetchError(false);
+    setIsFetching(true); // بدء إظهار علامة التحميل على الزر
 
-    const input = embedCode.trim();
-    let targetUrl = '';
-    let parsedUsername = 'مجهول';
-    let parsedDisplayName = '';
-    let parsedDescription = '';
+    try {
+      const input = embedCode.trim();
+      let targetUrl = '';
+      let parsedUsername = 'مجهول';
+      let parsedDisplayName = '';
+      let parsedDescription = '';
 
-    // التحليل بناءً على المنصة المختارة
-    if (selectedPlatform === 'tiktok') {
-        if (!input.includes('tiktok.com')) {
-          setError('الرجاء إدخال رابط أو كود تضمين صحيح من تيك توك.');
-          return;
-        }
+      if (selectedPlatform === 'tiktok') {
+          if (!input.includes('tiktok.com')) {
+            setError('الرجاء إدخال رابط أو كود تضمين صحيح من تيك توك.');
+            return; // سينتقل إلى finally لتوقيف التحميل
+          }
 
-        if (input.includes('<blockquote')) {
-          const parser = new DOMParser();
-          const doc = parser.parseFromString(input, 'text/html');
-          const bq = doc.querySelector('blockquote.tiktok-embed');
-          if (bq) {
-            targetUrl = bq.getAttribute('cite') || '';
-            const userTag = bq.querySelector('section > a[title^="@"]');
-            if (userTag) parsedUsername = userTag.getAttribute('title').replace('@', '');
+          if (input.includes('<blockquote')) {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(input, 'text/html');
+            const bq = doc.querySelector('blockquote.tiktok-embed');
+            if (bq) {
+              targetUrl = bq.getAttribute('cite') || '';
+              const userTag = bq.querySelector('section > a[title^="@"]');
+              if (userTag) parsedUsername = userTag.getAttribute('title').replace('@', '');
 
-            const musicTag = Array.from(bq.querySelectorAll('a')).find(a => a.getAttribute('title')?.startsWith('♬'));
-            parsedDisplayName = parsedUsername;
-            if (musicTag) {
-                const match = musicTag.getAttribute('title').match(/original sound - (.*)/i) || musicTag.getAttribute('title').match(/الصوت الأصلي - (.*)/i) || musicTag.getAttribute('title').match(/♬ (.*)/i);
-                if (match && match[1]) parsedDisplayName = match[1].replace('original sound -', '').trim();
+              const musicTag = Array.from(bq.querySelectorAll('a')).find(a => a.getAttribute('title')?.startsWith('♬'));
+              parsedDisplayName = parsedUsername;
+              if (musicTag) {
+                  const match = musicTag.getAttribute('title').match(/original sound - (.*)/i) || musicTag.getAttribute('title').match(/الصوت الأصلي - (.*)/i) || musicTag.getAttribute('title').match(/♬ (.*)/i);
+                  if (match && match[1]) parsedDisplayName = match[1].replace('original sound -', '').trim();
+              }
+
+              const section = bq.querySelector('section');
+              if (section) {
+                  Array.from(section.childNodes).forEach(n => { if (n.nodeType === Node.TEXT_NODE) parsedDescription += n.textContent; });
+              }
+              parsedDescription = parsedDescription.replace(/•/g, '').trim();
             }
+          } else {
+             const urlMatch = input.match(/https?:\/\/(?:www\.)?tiktok\.com\/[^\s"']+/i);
+             if (urlMatch) targetUrl = urlMatch[0];
+          }
 
-            const section = bq.querySelector('section');
-            if (section) {
-                Array.from(section.childNodes).forEach(n => { if (n.nodeType === Node.TEXT_NODE) parsedDescription += n.textContent; });
+      } else if (selectedPlatform === 'instagram') {
+          if (!input.includes('instagram.com')) {
+            setError('الرجاء إدخال رابط أو كود تضمين صحيح من انستغرام.');
+            return;
+          }
+
+          if (input.includes('<blockquote')) {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(input, 'text/html');
+            const bq = doc.querySelector('.instagram-media');
+            if (bq) {
+               targetUrl = bq.getAttribute('data-instgrm-permalink') || '';
+               const links = Array.from(bq.querySelectorAll('a'));
+               const userLink = links.find(a => a.href.includes('instagram.com') && !a.href.includes('/p/') && !a.href.includes('/reel/') && !a.href.includes('/tv/'));
+               if (userLink) {
+                   const urlParts = new URL(userLink.href).pathname.split('/').filter(p => p);
+                   if (urlParts.length > 0) parsedUsername = urlParts[0];
+               }
             }
-            parsedDescription = parsedDescription.replace(/•/g, '').trim();
+          } else {
+             const urlMatch = input.match(/https?:\/\/(?:www\.)?instagram\.com\/(?:p|reel|tv)\/[^\s"']+/i);
+             if (urlMatch) targetUrl = urlMatch[0];
           }
-        } else {
-           // اذا ادخل رابط مباشر
-           const urlMatch = input.match(/https?:\/\/(?:www\.)?tiktok\.com\/[^\s"']+/i);
-           if (urlMatch) targetUrl = urlMatch[0];
-        }
+          parsedDisplayName = parsedUsername;
+      }
 
-    } else if (selectedPlatform === 'instagram') {
-        if (!input.includes('instagram.com')) {
-          setError('الرجاء إدخال رابط أو كود تضمين صحيح من انستغرام.');
-          return;
-        }
+      if (!targetUrl) {
+        setError('لم نتمكن من استخراج الرابط. الرجاء التأكد من الكود أو الرابط المدخل.');
+        return;
+      }
 
-        if (input.includes('<blockquote')) {
-          const parser = new DOMParser();
-          const doc = parser.parseFromString(input, 'text/html');
-          const bq = doc.querySelector('.instagram-media');
-          if (bq) {
-             targetUrl = bq.getAttribute('data-instgrm-permalink') || '';
-             // محاولة استخراج اليوزر من الروابط داخل الانستغرام
-             const links = Array.from(bq.querySelectorAll('a'));
-             const userLink = links.find(a => a.href.includes('instagram.com') && !a.href.includes('/p/') && !a.href.includes('/reel/') && !a.href.includes('/tv/'));
-             if (userLink) {
-                 const urlParts = new URL(userLink.href).pathname.split('/').filter(p => p);
-                 if (urlParts.length > 0) parsedUsername = urlParts[0];
-             }
+      const cleanUrl = normalizeUrl(targetUrl);
+      const exists = allSubmissions.some(sub => normalizeUrl(sub.videoUrl) === cleanUrl);
+      if (exists) {
+        setError('عذراً، هذا التصميم موجود ومشارك في المسابقة مسبقاً!');
+        return;
+      }
+
+      let parsedData = { 
+         platform: selectedPlatform, 
+         videoUrl: cleanUrl, 
+         username: parsedUsername, 
+         participantName: parsedDisplayName, 
+         description: parsedDescription, 
+         profilePic: '', 
+         thumbnailUrl: '' 
+      };
+
+      const existingUser = allSubmissions.find(sub => (sub.username || sub.participantName).toLowerCase() === (parsedData.username || '').toLowerCase());
+      parsedData.profilePic = existingUser ? existingUser.profilePic : generateAvatar(parsedData.participantName);
+
+      if (selectedPlatform === 'tiktok') {
+          try {
+            const oembedApi = `https://www.tiktok.com/oembed?url=${encodeURIComponent(cleanUrl)}`;
+            const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(oembedApi)}`;
+            const res = await fetch(proxyUrl);
+            const proxyData = await res.json();
+            if (proxyData.contents) {
+                const data = JSON.parse(proxyData.contents);
+                parsedData.thumbnailUrl = data.thumbnail_url || '';
+                if (!parsedData.participantName || parsedData.participantName === 'مجهول') parsedData.participantName = data.author_name || '';
+                if (!parsedData.description) parsedData.description = data.title || '';
+            }
+          } catch (e) {
+            setFetchError(true);
           }
-        } else {
-           const urlMatch = input.match(/https?:\/\/(?:www\.)?instagram\.com\/(?:p|reel|tv)\/[^\s"']+/i);
-           if (urlMatch) targetUrl = urlMatch[0];
-        }
-        
-        parsedDisplayName = parsedUsername; // في الانستا نعتبر الاسم هو اليوزر مبدئياً
+      } else {
+          parsedData.thumbnailUrl = `https://placehold.co/600x900/e1306c/ffffff?text=Instagram`;
+          setFetchError(true); 
+      }
+
+      if (!parsedData.profilePic) {
+         parsedData.profilePic = generateAvatar(parsedData.participantName || parsedData.username || 'مستخدم');
+      }
+
+      setFetchedData(parsedData);
+      setFormData(prev => ({ 
+        ...prev, 
+        participantName: parsedData.participantName || '', 
+        username: parsedData.username || '', 
+        description: parsedData.description || '',
+        thumbnailUrl: parsedData.thumbnailUrl || ''
+      }));
+      setStep(2); 
+
+    } catch (err) {
+      setError('حدث خطأ أثناء التحليل، الرجاء المحاولة مجدداً أو التأكد من الرابط.');
+    } finally {
+      setIsFetching(false); // إيقاف علامة التحميل دائماً في النهاية
     }
-
-    if (!targetUrl) {
-      setError('لم نتمكن من استخراج الرابط. الرجاء التأكد من الكود أو الرابط المدخل.');
-      return;
-    }
-
-    const cleanUrl = normalizeUrl(targetUrl);
-    const exists = allSubmissions.some(sub => normalizeUrl(sub.videoUrl) === cleanUrl);
-    if (exists) {
-      setError('عذراً، هذا التصميم موجود ومشارك في المسابقة مسبقاً!');
-      return;
-    }
-
-    let parsedData = { 
-       platform: selectedPlatform, 
-       videoUrl: cleanUrl, 
-       username: parsedUsername, 
-       participantName: parsedDisplayName, 
-       description: parsedDescription, 
-       profilePic: '', 
-       thumbnailUrl: '' 
-    };
-
-    // التحقق من وجود صورة مسبقة لنفس اليوزر في النظام
-    const existingUser = allSubmissions.find(sub => (sub.username || sub.participantName).toLowerCase() === (parsedData.username || '').toLowerCase());
-    parsedData.profilePic = existingUser ? existingUser.profilePic : generateAvatar(parsedData.participantName);
-
-    if (selectedPlatform === 'tiktok') {
-        try {
-          const oembedApi = `https://www.tiktok.com/oembed?url=${encodeURIComponent(cleanUrl)}`;
-          const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(oembedApi)}`;
-          const res = await fetch(proxyUrl);
-          const proxyData = await res.json();
-          if (proxyData.contents) {
-              const data = JSON.parse(proxyData.contents);
-              parsedData.thumbnailUrl = data.thumbnail_url || '';
-              if (!parsedData.participantName || parsedData.participantName === 'مجهول') parsedData.participantName = data.author_name || '';
-              if (!parsedData.description) parsedData.description = data.title || '';
-          }
-        } catch (e) {
-          setFetchError(true);
-        }
-    } else {
-        // انستغرام: لا يمكن الجلب الخارجي بسهولة، لذلك نضع صورة افتراضية
-        parsedData.thumbnailUrl = `https://placehold.co/600x900/e1306c/ffffff?text=Instagram`;
-        setFetchError(true); // لفتح الحقول اليدوية للمستخدم للتعديل
-    }
-
-    setFetchedData(parsedData);
-    setFormData(prev => ({ 
-      ...prev, 
-      participantName: parsedData.participantName || '', 
-      username: parsedData.username || '', 
-      description: parsedData.description || '',
-      thumbnailUrl: parsedData.thumbnailUrl || ''
-    }));
-    setStep(2); 
   };
 
   const handleFinalSubmit = async (e) => {
@@ -595,7 +609,6 @@ const SubmissionForm = ({ settings, userId, allSubmissions }) => {
     setIsSubmitting(true);
     try {
       if (!db) throw new Error('قاعدة البيانات غير مهيأة.');
-      const countryData = COUNTRIES.find((c) => c.name === formData.country);
       
       const newSubmission = {
         participantName: formData.participantName, 
@@ -608,7 +621,6 @@ const SubmissionForm = ({ settings, userId, allSubmissions }) => {
         userId: userId || 'anonymous',
         status: 'Pending',
         votes: 0,
-        flag: countryData.flag,
         profilePic: fetchedData.profilePic, 
         thumbnailUrl: formData.thumbnailUrl || `https://placehold.co/600x900/${fetchedData.platform === 'instagram' ? 'e1306c' : '111827'}/ffffff?text=${encodeURIComponent(formData.episode)}`,
         submittedAt: serverTimestamp(),
@@ -668,8 +680,8 @@ const SubmissionForm = ({ settings, userId, allSubmissions }) => {
             </p>
           </div>
 
-          <button type="submit" disabled={!embedCode} className="w-full p-4 rounded-lg font-bold text-lg text-gray-900 transition duration-300 disabled:opacity-50 mt-4 flex items-center justify-center hover:opacity-90 shadow-lg" style={{ backgroundColor: `var(--highlight-color-css)` }}>
-            متابعة وتحليل البيانات
+          <button type="submit" disabled={!embedCode || isFetching} className="w-full p-4 rounded-lg font-bold text-lg text-gray-900 transition duration-300 disabled:opacity-50 mt-4 flex items-center justify-center hover:opacity-90 shadow-lg" style={{ backgroundColor: `var(--highlight-color-css)` }}>
+             {isFetching ? <Loader className="w-6 h-6 animate-spin" /> : 'متابعة وتحليل البيانات'}
           </button>
         </form>
       )}
@@ -699,7 +711,7 @@ const SubmissionForm = ({ settings, userId, allSubmissions }) => {
                
                <div className="bg-gray-900/50 p-2 rounded border border-white/5">
                  <span className="text-[10px] text-white/50 block">اليوزر (يستخدم لربط الحساب)</span>
-                 <input type="text" value={formData.username} onChange={(e) => setFormData({...formData, username: e.target.value})} className="w-full bg-transparent text-sm font-mono text-white/80 focus:outline-none" dir="ltr" placeholder="username"/>
+                 <input type="text" value={formData.username} onChange={(e) => setFormData({...formData, username: e.target.value})} className="w-full bg-transparent text-sm font-mono text-white/80 focus:outline-none" dir="ltr" placeholder="username" required/>
                </div>
 
                <div>
@@ -721,11 +733,17 @@ const SubmissionForm = ({ settings, userId, allSubmissions }) => {
             </div>
             <div>
               <label className="block text-white mb-2 font-medium">البلد</label>
-              <div className="relative">
-                <select value={formData.country} onChange={(e) => setFormData({ ...formData, country: e.target.value })} className="appearance-none w-full p-3 rounded-lg bg-gray-800/80 border border-white/20 text-white focus:border-highlight-color pr-10" style={{ backgroundImage: 'none' }} required>
-                  {COUNTRIES.map((c) => <option key={c.code} value={c.name}>{c.flag} {c.name}</option>)}
-                </select>
-                <ChevronDown className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-white pointer-events-none" />
+              <div className="flex gap-2">
+                 {/* عرض العلم المختار بجانب القائمة المنسدلة */}
+                 <div className="bg-gray-800/80 border border-white/20 rounded-lg flex items-center justify-center px-3">
+                   <img src={getFlagUrl(formData.country)} className="w-6 h-4 object-cover rounded-sm" alt="Flag" />
+                 </div>
+                 <div className="relative flex-grow">
+                   <select value={formData.country} onChange={(e) => setFormData({ ...formData, country: e.target.value })} className="appearance-none w-full p-3 rounded-lg bg-gray-800/80 border border-white/20 text-white focus:border-highlight-color pr-10" style={{ backgroundImage: 'none' }} required>
+                     {COUNTRIES.map((c) => <option key={c.code} value={c.name}>{c.name}</option>)}
+                   </select>
+                   <ChevronDown className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-white pointer-events-none" />
+                 </div>
               </div>
             </div>
           </div>
@@ -745,7 +763,7 @@ const SubmissionForm = ({ settings, userId, allSubmissions }) => {
 };
 
 const ContestCard = ({ submission, settings, onVote, onOpenVideo, onDesignerClick }) => {
-  const { participantName, username, description, country, flag, episode, thumbnailUrl, profilePic, votes, platform, videoUrl } = submission;
+  const { participantName, username, description, country, episode, thumbnailUrl, profilePic, votes, platform, videoUrl } = submission;
   const safeUsername = username || participantName;
   const isIg = platform === 'instagram' || (videoUrl && videoUrl.includes('instagram'));
 
@@ -774,7 +792,9 @@ const ContestCard = ({ submission, settings, onVote, onOpenVideo, onDesignerClic
            <img src={profilePic || generateAvatar(participantName)} alt={participantName} className="w-8 h-8 rounded-full border border-white/20 object-cover group-hover/author:border-highlight-color transition" />
            <div className="mr-2 overflow-hidden">
              <p className="text-sm font-bold truncate leading-tight group-hover/author:text-highlight-color transition">{participantName}</p>
-             <p className="text-[10px] text-white/60 flex items-center" dir="ltr">@{safeUsername} • {flag}</p>
+             <p className="text-[10px] text-white/60 flex items-center gap-1" dir="ltr">
+               @{safeUsername} • <img src={getFlagUrl(country)} className="w-3 h-2" alt={country}/>
+             </p>
            </div>
         </div>
 
@@ -832,7 +852,9 @@ const DesignerProfile = ({ designerId, allSubmissions, settings, onVote, onBack,
           
           <div className="text-center md:text-right z-10 flex-grow pt-2">
             <h2 className="text-3xl md:text-4xl font-extrabold text-white mb-1">{profileInfo.participantName}</h2>
-            <p className="text-md text-white/50 mb-4 font-mono" dir="ltr">@{profileInfo.username || designerId} • {profileInfo.flag} {profileInfo.country}</p>
+            <p className="text-md text-white/50 mb-4 font-mono flex flex-wrap justify-center md:justify-start gap-2 items-center" dir="ltr">
+              @{profileInfo.username || designerId} • <img src={getFlagUrl(profileInfo.country)} className="w-4 h-3" alt={profileInfo.country} /> {profileInfo.country}
+            </p>
             
             <div className="flex flex-wrap justify-center md:justify-start gap-4">
                <div className="bg-gray-800/80 px-6 py-3 rounded-lg border border-white/10 text-center">
@@ -987,7 +1009,7 @@ const Home = ({ settings, allSubmissions, totalApproved, onVote, cooldown, setVo
           </div>
         </div>
         
-        {/* 2. فلتر المنصات (جديد) */}
+        {/* 2. فلتر المنصات */}
         <div>
            <div className="relative">
             <select value={filterPlatform} onChange={(e) => setFilterPlatform(e.target.value)} className="appearance-none w-full p-3 rounded-lg bg-gray-900/80 border border-white/10 text-white focus:border-highlight-color pr-10 font-bold" style={{ backgroundImage: 'none' }}>
@@ -1045,7 +1067,9 @@ const Home = ({ settings, allSubmissions, totalApproved, onVote, cooldown, setVo
                  <img src={selectedSubmission.profilePic || generateAvatar(selectedSubmission.participantName)} alt={selectedSubmission.participantName} className="w-10 h-10 rounded-full border border-white/20 ml-3 object-cover" />
                  <div>
                     <p className="font-bold text-lg text-white leading-none hover:text-highlight-color" dir="ltr">{selectedSubmission.participantName}</p>
-                    <p className="text-xs text-white/50 mt-1">{selectedSubmission.country} {selectedSubmission.flag} • {selectedSubmission.episode}</p>
+                    <p className="text-xs text-white/50 mt-1 flex items-center gap-1">
+                      <img src={getFlagUrl(selectedSubmission.country)} className="w-3 h-2" alt=""/> {selectedSubmission.country} • {selectedSubmission.episode}
+                    </p>
                  </div>
                </div>
                
@@ -1134,11 +1158,12 @@ const AdminStatsPanel = ({ submissions, settings, isGlassmorphism }) => {
   );
 };
 
-const AdminSubmissionsPanel = ({ submissions, settings, isGlassmorphism, onUpdateSubmissionStatus }) => {
+const AdminSubmissionsPanel = ({ submissions, settings, isGlassmorphism, onUpdateSubmissionStatus, onDeleteSubmission, onResetVotes }) => {
   const [activeTab, setActiveTab] = useState('Pending');
   const [submissionToEdit, setSubmissionToEdit] = useState(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [processingId, setProcessingId] = useState(null); // حالة لتحميل زر الموافقة
+  const [processingId, setProcessingId] = useState(null);
+  const [confirmAction, setConfirmAction] = useState(null); // لإظهار نافذة التأكيد (حذف أو تصفير)
 
   const filteredSubmissions = useMemo(() => {
     let list = submissions.filter((sub) => sub.status === activeTab);
@@ -1166,13 +1191,11 @@ const AdminSubmissionsPanel = ({ submissions, settings, isGlassmorphism, onUpdat
     } catch (e) { console.error("Error updating", e); }
   };
 
-  // دالة الموافقة الذكية (تجلب الصورة المصغرة إن لم تكن موجودة قبل الموافقة)
   const handleApprove = async (sub) => {
     setProcessingId(sub.id);
     let updatedThumbnailUrl = sub.thumbnailUrl;
 
     try {
-      // إذا كان تيك توك والصورة الحالية هي الصورة المؤقتة (placehold.co)
       if (sub.platform === 'tiktok' && sub.thumbnailUrl.includes('placehold.co')) {
         const oembedApi = `https://www.tiktok.com/oembed?url=${encodeURIComponent(sub.videoUrl)}`;
         const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(oembedApi)}`;
@@ -1185,20 +1208,26 @@ const AdminSubmissionsPanel = ({ submissions, settings, isGlassmorphism, onUpdat
             }
         }
       }
-      
-      // تحديث الحالة للقبول مع الصورة المحدثة (إن وجدت)
       await retryOperation(() => updateDoc(doc(db, PUBLIC_SUBMISSIONS_COLLECTION, sub.id), { 
           status: 'Approved',
           thumbnailUrl: updatedThumbnailUrl
       }));
-
     } catch (err) {
       console.error("Failed to fetch thumbnail on approve", err);
-      // في حال الفشل، نقوم بالموافقة على أية حال بالصورة القديمة
       await retryOperation(() => updateDoc(doc(db, PUBLIC_SUBMISSIONS_COLLECTION, sub.id), { status: 'Approved' }));
     } finally {
       setProcessingId(null);
     }
+  };
+
+  const confirmActionHandler = () => {
+     if(!confirmAction) return;
+     if(confirmAction.type === 'delete') {
+         onDeleteSubmission(confirmAction.id);
+     } else if (confirmAction.type === 'reset') {
+         onResetVotes(confirmAction.id);
+     }
+     setConfirmAction(null);
   };
 
   return (
@@ -1233,7 +1262,7 @@ const AdminSubmissionsPanel = ({ submissions, settings, isGlassmorphism, onUpdat
                         <img src={sub.profilePic || generateAvatar(sub.participantName)} className="w-12 h-12 rounded-full object-cover border border-white/20" alt="Profile" />
                         <div>
                           <p className="font-bold text-white text-base" dir="ltr">{sub.participantName}</p>
-                          <p className="text-xs text-white/50" dir="ltr">@{sub.username} • {sub.flag}</p>
+                          <p className="text-xs text-white/50 flex items-center gap-1" dir="ltr">@{sub.username} • <img src={getFlagUrl(sub.country)} className="w-3 h-2" alt="" /></p>
                         </div>
                       </div>
                    </td>
@@ -1253,14 +1282,19 @@ const AdminSubmissionsPanel = ({ submissions, settings, isGlassmorphism, onUpdat
                       </a>
                    </td>
                    <td className="p-4">
-                      <div className="flex justify-end gap-2">
+                      <div className="flex justify-end gap-2 flex-wrap">
+                        {/* أزرار الإجراءات الأساسية */}
                         {activeTab !== 'Approved' && (
                            <button onClick={() => handleApprove(sub)} disabled={processingId === sub.id} className="p-2 rounded bg-green-600 hover:bg-green-500 transition shadow-lg disabled:opacity-50" title="موافقة و نشر">
                              {processingId === sub.id ? <Loader className="w-5 h-5 text-white animate-spin" /> : <CheckCircle className="w-5 h-5 text-white" />}
                            </button>
                         )}
-                        {activeTab !== 'Rejected' && <button onClick={() => onUpdateSubmissionStatus(sub.id, 'Rejected')} className="p-2 rounded bg-red-600 hover:bg-red-500 transition shadow-lg" title="رفض المشاركة"><X className="w-5 h-5 text-white" /></button>}
-                        <button onClick={() => { setSubmissionToEdit(sub); setIsEditModalOpen(true); }} className="p-2 rounded bg-gray-600 hover:bg-gray-500 transition shadow-lg" title="تعديل تفاصيل المشاركة"><SettingsIcon className="w-5 h-5 text-white" /></button>
+                        {activeTab !== 'Rejected' && <button onClick={() => onUpdateSubmissionStatus(sub.id, 'Rejected')} className="p-2 rounded bg-gray-600 hover:bg-gray-500 transition shadow-lg" title="رفض المشاركة وإخفائها"><X className="w-5 h-5 text-white" /></button>}
+                        <button onClick={() => { setSubmissionToEdit(sub); setIsEditModalOpen(true); }} className="p-2 rounded bg-blue-600 hover:bg-blue-500 transition shadow-lg" title="تعديل تفاصيل المشاركة"><SettingsIcon className="w-5 h-5 text-white" /></button>
+                        
+                        {/* أزرار الإجراءات الإضافية (تصفير وحذف) */}
+                        <button onClick={() => setConfirmAction({type: 'reset', id: sub.id})} className="p-2 rounded bg-yellow-600 hover:bg-yellow-500 transition shadow-lg" title="تصفير عدد الأصوات لـ 0"><RotateCcw className="w-5 h-5 text-white" /></button>
+                        <button onClick={() => setConfirmAction({type: 'delete', id: sub.id})} className="p-2 rounded bg-red-700 hover:bg-red-600 transition shadow-lg" title="حذف نهائي من قاعدة البيانات"><Trash2 className="w-5 h-5 text-white" /></button>
                       </div>
                    </td>
                 </tr>
@@ -1269,6 +1303,19 @@ const AdminSubmissionsPanel = ({ submissions, settings, isGlassmorphism, onUpdat
           </tbody>
         </table>
       </div>
+
+      {/* نافذة التأكيد للإجراءات الحساسة (حذف/تصفير) */}
+      <Modal isOpen={!!confirmAction} onClose={() => setConfirmAction(null)} title={confirmAction?.type === 'delete' ? 'تأكيد الحذف النهائي' : 'تأكيد التصفير'} settings={settings}>
+         <div className="text-center">
+            <p className="text-white text-lg mb-6">
+              {confirmAction?.type === 'delete' ? 'هل أنت متأكد من حذف هذه المشاركة بشكل نهائي؟ لا يمكن التراجع عن هذا الإجراء.' : 'هل أنت متأكد من تصفير عدد أصوات هذه المشاركة لتصبح 0؟'}
+            </p>
+            <div className="flex justify-around gap-4">
+              <button onClick={() => setConfirmAction(null)} className="w-1/2 py-3 rounded-lg bg-gray-700 hover:bg-gray-600 text-white font-bold transition">إلغاء التراجع</button>
+              <button onClick={confirmActionHandler} className={`w-1/2 py-3 rounded-lg font-extrabold transition shadow-lg text-white ${confirmAction?.type === 'delete' ? 'bg-red-600 hover:bg-red-500' : 'bg-yellow-600 hover:bg-yellow-500'}`}>نعم، متأكد</button>
+            </div>
+         </div>
+      </Modal>
       
       {submissionToEdit && (
         <Modal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} title="تعديل بيانات التصميم" settings={settings}>
@@ -1483,6 +1530,21 @@ const App = () => {
     } catch (e) { console.error(e); }
   };
 
+  // دوال الحذف والتصفير للمدير
+  const handleDeleteSubmission = async (id) => {
+    try {
+      if (!db) return;
+      await retryOperation(() => deleteDoc(doc(db, PUBLIC_SUBMISSIONS_COLLECTION, id)));
+    } catch (e) { console.error("Error deleting", e); }
+  };
+
+  const handleResetVotes = async (id) => {
+    try {
+      if (!db) return;
+      await retryOperation(() => updateDoc(doc(db, PUBLIC_SUBMISSIONS_COLLECTION, id), { votes: 0 }));
+    } catch (e) { console.error("Error resetting votes", e); }
+  };
+
   const handleDesignerClick = (designerUsername) => {
     setSelectedDesignerProfile(designerUsername);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1528,7 +1590,7 @@ const App = () => {
              </div>
 
              {adminActiveTab === 'stats' && <AdminStatsPanel submissions={submissions} settings={settings} isGlassmorphism={settings.useGlassmorphism} />}
-             {adminActiveTab === 'subs' && <AdminSubmissionsPanel submissions={submissions} settings={settings} isGlassmorphism={settings.useGlassmorphism} onUpdateSubmissionStatus={async (id, s) => { await updateDoc(doc(db, PUBLIC_SUBMISSIONS_COLLECTION, id), {status: s}) }} />}
+             {adminActiveTab === 'subs' && <AdminSubmissionsPanel submissions={submissions} settings={settings} isGlassmorphism={settings.useGlassmorphism} onUpdateSubmissionStatus={async (id, s) => { await updateDoc(doc(db, PUBLIC_SUBMISSIONS_COLLECTION, id), {status: s}) }} onDeleteSubmission={handleDeleteSubmission} onResetVotes={handleResetVotes} />}
              {adminActiveTab === 'settings' && <AdminSettingsPanel settings={settings} isGlassmorphism={settings.useGlassmorphism} onSaveSettings={async (newSet) => { await setDoc(doc(db, PUBLIC_SETTINGS_PATH), newSet) }} />}
           </div>
         ) : (

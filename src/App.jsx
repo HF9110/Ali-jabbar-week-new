@@ -317,7 +317,7 @@ const AlertBanner = ({ settings }) => (
   </div>
 );
 
-// تم حل مشكلة التجاوب كلياً في المودال هنا عبر إعادة هندسة الحواف والتمرير
+// تم حل مشكلة التجاوب كلياً في المودال عبر فصل العناصر
 const Modal = ({ isOpen, onClose, title, children, isGlassmorphism = true, maxWidth = "max-w-2xl" }) => {
   if (!isOpen) return null;
   return (
@@ -944,6 +944,7 @@ const Home = ({ settings, allSubmissions, totalApproved, onVote, cooldown, setVo
         </div>
       )}
 
+      {/* المودال الخاص بعرض الفيديو للمستخدمين أخرجناه من الداخل لتجنب أي مشاكل قص مستقبلاً */}
       <Modal isOpen={videoModalOpen} onClose={() => setVideoModalOpen(false)} title={`تصميم: ${selectedSubmission?.participantName}`} settings={settings}>
         {selectedSubmission && (
           <div className="flex flex-col">
@@ -1163,77 +1164,80 @@ const AdminSubmissionsPanel = ({ submissions, settings, isGlassmorphism, onUpdat
   };
 
   return (
-    <GlassCard isGlassmorphism={isGlassmorphism} color="bg-gray-900" className="p-6 mb-6 overflow-hidden">
-      <div className="flex border-b border-white/20 mb-6 overflow-x-auto">
-        {['Pending', 'Approved', 'Rejected'].map((status) => (
-          <button key={status} onClick={() => setActiveTab(status)} className={`py-3 px-6 text-sm md:text-base font-bold transition-colors whitespace-nowrap ${activeTab === status ? 'border-b-2 text-highlight-color' : 'text-white/70 hover:bg-white/5'}`} style={{ borderColor: activeTab === status ? settings.mainColor : 'transparent' }}>
-            {status === 'Pending' ? 'المشاركات المعلقة' : status === 'Approved' ? 'المشاركات المقبولة' : 'المرفوضة'} ({submissions.filter((s) => s.status === status).length})
-          </button>
-        ))}
-      </div>
-      
-      <div className="overflow-x-auto w-full">
-        <table className="w-full text-right text-white/80 min-w-[800px]">
-          <thead className="bg-white/5 text-white font-bold border-b border-white/20 text-sm">
-            <tr>
-              <th className="p-4 rounded-tr-lg">بيانات المصمم</th>
-              <th className="p-4">تفاصيل التصميم</th>
-              <th className="p-4 text-center">الأصوات</th>
-              <th className="p-4 text-center">المشاهدة</th>
-              <th className="p-4 text-left rounded-tl-lg">الإجراءات</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredSubmissions.length === 0 ? (
-               <tr><td colSpan="5" className="p-8 text-center text-white/50">لا توجد بيانات للعرض في هذه القائمة.</td></tr>
-            ) : (
-              filteredSubmissions.map(sub => (
-                <tr key={sub.id} className="border-b border-white/10 hover:bg-white/5 transition">
-                   <td className="p-4">
-                      <div className="flex items-center gap-3">
-                        <img src={sub.profilePic || generateAvatar(sub.participantName)} className="w-12 h-12 rounded-full object-cover border border-white/20" alt="Profile" />
-                        <div>
-                          <p className="font-bold text-white text-base" dir="ltr">{sub.participantName}</p>
-                          <p className="text-xs text-white/50 flex items-center gap-1" dir="ltr">@{sub.username} • <img src={getFlagUrl(sub.country)} className="w-3 h-2" alt="" /></p>
+    <>
+      <GlassCard isGlassmorphism={isGlassmorphism} color="bg-gray-900" className="p-6 mb-6">
+        <div className="flex border-b border-white/20 mb-6 overflow-x-auto">
+          {['Pending', 'Approved', 'Rejected'].map((status) => (
+            <button key={status} onClick={() => setActiveTab(status)} className={`py-3 px-6 text-sm md:text-base font-bold transition-colors whitespace-nowrap ${activeTab === status ? 'border-b-2 text-highlight-color' : 'text-white/70 hover:bg-white/5'}`} style={{ borderColor: activeTab === status ? settings.mainColor : 'transparent' }}>
+              {status === 'Pending' ? 'المشاركات المعلقة' : status === 'Approved' ? 'المشاركات المقبولة' : 'المرفوضة'} ({submissions.filter((s) => s.status === status).length})
+            </button>
+          ))}
+        </div>
+        
+        <div className="overflow-x-auto w-full pb-4">
+          <table className="w-full text-right text-white/80 min-w-[800px]">
+            <thead className="bg-white/5 text-white font-bold border-b border-white/20 text-sm">
+              <tr>
+                <th className="p-4 rounded-tr-lg">بيانات المصمم</th>
+                <th className="p-4">تفاصيل التصميم</th>
+                <th className="p-4 text-center">الأصوات</th>
+                <th className="p-4 text-center">المشاهدة</th>
+                <th className="p-4 text-left rounded-tl-lg">الإجراءات</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredSubmissions.length === 0 ? (
+                 <tr><td colSpan="5" className="p-8 text-center text-white/50">لا توجد بيانات للعرض في هذه القائمة.</td></tr>
+              ) : (
+                filteredSubmissions.map(sub => (
+                  <tr key={sub.id} className="border-b border-white/10 hover:bg-white/5 transition">
+                     <td className="p-4">
+                        <div className="flex items-center gap-3">
+                          <img src={sub.profilePic || generateAvatar(sub.participantName)} className="w-12 h-12 rounded-full object-cover border border-white/20" alt="Profile" />
+                          <div>
+                            <p className="font-bold text-white text-base" dir="ltr">{sub.participantName}</p>
+                            <p className="text-xs text-white/50 flex items-center gap-1" dir="ltr">@{sub.username} • <img src={getFlagUrl(sub.country)} className="w-3 h-2" alt="" /></p>
+                          </div>
                         </div>
-                      </div>
-                   </td>
-                   <td className="p-4 max-w-xs">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-gray-900 font-bold text-xs px-2 py-1 rounded inline-block" style={{backgroundColor: settings.highlightColor}}>{sub.episode}</span>
-                        {sub.platform === 'instagram' || sub.videoUrl.includes('instagram') ? <Instagram className="w-4 h-4 text-pink-500" /> : <TikTokIcon className="w-4 h-4 text-white" />}
-                      </div>
-                      <p className="text-xs text-white/80 line-clamp-2 leading-relaxed" title={sub.description}>{sub.description}</p>
-                   </td>
-                   <td className="p-4 text-center font-bold text-xl text-white">
-                      {sub.votes}
-                   </td>
-                   <td className="p-4 text-center">
-                      <a href={sub.videoUrl} target="_blank" rel="noreferrer" className="inline-flex items-center text-blue-400 hover:text-blue-300 hover:underline text-sm bg-blue-400/10 px-3 py-1 rounded-full transition border border-blue-400/20">
-                        <PlayCircle className="w-4 h-4 ml-1"/> فتح
-                      </a>
-                   </td>
-                   <td className="p-4">
-                      <div className="flex justify-end gap-2 flex-wrap">
-                        {activeTab !== 'Approved' && (
-                           <button onClick={() => onUpdateSubmissionStatus(sub.id, 'Approved')} className="p-2 rounded bg-green-600 hover:bg-green-500 transition shadow-lg" title="موافقة سريعة و نشر">
-                             <CheckCircle className="w-5 h-5 text-white" />
-                           </button>
-                        )}
-                        {activeTab !== 'Rejected' && <button onClick={() => onUpdateSubmissionStatus(sub.id, 'Rejected')} className="p-2 rounded bg-gray-600 hover:bg-gray-500 transition shadow-lg" title="رفض المشاركة وإخفائها"><X className="w-5 h-5 text-white" /></button>}
-                        <button onClick={() => { setSubmissionToEdit(sub); setIsEditModalOpen(true); }} className="p-2 rounded bg-blue-600 hover:bg-blue-500 transition shadow-lg" title="مراجعة، تعديل واستخراج البيانات"><SettingsIcon className="w-5 h-5 text-white" /></button>
-                        
-                        <button onClick={() => setConfirmAction({type: 'reset', id: sub.id})} className="p-2 rounded bg-yellow-600 hover:bg-yellow-500 transition shadow-lg" title="تصفير عدد الأصوات لـ 0"><RotateCcw className="w-5 h-5 text-white" /></button>
-                        <button onClick={() => setConfirmAction({type: 'delete', id: sub.id})} className="p-2 rounded bg-red-700 hover:bg-red-600 transition shadow-lg" title="حذف نهائي من قاعدة البيانات"><Trash2 className="w-5 h-5 text-white" /></button>
-                      </div>
-                   </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+                     </td>
+                     <td className="p-4 max-w-xs">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-gray-900 font-bold text-xs px-2 py-1 rounded inline-block" style={{backgroundColor: settings.highlightColor}}>{sub.episode}</span>
+                          {sub.platform === 'instagram' || sub.videoUrl.includes('instagram') ? <Instagram className="w-4 h-4 text-pink-500" /> : <TikTokIcon className="w-4 h-4 text-white" />}
+                        </div>
+                        <p className="text-xs text-white/80 line-clamp-2 leading-relaxed" title={sub.description}>{sub.description}</p>
+                     </td>
+                     <td className="p-4 text-center font-bold text-xl text-white">
+                        {sub.votes}
+                     </td>
+                     <td className="p-4 text-center">
+                        <a href={sub.videoUrl} target="_blank" rel="noreferrer" className="inline-flex items-center text-blue-400 hover:text-blue-300 hover:underline text-sm bg-blue-400/10 px-3 py-1 rounded-full transition border border-blue-400/20">
+                          <PlayCircle className="w-4 h-4 ml-1"/> فتح
+                        </a>
+                     </td>
+                     <td className="p-4">
+                        <div className="flex justify-end gap-2 flex-wrap">
+                          {activeTab !== 'Approved' && (
+                             <button onClick={() => onUpdateSubmissionStatus(sub.id, 'Approved')} className="p-2 rounded bg-green-600 hover:bg-green-500 transition shadow-lg" title="موافقة سريعة و نشر">
+                               <CheckCircle className="w-5 h-5 text-white" />
+                             </button>
+                          )}
+                          {activeTab !== 'Rejected' && <button onClick={() => onUpdateSubmissionStatus(sub.id, 'Rejected')} className="p-2 rounded bg-gray-600 hover:bg-gray-500 transition shadow-lg" title="رفض المشاركة وإخفائها"><X className="w-5 h-5 text-white" /></button>}
+                          <button onClick={() => { setSubmissionToEdit(sub); setIsEditModalOpen(true); }} className="p-2 rounded bg-blue-600 hover:bg-blue-500 transition shadow-lg" title="مراجعة، تعديل واستخراج البيانات"><SettingsIcon className="w-5 h-5 text-white" /></button>
+                          
+                          <button onClick={() => setConfirmAction({type: 'reset', id: sub.id})} className="p-2 rounded bg-yellow-600 hover:bg-yellow-500 transition shadow-lg" title="تصفير عدد الأصوات لـ 0"><RotateCcw className="w-5 h-5 text-white" /></button>
+                          <button onClick={() => setConfirmAction({type: 'delete', id: sub.id})} className="p-2 rounded bg-red-700 hover:bg-red-600 transition shadow-lg" title="حذف نهائي من قاعدة البيانات"><Trash2 className="w-5 h-5 text-white" /></button>
+                        </div>
+                     </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </GlassCard>
 
+      {/* النوافذ تم إخراجها من حاوية الجدول (GlassCard) لحل مشكلة القص نهائياً */}
       <Modal isOpen={!!confirmAction} onClose={() => setConfirmAction(null)} title={confirmAction?.type === 'delete' ? 'تأكيد الحذف النهائي' : 'تأكيد التصفير'} settings={settings}>
          <div className="text-center">
             <p className="text-white text-lg mb-6">
@@ -1246,73 +1250,76 @@ const AdminSubmissionsPanel = ({ submissions, settings, isGlassmorphism, onUpdat
          </div>
       </Modal>
       
-      {/* نافذة التعديل والمراجعة المتقدمة مع الاستخراج الذكي */}
-      <Modal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} title="مراجعة وتعديل التصميم" maxWidth="max-w-4xl">
+      <Modal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} title="مراجعة وتعديل التصميم" maxWidth="max-w-5xl">
         {submissionToEdit && (
-          <div className="flex flex-col md:flex-row gap-6">
-             {/* العمود الأول: الفيديو */}
-             <div className="w-full md:w-1/3 flex flex-col gap-4 shrink-0">
-                <div className="w-full aspect-[9/16] bg-black rounded-xl overflow-hidden border border-white/10 shadow-lg relative max-h-[50vh] md:max-h-none">
-                  <iframe src={getVideoEmbedUrl(submissionToEdit.videoUrl)} className="w-full h-full" frameBorder="0" scrolling="no" allowFullScreen></iframe>
-                </div>
-                <button onClick={handleAutoExtract} disabled={extractLoading} className="w-full py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 rounded-xl text-white font-extrabold flex items-center justify-center gap-2 transition disabled:opacity-50 shadow-lg">
-                   {extractLoading ? <Loader className="w-5 h-5 animate-spin" /> : <><Wand2 className="w-5 h-5" /> استخراج البيانات 🪄</>}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
+             {/* العمود الأول: الفيديو والزر السحري */}
+             <div className="lg:col-span-4 flex flex-col gap-4">
+                <button onClick={handleAutoExtract} disabled={extractLoading} className="w-full py-4 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 rounded-xl text-white font-extrabold flex items-center justify-center gap-2 transition disabled:opacity-50 shadow-lg shadow-purple-500/30">
+                   {extractLoading ? <Loader className="w-6 h-6 animate-spin" /> : <><Wand2 className="w-6 h-6" /> استخراج البيانات 🪄</>}
                 </button>
+                <div className="bg-blue-500/10 border border-blue-500/30 p-2.5 rounded-lg text-blue-200 text-xs text-center leading-relaxed">
+                   <Info className="w-4 h-4 inline-block ml-1" /> اسحب الغلاف، الوصف، واليوزر تلقائياً بنقرة واحدة!
+                </div>
+
+                <div className="w-full max-w-[280px] mx-auto aspect-[9/16] bg-black rounded-xl overflow-hidden border border-white/10 shadow-2xl relative">
+                  <iframe src={getVideoEmbedUrl(submissionToEdit.videoUrl)} className="absolute inset-0 w-full h-full" frameBorder="0" scrolling="no" allowFullScreen></iframe>
+                </div>
              </div>
 
              {/* العمود الثاني: الحقول */}
-             <div className="w-full md:w-2/3 space-y-4">
+             <div className="lg:col-span-8 space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                     <label className="text-white/70 text-xs font-bold mb-1 block">الاسم الظاهر</label>
-                     <input type="text" value={submissionToEdit.participantName} onChange={(e) => setSubmissionToEdit({...submissionToEdit, participantName: e.target.value})} className="w-full p-2.5 rounded-lg bg-gray-800 text-white border border-white/10 focus:border-highlight-color transition" />
+                     <label className="text-white/80 text-sm font-bold mb-1 block">الاسم الظاهر</label>
+                     <input type="text" value={submissionToEdit.participantName} onChange={(e) => setSubmissionToEdit({...submissionToEdit, participantName: e.target.value})} className="w-full p-3 rounded-lg bg-gray-800 text-white border border-white/20 focus:border-highlight-color transition" />
                   </div>
                   <div>
-                     <label className="text-white/70 text-xs font-bold mb-1 block">اليوزر (Username)</label>
-                     <input type="text" value={submissionToEdit.username || ''} onChange={(e) => setSubmissionToEdit({...submissionToEdit, username: e.target.value})} dir="ltr" className="w-full p-2.5 rounded-lg bg-gray-800 text-white border border-white/10 focus:border-highlight-color transition font-mono" />
+                     <label className="text-white/80 text-sm font-bold mb-1 block">اليوزر (Username)</label>
+                     <input type="text" value={submissionToEdit.username || ''} onChange={(e) => setSubmissionToEdit({...submissionToEdit, username: e.target.value})} dir="ltr" className="w-full p-3 rounded-lg bg-gray-800 text-white border border-white/20 focus:border-highlight-color transition font-mono" />
                   </div>
                 </div>
                 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                     <label className="text-white/70 text-xs font-bold mb-1 flex items-center justify-between">
-                       رابط الصورة الشخصية
-                       {submissionToEdit.profilePic && <img src={submissionToEdit.profilePic} className="w-5 h-5 rounded-full object-cover border border-white/20" alt="" />}
+                     <label className="text-white/80 text-sm font-bold mb-1 flex items-center justify-between">
+                       الصورة الشخصية
+                       {submissionToEdit.profilePic && <img src={submissionToEdit.profilePic} className="w-6 h-6 rounded-full object-cover border border-white/20" alt="" />}
                      </label>
-                     <input type="url" value={submissionToEdit.profilePic || ''} onChange={(e) => setSubmissionToEdit({...submissionToEdit, profilePic: e.target.value})} dir="ltr" className="w-full p-2.5 rounded-lg bg-gray-800 text-white border border-white/10 focus:border-highlight-color transition text-xs" />
+                     <input type="url" value={submissionToEdit.profilePic || ''} onChange={(e) => setSubmissionToEdit({...submissionToEdit, profilePic: e.target.value})} dir="ltr" className="w-full p-3 rounded-lg bg-gray-800 text-white border border-white/20 focus:border-highlight-color transition text-sm" />
                   </div>
                   <div>
-                     <label className="text-white/70 text-xs font-bold mb-1 flex items-center justify-between">
-                       رابط الغلاف (Thumbnail)
-                       {submissionToEdit.thumbnailUrl && <img src={submissionToEdit.thumbnailUrl} className="w-3 h-5 rounded object-cover border border-white/20" alt="" />}
+                     <label className="text-white/80 text-sm font-bold mb-1 flex items-center justify-between">
+                       صورة الغلاف (Thumbnail)
+                       {submissionToEdit.thumbnailUrl && <img src={submissionToEdit.thumbnailUrl} className="w-4 h-6 rounded object-cover border border-white/20" alt="" />}
                      </label>
-                     <input type="url" value={submissionToEdit.thumbnailUrl || ''} onChange={(e) => setSubmissionToEdit({...submissionToEdit, thumbnailUrl: e.target.value})} dir="ltr" className="w-full p-2.5 rounded-lg bg-gray-800 text-white border border-white/10 focus:border-highlight-color transition text-xs" />
+                     <input type="url" value={submissionToEdit.thumbnailUrl || ''} onChange={(e) => setSubmissionToEdit({...submissionToEdit, thumbnailUrl: e.target.value})} dir="ltr" className="w-full p-3 rounded-lg bg-gray-800 text-white border border-white/20 focus:border-highlight-color transition text-sm" />
                   </div>
                 </div>
 
                 <div>
-                   <label className="text-white/70 text-xs font-bold mb-1 block">وصف الفيديو (Caption)</label>
-                   <textarea value={submissionToEdit.description || ''} onChange={(e) => setSubmissionToEdit({...submissionToEdit, description: e.target.value})} className="w-full p-2.5 rounded-lg bg-gray-800 text-white border border-white/10 focus:border-highlight-color transition" rows="3" />
+                   <label className="text-white/80 text-sm font-bold mb-1 block">وصف الفيديو (Caption)</label>
+                   <textarea value={submissionToEdit.description || ''} onChange={(e) => setSubmissionToEdit({...submissionToEdit, description: e.target.value})} className="w-full p-3 rounded-lg bg-gray-800 text-white border border-white/20 focus:border-highlight-color transition custom-scrollbar" rows="4" />
                 </div>
                 
                 <div className="grid grid-cols-2 gap-4">
                    <div>
-                      <label className="text-white/70 text-xs font-bold mb-1 block">تغيير الحلقة</label>
-                      <select value={submissionToEdit.episode} onChange={(e) => setSubmissionToEdit({...submissionToEdit, episode: e.target.value})} className="w-full p-2.5 rounded-lg bg-gray-800 text-white border border-white/10">
+                      <label className="text-white/80 text-sm font-bold mb-1 block">تغيير الحلقة</label>
+                      <select value={submissionToEdit.episode} onChange={(e) => setSubmissionToEdit({...submissionToEdit, episode: e.target.value})} className="w-full p-3 rounded-lg bg-gray-800 text-white border border-white/20 focus:border-highlight-color">
                         {EPISODES.map(ep => <option key={ep} value={ep}>{ep}</option>)}
                       </select>
                    </div>
                    <div>
-                      <label className="text-white/70 text-xs font-bold mb-1 block">تعديل الأصوات (تحكم كامل)</label>
-                      <input type="number" value={submissionToEdit.votes} onChange={(e) => setSubmissionToEdit({...submissionToEdit, votes: parseInt(e.target.value)||0})} className="w-full p-2.5 rounded-lg bg-gray-800 text-white border border-white/10 font-bold text-center" />
+                      <label className="text-white/80 text-sm font-bold mb-1 block">تعديل الأصوات</label>
+                      <input type="number" value={submissionToEdit.votes} onChange={(e) => setSubmissionToEdit({...submissionToEdit, votes: parseInt(e.target.value)||0})} className="w-full p-3 rounded-lg bg-gray-800 text-white border border-white/20 font-bold text-xl text-center focus:border-highlight-color" />
                    </div>
                 </div>
 
-                <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-white/10 mt-2">
-                   <button onClick={() => handleSaveEdit(submissionToEdit, false)} className="flex-1 p-3 rounded-lg text-white bg-gray-700 hover:bg-gray-600 font-bold transition text-sm">حفظ التعديلات فقط</button>
+                <div className="flex flex-col sm:flex-row gap-4 pt-6 border-t border-white/10 mt-4">
+                   <button onClick={() => handleSaveEdit(submissionToEdit, false)} className="flex-1 p-4 rounded-xl text-white bg-gray-700 hover:bg-gray-600 font-bold transition shadow-md">حفظ التعديلات فقط</button>
                    {submissionToEdit.status !== 'Approved' && (
-                     <button onClick={() => handleSaveEdit(submissionToEdit, true)} className="flex-1 p-3 rounded-lg text-gray-900 font-extrabold transition hover:opacity-90 shadow-lg flex items-center justify-center gap-2 text-sm" style={{backgroundColor: settings.mainColor}}>
-                       <CheckCircle className="w-4 h-4" /> حفظ وقبول المشاركة 
+                     <button onClick={() => handleSaveEdit(submissionToEdit, true)} className="flex-1 p-4 rounded-xl text-gray-900 font-extrabold transition hover:opacity-90 shadow-lg flex items-center justify-center gap-2" style={{backgroundColor: settings.mainColor}}>
+                       <CheckCircle className="w-6 h-6" /> حفظ وقبول المشاركة 
                      </button>
                    )}
                 </div>
@@ -1320,7 +1327,7 @@ const AdminSubmissionsPanel = ({ submissions, settings, isGlassmorphism, onUpdat
           </div>
         )}
       </Modal>
-    </GlassCard>
+    </>
   );
 };
 

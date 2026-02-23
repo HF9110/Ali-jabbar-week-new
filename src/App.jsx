@@ -153,7 +153,7 @@ const COUNTRIES = [
   { name: 'السودان', code: 'SD' },
 ];
 
-// دالة لجلب صورة العلم بشكل آمن للعمل على جميع أنظمة التشغيل (ويندوز/ماك/هواتف)
+// دالة لجلب صورة العلم بشكل آمن
 const getFlagUrl = (countryName) => {
   const code = COUNTRIES.find((c) => c.name === countryName)?.code?.toLowerCase() || 'un';
   return `https://flagcdn.com/w20/${code}.png`;
@@ -178,7 +178,7 @@ const DEFAULT_SETTINGS = {
 
 const generateAvatar = (name) => `https://ui-avatars.com/api/?name=${encodeURIComponent(name || 'Unknown')}&background=random&color=fff&size=128&bold=true`;
 
-const MOCK_SUBMISSIONS = []; // تم إفراغ البيانات الوهمية لتعتمد على قاعدة البيانات
+const MOCK_SUBMISSIONS = []; 
 
 const MOCK_LIBRARY_SCENES = Array.from({ length: 30 }, (_, index) => {
   const episodeName = `الحلقة ${index + 1}`;
@@ -324,7 +324,6 @@ const LiveResultsView = ({ approvedSubmissions, settings, currentFilter, current
           participantName: sub.participantName,
           username: sub.username || sub.participantName,
           country: sub.country,
-          flag: sub.flag,
           profilePic: sub.profilePic || generateAvatar(sub.participantName),
           votes: 0,
           episodesCount: 0,
@@ -430,14 +429,12 @@ const LiveResultsView = ({ approvedSubmissions, settings, currentFilter, current
   );
 };
 
-
+// نظام الإرسال المحدث ليكون فورياً بدون Fetching لتجنب التأخير
 const SubmissionForm = ({ settings, userId, allSubmissions }) => {
   const [step, setStep] = useState(1);
   const [selectedPlatform, setSelectedPlatform] = useState('tiktok'); 
   const [embedCode, setEmbedCode] = useState('');
   const [fetchedData, setFetchedData] = useState(null);
-  const [isFetching, setIsFetching] = useState(false);
-  const [fetchError, setFetchError] = useState(false);
   
   const [formData, setFormData] = useState({ 
     participantName: '', 
@@ -459,12 +456,11 @@ const SubmissionForm = ({ settings, userId, allSubmissions }) => {
     } catch (e) { return url; }
   };
 
-  const handleParseEmbed = async (e) => {
+  // معالجة الكود فورياً بدون اتصال خارجي
+  const handleParseEmbed = (e) => {
     e.preventDefault();
     setError(null);
     setSuccessMessage(null);
-    setFetchError(false);
-    setIsFetching(true);
 
     try {
       const input = embedCode.trim();
@@ -482,7 +478,6 @@ const SubmissionForm = ({ settings, userId, allSubmissions }) => {
       if (selectedPlatform === 'tiktok') {
           if (!input.includes('tiktok.com')) {
             setError('الرجاء إدخال رابط أو كود تضمين صحيح من تيك توك.');
-            setIsFetching(false);
             return;
           }
 
@@ -517,15 +512,19 @@ const SubmissionForm = ({ settings, userId, allSubmissions }) => {
       } else if (selectedPlatform === 'instagram') {
           if (!input.includes('instagram.com')) {
             setError('الرجاء إدخال رابط أو كود تضمين صحيح من انستغرام.');
-            setIsFetching(false);
             return;
           }
 
           if (input.includes('<blockquote')) {
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(input, 'text/html');
-            const bq = doc.querySelector('.instagram-media');
-            if (bq) targetUrl = bq.getAttribute('data-instgrm-permalink') || '';
+             const igUrlMatch = input.match(/data-instgrm-permalink="([^"]+)"/);
+             if (igUrlMatch) targetUrl = igUrlMatch[1];
+             
+             // استخراج اليوزر من الروابط الموجودة داخل كود التضمين
+             const profileLinkMatch = input.match(/href="https:\/\/(?:www\.)?instagram\.com\/([^/"]+)\/\?utm_source=ig_embed/);
+             if (profileLinkMatch && !['p', 'reel', 'tv', 'explore'].includes(profileLinkMatch[1])) {
+                 parsedData.username = profileLinkMatch[1];
+                 parsedData.participantName = profileLinkMatch[1]; // كقيمة مبدئية
+             }
           }
           
           if (!targetUrl) {
@@ -536,7 +535,6 @@ const SubmissionForm = ({ settings, userId, allSubmissions }) => {
 
       if (!targetUrl) {
         setError('لم نتمكن من استخراج الرابط. الرجاء التأكد من الكود أو الرابط المدخل.');
-        setIsFetching(false);
         return;
       }
 
@@ -544,68 +542,14 @@ const SubmissionForm = ({ settings, userId, allSubmissions }) => {
       const exists = allSubmissions.some(sub => normalizeUrl(sub.videoUrl).split('?')[0] === cleanUrl);
       if (exists) {
         setError('عذراً، هذا التصميم موجود ومشارك في المسابقة مسبقاً!');
-        setIsFetching(false);
         return;
       }
 
       parsedData.videoUrl = cleanUrl;
-
-      // جلب البيانات من الانستغرام باستخدام Proxy
-      if (selectedPlatform === 'instagram') {
-          try {
-            const match = cleanUrl.match(/\/(?:p|reel|tv)\/([A-Za-z0-9_-]+)/);
-            if (match) {
-                const igEmbedUrl = `https://www.instagram.com/p/${match[1]}/embed/captioned/`;
-                const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(igEmbedUrl)}`;
-                const res = await fetch(proxyUrl);
-                const proxyData = await res.json();
-                if (proxyData.contents) {
-                    const doc = new DOMParser().parseFromString(proxyData.contents, 'text/html');
-                    
-                    const img = doc.querySelector('img.EmbeddedMediaImage');
-                    if (img) parsedData.thumbnailUrl = img.getAttribute('src');
-
-                    const usernameNode = doc.querySelector('.UsernameText');
-                    if (usernameNode) {
-                        parsedData.username = usernameNode.textContent.trim();
-                        parsedData.participantName = parsedData.username;
-                    }
-
-                    const captionNode = doc.querySelector('.Caption');
-                    if (captionNode) {
-                        let desc = captionNode.textContent.trim();
-                        if (parsedData.username && desc.startsWith(parsedData.username)) {
-                            desc = desc.substring(parsedData.username.length).trim();
-                        }
-                        parsedData.description = desc;
-                    }
-                }
-            }
-          } catch (e) {
-            setFetchError(true);
-          }
-          if (!parsedData.thumbnailUrl) {
-              parsedData.thumbnailUrl = `https://placehold.co/600x900/e1306c/ffffff?text=Instagram`;
-              setFetchError(true);
-          }
-      } 
-      // جلب البيانات من تيك توك باستخدام Proxy
-      else if (selectedPlatform === 'tiktok') {
-          try {
-            const oembedApi = `https://www.tiktok.com/oembed?url=${encodeURIComponent(cleanUrl)}`;
-            const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(oembedApi)}`;
-            const res = await fetch(proxyUrl);
-            const proxyData = await res.json();
-            if (proxyData.contents) {
-                const data = JSON.parse(proxyData.contents);
-                parsedData.thumbnailUrl = data.thumbnail_url || '';
-                if (!parsedData.participantName || parsedData.participantName === 'مجهول') parsedData.participantName = data.author_name || '';
-                if (!parsedData.description) parsedData.description = data.title || '';
-            }
-          } catch (e) {
-            setFetchError(true);
-          }
-      }
+      // وضع صورة وهمية مبدئية، والمشرف يمكنه إضافة الغلاف من لوحة التحكم
+      parsedData.thumbnailUrl = selectedPlatform === 'instagram' ? 
+            `https://placehold.co/600x900/e1306c/ffffff?text=Instagram` : 
+            `https://placehold.co/600x900/111827/ffffff?text=TikTok`;
 
       const existingUser = allSubmissions.find(sub => (sub.username || sub.participantName).toLowerCase() === (parsedData.username || '').toLowerCase() && parsedData.username !== 'مجهول' && parsedData.username !== '');
       parsedData.profilePic = existingUser ? existingUser.profilePic : generateAvatar(parsedData.participantName || parsedData.username || 'مستخدم');
@@ -623,8 +567,6 @@ const SubmissionForm = ({ settings, userId, allSubmissions }) => {
     } catch (err) {
       console.error(err);
       setError('حدث خطأ أثناء التحليل، الرجاء المحاولة مجدداً أو التأكد من الرابط.');
-    } finally {
-      setIsFetching(false);
     }
   };
 
@@ -653,7 +595,6 @@ const SubmissionForm = ({ settings, userId, allSubmissions }) => {
         userId: userId || 'anonymous',
         status: 'Pending',
         votes: 0,
-        flag: countryData.flag,
         profilePic: fetchedData.profilePic, 
         thumbnailUrl: formData.thumbnailUrl || `https://placehold.co/600x900/${fetchedData.platform === 'instagram' ? 'e1306c' : '111827'}/ffffff?text=${encodeURIComponent(formData.episode)}`,
         submittedAt: serverTimestamp(),
@@ -682,7 +623,6 @@ const SubmissionForm = ({ settings, userId, allSubmissions }) => {
       {step === 1 && (
         <form onSubmit={handleParseEmbed} className="space-y-6 animate-fade-in">
           
-          {/* اختيار المنصة */}
           <div>
             <label className="block text-white mb-2 font-medium">اختر منصة التصميم:</label>
             <div className="flex gap-4">
@@ -704,17 +644,17 @@ const SubmissionForm = ({ settings, userId, allSubmissions }) => {
               value={embedCode} 
               onChange={(e) => setEmbedCode(e.target.value)} 
               className="w-full p-4 rounded-lg bg-gray-800/80 border border-white/20 text-white focus:border-highlight-color transition shadow-inner h-32 text-left" 
-              placeholder={selectedPlatform === 'tiktok' ? `<blockquote class="tiktok-embed" cite="...">...` : `https://www.instagram.com/reel/...`}
+              placeholder={selectedPlatform === 'tiktok' ? `<blockquote class="tiktok-embed" cite="...">...` : `<blockquote class="instagram-media" ...`}
               dir="ltr" 
               required 
             />
             <p className="text-xs text-white/50 mt-2">
-              انسخ الرابط من {selectedPlatform === 'tiktok' ? 'تيك توك' : 'انستغرام'} والصقه هنا، سيتم استخراج البيانات والصورة المصغرة تلقائياً!
+              انسخ "كود التضمين" من {selectedPlatform === 'tiktok' ? 'تيك توك' : 'انستغرام'} والصقه هنا، سيتم استخراج البيانات فوراً!
             </p>
           </div>
 
-          <button type="submit" disabled={!embedCode || isFetching} className="w-full p-4 rounded-lg font-bold text-lg text-gray-900 transition duration-300 disabled:opacity-50 mt-4 flex items-center justify-center hover:opacity-90 shadow-lg" style={{ backgroundColor: `var(--highlight-color-css)` }}>
-             {isFetching ? <Loader className="w-6 h-6 animate-spin" /> : 'متابعة وتحليل البيانات'}
+          <button type="submit" disabled={!embedCode} className="w-full p-4 rounded-lg font-bold text-lg text-gray-900 transition duration-300 disabled:opacity-50 mt-4 flex items-center justify-center hover:opacity-90 shadow-lg" style={{ backgroundColor: `var(--highlight-color-css)` }}>
+            متابعة وتحليل البيانات
           </button>
         </form>
       )}
@@ -728,11 +668,7 @@ const SubmissionForm = ({ settings, userId, allSubmissions }) => {
             </div>
             
             <div className="flex flex-col flex-grow w-full space-y-3">
-               {fetchError ? (
-                  <span className="text-xs text-yellow-400 font-bold flex items-center"><AlertTriangle className="w-4 h-4 ml-1"/> يرجى تعبئة التفاصيل يدوياً ({selectedPlatform})</span>
-               ) : (
-                  <span className="text-xs text-green-400 font-bold flex items-center"><CheckCircle className="w-4 h-4 ml-1"/> تم التحليل بنجاح من {selectedPlatform}</span>
-               )}
+               <span className="text-xs text-green-400 font-bold flex items-center"><CheckCircle className="w-4 h-4 ml-1"/> تم التحليل بنجاح</span>
                
                <div className="flex items-center gap-3">
                   <img src={fetchedData.profilePic} className="w-12 h-12 rounded-full border border-white/20 object-cover" alt="Profile" />
@@ -767,7 +703,6 @@ const SubmissionForm = ({ settings, userId, allSubmissions }) => {
             <div>
               <label className="block text-white mb-2 font-medium">البلد</label>
               <div className="flex gap-2">
-                 {/* عرض العلم المختار بجانب القائمة المنسدلة */}
                  <div className="bg-gray-800/80 border border-white/20 rounded-lg flex items-center justify-center px-3">
                    <img src={getFlagUrl(formData.country)} className="w-6 h-4 object-cover rounded-sm" alt="Flag" />
                  </div>
@@ -796,7 +731,7 @@ const SubmissionForm = ({ settings, userId, allSubmissions }) => {
 };
 
 const ContestCard = ({ submission, settings, onVote, onOpenVideo, onDesignerClick }) => {
-  const { participantName, username, description, country, flag, episode, thumbnailUrl, profilePic, votes, platform, videoUrl } = submission;
+  const { participantName, username, description, country, episode, thumbnailUrl, profilePic, votes, platform, videoUrl } = submission;
   const safeUsername = username || participantName;
   const isIg = platform === 'instagram' || (videoUrl && videoUrl.includes('instagram'));
 
@@ -1195,8 +1130,7 @@ const AdminSubmissionsPanel = ({ submissions, settings, isGlassmorphism, onUpdat
   const [activeTab, setActiveTab] = useState('Pending');
   const [submissionToEdit, setSubmissionToEdit] = useState(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [processingId, setProcessingId] = useState(null);
-  const [confirmAction, setConfirmAction] = useState(null); // لإظهار نافذة التأكيد (حذف أو تصفير)
+  const [confirmAction, setConfirmAction] = useState(null);
 
   const filteredSubmissions = useMemo(() => {
     let list = submissions.filter((sub) => sub.status === activeTab);
@@ -1225,32 +1159,12 @@ const AdminSubmissionsPanel = ({ submissions, settings, isGlassmorphism, onUpdat
   };
 
   const handleApprove = async (sub) => {
-    setProcessingId(sub.id);
-    let updatedThumbnailUrl = sub.thumbnailUrl;
-
-    try {
-      if (sub.platform === 'tiktok' && sub.thumbnailUrl.includes('placehold.co')) {
-        const oembedApi = `https://www.tiktok.com/oembed?url=${encodeURIComponent(sub.videoUrl)}`;
-        const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(oembedApi)}`;
-        const res = await fetch(proxyUrl);
-        const proxyData = await res.json();
-        if (proxyData.contents) {
-            const data = JSON.parse(proxyData.contents);
-            if (data.thumbnail_url) {
-                updatedThumbnailUrl = data.thumbnail_url;
-            }
-        }
+      // إرسال مباشر بدون انتظار لضمان السرعة
+      try {
+        await retryOperation(() => updateDoc(doc(db, PUBLIC_SUBMISSIONS_COLLECTION, sub.id), { status: 'Approved' }));
+      } catch (err) {
+        console.error("Failed to approve", err);
       }
-      await retryOperation(() => updateDoc(doc(db, PUBLIC_SUBMISSIONS_COLLECTION, sub.id), { 
-          status: 'Approved',
-          thumbnailUrl: updatedThumbnailUrl
-      }));
-    } catch (err) {
-      console.error("Failed to fetch thumbnail on approve", err);
-      await retryOperation(() => updateDoc(doc(db, PUBLIC_SUBMISSIONS_COLLECTION, sub.id), { status: 'Approved' }));
-    } finally {
-      setProcessingId(null);
-    }
   };
 
   const confirmActionHandler = () => {
@@ -1316,16 +1230,14 @@ const AdminSubmissionsPanel = ({ submissions, settings, isGlassmorphism, onUpdat
                    </td>
                    <td className="p-4">
                       <div className="flex justify-end gap-2 flex-wrap">
-                        {/* أزرار الإجراءات الأساسية */}
                         {activeTab !== 'Approved' && (
-                           <button onClick={() => handleApprove(sub)} disabled={processingId === sub.id} className="p-2 rounded bg-green-600 hover:bg-green-500 transition shadow-lg disabled:opacity-50" title="موافقة و نشر">
-                             {processingId === sub.id ? <Loader className="w-5 h-5 text-white animate-spin" /> : <CheckCircle className="w-5 h-5 text-white" />}
+                           <button onClick={() => handleApprove(sub)} className="p-2 rounded bg-green-600 hover:bg-green-500 transition shadow-lg" title="موافقة و نشر">
+                             <CheckCircle className="w-5 h-5 text-white" />
                            </button>
                         )}
                         {activeTab !== 'Rejected' && <button onClick={() => onUpdateSubmissionStatus(sub.id, 'Rejected')} className="p-2 rounded bg-gray-600 hover:bg-gray-500 transition shadow-lg" title="رفض المشاركة وإخفائها"><X className="w-5 h-5 text-white" /></button>}
                         <button onClick={() => { setSubmissionToEdit(sub); setIsEditModalOpen(true); }} className="p-2 rounded bg-blue-600 hover:bg-blue-500 transition shadow-lg" title="تعديل تفاصيل المشاركة"><SettingsIcon className="w-5 h-5 text-white" /></button>
                         
-                        {/* أزرار الإجراءات الإضافية (تصفير وحذف) */}
                         <button onClick={() => setConfirmAction({type: 'reset', id: sub.id})} className="p-2 rounded bg-yellow-600 hover:bg-yellow-500 transition shadow-lg" title="تصفير عدد الأصوات لـ 0"><RotateCcw className="w-5 h-5 text-white" /></button>
                         <button onClick={() => setConfirmAction({type: 'delete', id: sub.id})} className="p-2 rounded bg-red-700 hover:bg-red-600 transition shadow-lg" title="حذف نهائي من قاعدة البيانات"><Trash2 className="w-5 h-5 text-white" /></button>
                       </div>
@@ -1337,7 +1249,6 @@ const AdminSubmissionsPanel = ({ submissions, settings, isGlassmorphism, onUpdat
         </table>
       </div>
 
-      {/* نافذة التأكيد للإجراءات الحساسة (حذف/تصفير) */}
       <Modal isOpen={!!confirmAction} onClose={() => setConfirmAction(null)} title={confirmAction?.type === 'delete' ? 'تأكيد الحذف النهائي' : 'تأكيد التصفير'} settings={settings}>
          <div className="text-center">
             <p className="text-white text-lg mb-6">
@@ -1563,7 +1474,6 @@ const App = () => {
     } catch (e) { console.error(e); }
   };
 
-  // دوال الحذف والتصفير للمدير
   const handleDeleteSubmission = async (id) => {
     try {
       if (!db) return;

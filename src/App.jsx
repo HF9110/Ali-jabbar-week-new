@@ -324,6 +324,7 @@ const LiveResultsView = ({ approvedSubmissions, settings, currentFilter, current
           participantName: sub.participantName,
           username: sub.username || sub.participantName,
           country: sub.country,
+          flag: sub.flag,
           profilePic: sub.profilePic || generateAvatar(sub.participantName),
           votes: 0,
           episodesCount: 0,
@@ -435,7 +436,7 @@ const SubmissionForm = ({ settings, userId, allSubmissions }) => {
   const [selectedPlatform, setSelectedPlatform] = useState('tiktok'); 
   const [embedCode, setEmbedCode] = useState('');
   const [fetchedData, setFetchedData] = useState(null);
-  const [isFetching, setIsFetching] = useState(false); // تم تفعيل حالة التحميل للزر
+  const [isFetching, setIsFetching] = useState(false);
   const [fetchError, setFetchError] = useState(false);
   
   const [formData, setFormData] = useState({ 
@@ -463,19 +464,26 @@ const SubmissionForm = ({ settings, userId, allSubmissions }) => {
     setError(null);
     setSuccessMessage(null);
     setFetchError(false);
-    setIsFetching(true); // بدء إظهار علامة التحميل على الزر
+    setIsFetching(true);
 
     try {
       const input = embedCode.trim();
       let targetUrl = '';
-      let parsedUsername = 'مجهول';
-      let parsedDisplayName = '';
-      let parsedDescription = '';
+      let parsedData = { 
+         platform: selectedPlatform, 
+         videoUrl: '', 
+         username: 'مجهول', 
+         participantName: '', 
+         description: '', 
+         profilePic: '', 
+         thumbnailUrl: '' 
+      };
 
       if (selectedPlatform === 'tiktok') {
           if (!input.includes('tiktok.com')) {
             setError('الرجاء إدخال رابط أو كود تضمين صحيح من تيك توك.');
-            return; // سينتقل إلى finally لتوقيف التحميل
+            setIsFetching(false);
+            return;
           }
 
           if (input.includes('<blockquote')) {
@@ -485,20 +493,21 @@ const SubmissionForm = ({ settings, userId, allSubmissions }) => {
             if (bq) {
               targetUrl = bq.getAttribute('cite') || '';
               const userTag = bq.querySelector('section > a[title^="@"]');
-              if (userTag) parsedUsername = userTag.getAttribute('title').replace('@', '');
+              if (userTag) parsedData.username = userTag.getAttribute('title').replace('@', '');
 
               const musicTag = Array.from(bq.querySelectorAll('a')).find(a => a.getAttribute('title')?.startsWith('♬'));
-              parsedDisplayName = parsedUsername;
+              parsedData.participantName = parsedData.username;
               if (musicTag) {
                   const match = musicTag.getAttribute('title').match(/original sound - (.*)/i) || musicTag.getAttribute('title').match(/الصوت الأصلي - (.*)/i) || musicTag.getAttribute('title').match(/♬ (.*)/i);
-                  if (match && match[1]) parsedDisplayName = match[1].replace('original sound -', '').trim();
+                  if (match && match[1]) parsedData.participantName = match[1].replace('original sound -', '').trim();
               }
 
+              let desc = '';
               const section = bq.querySelector('section');
               if (section) {
-                  Array.from(section.childNodes).forEach(n => { if (n.nodeType === Node.TEXT_NODE) parsedDescription += n.textContent; });
+                  Array.from(section.childNodes).forEach(n => { if (n.nodeType === Node.TEXT_NODE) desc += n.textContent; });
               }
-              parsedDescription = parsedDescription.replace(/•/g, '').trim();
+              parsedData.description = desc.replace(/•/g, '').trim();
             }
           } else {
              const urlMatch = input.match(/https?:\/\/(?:www\.)?tiktok\.com\/[^\s"']+/i);
@@ -508,6 +517,7 @@ const SubmissionForm = ({ settings, userId, allSubmissions }) => {
       } else if (selectedPlatform === 'instagram') {
           if (!input.includes('instagram.com')) {
             setError('الرجاء إدخال رابط أو كود تضمين صحيح من انستغرام.');
+            setIsFetching(false);
             return;
           }
 
@@ -515,48 +525,72 @@ const SubmissionForm = ({ settings, userId, allSubmissions }) => {
             const parser = new DOMParser();
             const doc = parser.parseFromString(input, 'text/html');
             const bq = doc.querySelector('.instagram-media');
-            if (bq) {
-               targetUrl = bq.getAttribute('data-instgrm-permalink') || '';
-               const links = Array.from(bq.querySelectorAll('a'));
-               const userLink = links.find(a => a.href.includes('instagram.com') && !a.href.includes('/p/') && !a.href.includes('/reel/') && !a.href.includes('/tv/'));
-               if (userLink) {
-                   const urlParts = new URL(userLink.href).pathname.split('/').filter(p => p);
-                   if (urlParts.length > 0) parsedUsername = urlParts[0];
-               }
-            }
-          } else {
-             const urlMatch = input.match(/https?:\/\/(?:www\.)?instagram\.com\/(?:p|reel|tv)\/[^\s"']+/i);
+            if (bq) targetUrl = bq.getAttribute('data-instgrm-permalink') || '';
+          }
+          
+          if (!targetUrl) {
+             const urlMatch = input.match(/https?:\/\/(?:www\.)?instagram\.com\/(?:p|reel|tv)\/[^\s"?'?]+/i);
              if (urlMatch) targetUrl = urlMatch[0];
           }
-          parsedDisplayName = parsedUsername;
       }
 
       if (!targetUrl) {
         setError('لم نتمكن من استخراج الرابط. الرجاء التأكد من الكود أو الرابط المدخل.');
+        setIsFetching(false);
         return;
       }
 
-      const cleanUrl = normalizeUrl(targetUrl);
-      const exists = allSubmissions.some(sub => normalizeUrl(sub.videoUrl) === cleanUrl);
+      const cleanUrl = normalizeUrl(targetUrl).split('?')[0];
+      const exists = allSubmissions.some(sub => normalizeUrl(sub.videoUrl).split('?')[0] === cleanUrl);
       if (exists) {
         setError('عذراً، هذا التصميم موجود ومشارك في المسابقة مسبقاً!');
+        setIsFetching(false);
         return;
       }
 
-      let parsedData = { 
-         platform: selectedPlatform, 
-         videoUrl: cleanUrl, 
-         username: parsedUsername, 
-         participantName: parsedDisplayName, 
-         description: parsedDescription, 
-         profilePic: '', 
-         thumbnailUrl: '' 
-      };
+      parsedData.videoUrl = cleanUrl;
 
-      const existingUser = allSubmissions.find(sub => (sub.username || sub.participantName).toLowerCase() === (parsedData.username || '').toLowerCase());
-      parsedData.profilePic = existingUser ? existingUser.profilePic : generateAvatar(parsedData.participantName);
+      // جلب البيانات من الانستغرام باستخدام Proxy
+      if (selectedPlatform === 'instagram') {
+          try {
+            const match = cleanUrl.match(/\/(?:p|reel|tv)\/([A-Za-z0-9_-]+)/);
+            if (match) {
+                const igEmbedUrl = `https://www.instagram.com/p/${match[1]}/embed/captioned/`;
+                const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(igEmbedUrl)}`;
+                const res = await fetch(proxyUrl);
+                const proxyData = await res.json();
+                if (proxyData.contents) {
+                    const doc = new DOMParser().parseFromString(proxyData.contents, 'text/html');
+                    
+                    const img = doc.querySelector('img.EmbeddedMediaImage');
+                    if (img) parsedData.thumbnailUrl = img.getAttribute('src');
 
-      if (selectedPlatform === 'tiktok') {
+                    const usernameNode = doc.querySelector('.UsernameText');
+                    if (usernameNode) {
+                        parsedData.username = usernameNode.textContent.trim();
+                        parsedData.participantName = parsedData.username;
+                    }
+
+                    const captionNode = doc.querySelector('.Caption');
+                    if (captionNode) {
+                        let desc = captionNode.textContent.trim();
+                        if (parsedData.username && desc.startsWith(parsedData.username)) {
+                            desc = desc.substring(parsedData.username.length).trim();
+                        }
+                        parsedData.description = desc;
+                    }
+                }
+            }
+          } catch (e) {
+            setFetchError(true);
+          }
+          if (!parsedData.thumbnailUrl) {
+              parsedData.thumbnailUrl = `https://placehold.co/600x900/e1306c/ffffff?text=Instagram`;
+              setFetchError(true);
+          }
+      } 
+      // جلب البيانات من تيك توك باستخدام Proxy
+      else if (selectedPlatform === 'tiktok') {
           try {
             const oembedApi = `https://www.tiktok.com/oembed?url=${encodeURIComponent(cleanUrl)}`;
             const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(oembedApi)}`;
@@ -571,14 +605,10 @@ const SubmissionForm = ({ settings, userId, allSubmissions }) => {
           } catch (e) {
             setFetchError(true);
           }
-      } else {
-          parsedData.thumbnailUrl = `https://placehold.co/600x900/e1306c/ffffff?text=Instagram`;
-          setFetchError(true); 
       }
 
-      if (!parsedData.profilePic) {
-         parsedData.profilePic = generateAvatar(parsedData.participantName || parsedData.username || 'مستخدم');
-      }
+      const existingUser = allSubmissions.find(sub => (sub.username || sub.participantName).toLowerCase() === (parsedData.username || '').toLowerCase() && parsedData.username !== 'مجهول' && parsedData.username !== '');
+      parsedData.profilePic = existingUser ? existingUser.profilePic : generateAvatar(parsedData.participantName || parsedData.username || 'مستخدم');
 
       setFetchedData(parsedData);
       setFormData(prev => ({ 
@@ -591,9 +621,10 @@ const SubmissionForm = ({ settings, userId, allSubmissions }) => {
       setStep(2); 
 
     } catch (err) {
+      console.error(err);
       setError('حدث خطأ أثناء التحليل، الرجاء المحاولة مجدداً أو التأكد من الرابط.');
     } finally {
-      setIsFetching(false); // إيقاف علامة التحميل دائماً في النهاية
+      setIsFetching(false);
     }
   };
 
@@ -609,6 +640,7 @@ const SubmissionForm = ({ settings, userId, allSubmissions }) => {
     setIsSubmitting(true);
     try {
       if (!db) throw new Error('قاعدة البيانات غير مهيأة.');
+      const countryData = COUNTRIES.find((c) => c.name === formData.country);
       
       const newSubmission = {
         participantName: formData.participantName, 
@@ -621,6 +653,7 @@ const SubmissionForm = ({ settings, userId, allSubmissions }) => {
         userId: userId || 'anonymous',
         status: 'Pending',
         votes: 0,
+        flag: countryData.flag,
         profilePic: fetchedData.profilePic, 
         thumbnailUrl: formData.thumbnailUrl || `https://placehold.co/600x900/${fetchedData.platform === 'instagram' ? 'e1306c' : '111827'}/ffffff?text=${encodeURIComponent(formData.episode)}`,
         submittedAt: serverTimestamp(),
@@ -676,7 +709,7 @@ const SubmissionForm = ({ settings, userId, allSubmissions }) => {
               required 
             />
             <p className="text-xs text-white/50 mt-2">
-              {selectedPlatform === 'tiktok' ? "يفضل نسخ كود التضمين من تيك توك لاستخراج بياناتك بدقة وسرعة." : "ضع رابط الريلز هنا. سيتم طلب كتابة بياناتك في الخطوة التالية."}
+              انسخ الرابط من {selectedPlatform === 'tiktok' ? 'تيك توك' : 'انستغرام'} والصقه هنا، سيتم استخراج البيانات والصورة المصغرة تلقائياً!
             </p>
           </div>
 
@@ -763,7 +796,7 @@ const SubmissionForm = ({ settings, userId, allSubmissions }) => {
 };
 
 const ContestCard = ({ submission, settings, onVote, onOpenVideo, onDesignerClick }) => {
-  const { participantName, username, description, country, episode, thumbnailUrl, profilePic, votes, platform, videoUrl } = submission;
+  const { participantName, username, description, country, flag, episode, thumbnailUrl, profilePic, votes, platform, videoUrl } = submission;
   const safeUsername = username || participantName;
   const isIg = platform === 'instagram' || (videoUrl && videoUrl.includes('instagram'));
 

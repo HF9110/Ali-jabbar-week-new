@@ -60,7 +60,8 @@ import {
   Trash2,
   RotateCcw,
   Wand2,
-  Link2
+  Link2,
+  Plus
 } from 'lucide-react';
 
 // --- إضافة مكون خاص لشعار تيك توك الرسمي (SVG) ---
@@ -160,13 +161,6 @@ const getFlagUrl = (countryName) => {
   return `https://flagcdn.com/w20/${code}.png`;
 };
 
-// --- روابط الإعلانات المتغيرة (يمكنك تغييرها للصور الخاصة بك هنا) ---
-const AD_BANNERS = [
-  'https://placehold.co/1200x400/1e293b/25f4ee?text=إعلان+المسلسل+الأول',
-  'https://placehold.co/1200x400/fe2c55/ffffff?text=إعلان+المسلسل+الثاني',
-  'https://placehold.co/1200x400/111827/fe2c55?text=إعلان+المسلسل+الثالث'
-];
-
 const DEFAULT_SETTINGS = {
   mainColor: '#fe2c55',
   highlightColor: '#25f4ee',
@@ -182,6 +176,11 @@ const DEFAULT_SETTINGS = {
   adminBio: 'مرحباً بكم في مسابقتنا الرمضانية. نحن هنا لدعم صناع المحتوى والمصممين المبدعين وعرض أعمالهم للجمهور.',
   adminTikTok: '',
   adminInsta: '',
+  adBanners: [
+    'https://placehold.co/1200x400/1e293b/25f4ee?text=إعلان+المسلسل+الأول',
+    'https://placehold.co/1200x400/fe2c55/ffffff?text=إعلان+المسلسل+الثاني',
+    'https://placehold.co/1200x400/111827/fe2c55?text=إعلان+المسلسل+الثالث'
+  ]
 };
 
 const generateAvatar = (name) => `https://ui-avatars.com/api/?name=${encodeURIComponent(name || 'Unknown')}&background=random&color=fff&size=128&bold=true`;
@@ -233,20 +232,21 @@ const getVideoEmbedUrl = (url) => {
 // مكون الإعلانات المتقلب (Carousel Banner)
 const AdBanner = ({ settings }) => {
   const [currentAd, setCurrentAd] = useState(0);
+  const banners = settings?.adBanners || [];
 
   useEffect(() => {
-    if (AD_BANNERS.length <= 1) return;
+    if (banners.length <= 1) return;
     const timer = setInterval(() => {
-      setCurrentAd((prev) => (prev + 1) % AD_BANNERS.length);
+      setCurrentAd((prev) => (prev + 1) % banners.length);
     }, 4000); 
     return () => clearInterval(timer);
-  }, []);
+  }, [banners.length]);
 
-  if (!AD_BANNERS || AD_BANNERS.length === 0) return null;
+  if (!banners || banners.length === 0) return null;
 
   return (
     <div className="relative w-full h-40 sm:h-56 md:h-72 lg:h-80 rounded-2xl mb-6 shadow-2xl overflow-hidden border border-white/10 group">
-      {AD_BANNERS.map((ad, index) => (
+      {banners.map((ad, index) => (
         <img
           key={index}
           src={ad}
@@ -254,14 +254,17 @@ const AdBanner = ({ settings }) => {
           className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ease-in-out ${
             index === currentAd ? 'opacity-100 z-10' : 'opacity-0 z-0'
           }`}
+          onError={(e) => {
+             e.target.src = `https://placehold.co/1200x400/1e293b/25f4ee?text=صورة+غير+صالحة`;
+          }}
         />
       ))}
       <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-500 z-20"></div>
       
-      {AD_BANNERS.length > 1 && (
+      {banners.length > 1 && (
         <>
           <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-2 z-30">
-            {AD_BANNERS.map((_, index) => (
+            {banners.map((_, index) => (
               <button
                 key={index}
                 onClick={() => setCurrentAd(index)}
@@ -275,10 +278,10 @@ const AdBanner = ({ settings }) => {
             ))}
           </div>
           
-          <button onClick={() => setCurrentAd((prev) => (prev - 1 + AD_BANNERS.length) % AD_BANNERS.length)} className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/30 hover:bg-black/60 rounded-full flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-all backdrop-blur-sm border border-white/10 z-30">
+          <button onClick={() => setCurrentAd((prev) => (prev - 1 + banners.length) % banners.length)} className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/30 hover:bg-black/60 rounded-full flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-all backdrop-blur-sm border border-white/10 z-30">
             <ChevronRight className="w-6 h-6" />
           </button>
-          <button onClick={() => setCurrentAd((prev) => (prev + 1) % AD_BANNERS.length)} className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/30 hover:bg-black/60 rounded-full flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-all backdrop-blur-sm border border-white/10 z-30">
+          <button onClick={() => setCurrentAd((prev) => (prev + 1) % banners.length)} className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/30 hover:bg-black/60 rounded-full flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-all backdrop-blur-sm border border-white/10 z-30">
             <ChevronLeft className="w-6 h-6" />
           </button>
         </>
@@ -315,7 +318,6 @@ const AlertBanner = ({ settings }) => (
   </div>
 );
 
-// تم تحديث المودال ليكون متجاوب بالكامل وتجنب قص الشاشة
 const Modal = ({ isOpen, onClose, title, children, isGlassmorphism = true, maxWidth = "max-w-2xl" }) => {
   if (!isOpen) return null;
   return (
@@ -498,7 +500,6 @@ const LiveResultsView = ({ approvedSubmissions, settings, currentFilter, current
 };
 
 
-// نموذج الإرسال المبسط للمصمم (رابط مباشر فقط، بدون التحليل التلقائي لتجنب الأخطاء)
 const SubmissionForm = ({ settings, userId, allSubmissions }) => {
   const [selectedPlatform, setSelectedPlatform] = useState('tiktok'); 
   const [videoUrl, setVideoUrl] = useState('');
@@ -549,7 +550,6 @@ const SubmissionForm = ({ settings, userId, allSubmissions }) => {
     setIsSubmitting(true);
     try {
       if (!db) throw new Error('قاعدة البيانات غير مهيأة.');
-      const countryData = COUNTRIES.find((c) => c.name === formData.country);
       
       const newSubmission = {
         participantName: 'في انتظار المراجعة', 
@@ -560,9 +560,8 @@ const SubmissionForm = ({ settings, userId, allSubmissions }) => {
         episode: formData.episode,
         country: formData.country,
         userId: userId || 'anonymous',
-        status: 'Pending', // يحتاج مراجعة المدير لاستخراج البيانات
+        status: 'Pending', 
         votes: 0,
-        flag: countryData.flag,
         profilePic: '', 
         thumbnailUrl: `https://placehold.co/600x900/${selectedPlatform === 'instagram' ? 'e1306c' : '111827'}/ffffff?text=${encodeURIComponent(formData.episode)}`,
         submittedAt: serverTimestamp(),
@@ -1068,7 +1067,6 @@ const AdminSubmissionsPanel = ({ submissions, settings, isGlassmorphism, onUpdat
       
       await retryOperation(() => setDoc(doc(db, PUBLIC_SUBMISSIONS_COLLECTION, finalSubmission.id), finalSubmission, { merge: true }));
       
-      // تحديث جميع الصور الشخصية للتصاميم الأخرى (لتوحيد الهوية)
       if (finalSubmission.profilePic && finalSubmission.username) {
         const q = query(collection(db, PUBLIC_SUBMISSIONS_COLLECTION), where("username", "==", finalSubmission.username));
         const querySnapshot = await getDocs(q);
@@ -1084,7 +1082,6 @@ const AdminSubmissionsPanel = ({ submissions, settings, isGlassmorphism, onUpdat
     } catch (e) { console.error("Error updating", e); }
   };
 
-  // أداة الاستخراج الذكية (Magic Extract) الشاملة للمدير
   const handleAutoExtract = async () => {
     if (!submissionToEdit) return;
     setExtractLoading(true);
@@ -1095,9 +1092,11 @@ const AdminSubmissionsPanel = ({ submissions, settings, isGlassmorphism, onUpdat
       if (submissionToEdit.platform === 'tiktok') {
          const match = submissionToEdit.videoUrl.match(/@([^/]+)/);
          if (match) extractedUsername = match[1];
+      } else if (submissionToEdit.platform === 'instagram') {
+         const match = submissionToEdit.videoUrl.match(/instagram\.com\/([^/]+)/);
+         if (match && !['p', 'reel', 'tv'].includes(match[1])) extractedUsername = match[1];
       }
 
-      // 1. استخدام Microlink لاستخراج الميتا داتا الخاصة بالفيديو (الوصف، الصورة المصغرة، والكاتب)
       const videoApiUrl = `https://api.microlink.io/?url=${encodeURIComponent(submissionToEdit.videoUrl)}`;
       const videoRes = await fetch(videoApiUrl);
       const videoData = await videoRes.json();
@@ -1116,7 +1115,6 @@ const AdminSubmissionsPanel = ({ submissions, settings, isGlassmorphism, onUpdat
           newParticipantName = videoData.data.author || extractedUsername || newParticipantName;
       }
 
-      // 2. جلب الصورة الشخصية من رابط بروفايل المصمم (انستغرام أو تيك توك)
       let newProfilePic = submissionToEdit.profilePic;
       if (extractedUsername && extractedUsername !== 'مجهول' && extractedUsername !== '') {
           const profileUrl = submissionToEdit.platform === 'tiktok' 
@@ -1133,7 +1131,6 @@ const AdminSubmissionsPanel = ({ submissions, settings, isGlassmorphism, onUpdat
           } catch(e) { console.error("Failed to fetch profile info", e); }
       }
 
-      // تنظيف الوصف
       if (newDesc && newDesc.includes('•')) {
          newDesc = newDesc.replace(/•/g, '').trim();
       }
@@ -1252,9 +1249,7 @@ const AdminSubmissionsPanel = ({ submissions, settings, isGlassmorphism, onUpdat
       <Modal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} title="مراجعة وتعديل التصميم" settings={settings} maxWidth="max-w-5xl">
         {submissionToEdit && (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-             {/* العمود الأول: الفيديو والزر */}
              <div className="lg:col-span-4 flex flex-col gap-4">
-                {/* الزر السحري في الأعلى ليكون واضحاً */}
                 <button onClick={handleAutoExtract} disabled={extractLoading} className="w-full py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 rounded-xl text-white font-extrabold flex items-center justify-center gap-2 transition disabled:opacity-50 shadow-lg shadow-purple-500/20">
                    {extractLoading ? <Loader className="w-5 h-5 animate-spin" /> : <><Wand2 className="w-5 h-5" /> استخراج جميع البيانات 🪄</>}
                 </button>
@@ -1262,13 +1257,11 @@ const AdminSubmissionsPanel = ({ submissions, settings, isGlassmorphism, onUpdat
                    <Info className="w-3 h-3 inline-block ml-1" /> اسحب البيانات تلقائياً بنقرة واحدة
                 </div>
 
-                {/* الفيديو بتنسيق لا يخرج عن الشاشة */}
                 <div className="w-full max-w-[260px] mx-auto aspect-[9/16] bg-black rounded-xl overflow-hidden border border-white/10 shadow-2xl relative">
                   <iframe src={getVideoEmbedUrl(submissionToEdit.videoUrl)} className="absolute inset-0 w-full h-full" frameBorder="0" scrolling="no" allowFullScreen></iframe>
                 </div>
              </div>
 
-             {/* العمود الثاني: الحقول */}
              <div className="lg:col-span-8 space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
@@ -1371,6 +1364,37 @@ const AdminSettingsPanel = ({ settings, isGlassmorphism, onSaveSettings }) => {
              <div><label className="text-white text-sm">حساب انستغرام (رابط كامل)</label><input type="url" value={currentSettings.adminInsta || ''} onChange={(e) => setCurrentSettings({...currentSettings, adminInsta: e.target.value})} dir="ltr" className="w-full p-2 rounded bg-gray-800 text-white border border-white/20" placeholder="https://www.instagram.com/..." /></div>
            </div>
         </div>
+
+        {/* روابط البنرات الإعلانية الديناميكية */}
+        <div className="space-y-4 md:col-span-2 mt-4 pt-4 border-t border-white/10">
+           <h4 className="text-lg font-semibold mb-2" style={{ color: settings.mainColor }}>البنرات الإعلانية (Carousel)</h4>
+           {currentSettings.adBanners?.map((banner, index) => (
+             <div key={index} className="flex gap-2">
+                <input
+                  type="url"
+                  value={banner}
+                  onChange={(e) => {
+                     const newBanners = [...(currentSettings.adBanners || [])];
+                     newBanners[index] = e.target.value;
+                     setCurrentSettings({...currentSettings, adBanners: newBanners});
+                  }}
+                  placeholder="https://..."
+                  className="flex-grow p-2 rounded bg-gray-800 text-white border border-white/20 focus:border-highlight-color transition"
+                  dir="ltr"
+                />
+                <button onClick={() => {
+                   const newBanners = currentSettings.adBanners.filter((_, i) => i !== index);
+                   setCurrentSettings({...currentSettings, adBanners: newBanners});
+                }} className="px-4 bg-red-600/80 rounded text-white font-bold hover:bg-red-500 transition">حذف</button>
+             </div>
+           ))}
+           <button onClick={() => {
+              setCurrentSettings({...currentSettings, adBanners: [...(currentSettings.adBanners || []), '']});
+           }} className="px-4 py-2 bg-blue-600/80 rounded text-white font-bold hover:bg-blue-500 transition flex items-center gap-2">
+              <Plus className="w-4 h-4"/> إضافة بنر جديد
+           </button>
+        </div>
+
       </div>
       <button onClick={() => onSaveSettings(currentSettings)} className="w-full mt-8 p-4 rounded-lg font-bold text-gray-900 text-lg transition hover:opacity-90 shadow-lg" style={{ backgroundColor: currentSettings.mainColor }}>حفظ وتطبيق الإعدادات فوراً</button>
     </GlassCard>

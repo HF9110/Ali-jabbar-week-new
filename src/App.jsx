@@ -481,7 +481,6 @@ const SubmissionForm = ({ settings, userId, allSubmissions }) => {
     setIsSubmitting(true);
     try {
       if (!db) throw new Error('قاعدة البيانات غير مهيأة.');
-      const countryData = COUNTRIES.find((c) => c.name === formData.country);
       
       const newSubmission = {
         participantName: 'في انتظار المراجعة', 
@@ -494,7 +493,6 @@ const SubmissionForm = ({ settings, userId, allSubmissions }) => {
         userId: userId || 'anonymous',
         status: 'Pending', // يحتاج مراجعة المدير لاستخراج البيانات
         votes: 0,
-        flag: countryData.flag,
         profilePic: '', // سيتم استخراجه من لوحة التحكم
         thumbnailUrl: `https://placehold.co/600x900/${selectedPlatform === 'instagram' ? 'e1306c' : '111827'}/ffffff?text=${encodeURIComponent(formData.episode)}`,
         submittedAt: serverTimestamp(),
@@ -585,7 +583,7 @@ const SubmissionForm = ({ settings, userId, allSubmissions }) => {
 };
 
 const ContestCard = ({ submission, settings, onVote, onOpenVideo, onDesignerClick }) => {
-  const { participantName, username, description, country, flag, episode, thumbnailUrl, profilePic, votes, platform, videoUrl } = submission;
+  const { participantName, username, description, country, episode, thumbnailUrl, profilePic, votes, platform, videoUrl } = submission;
   const safeUsername = username || participantName || 'مجهول';
   const isIg = platform === 'instagram' || (videoUrl && videoUrl.includes('instagram'));
 

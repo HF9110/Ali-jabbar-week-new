@@ -229,7 +229,6 @@ const getVideoEmbedUrl = (url) => {
   }
 };
 
-// مكون الإعلانات المتقلب (Carousel Banner)
 const AdBanner = ({ settings }) => {
   const [currentAd, setCurrentAd] = useState(0);
   const banners = settings?.adBanners || [];
@@ -318,19 +317,20 @@ const AlertBanner = ({ settings }) => (
   </div>
 );
 
+// تم حل مشكلة التجاوب كلياً في المودال هنا عبر إعادة هندسة الحواف والتمرير
 const Modal = ({ isOpen, onClose, title, children, isGlassmorphism = true, maxWidth = "max-w-2xl" }) => {
   if (!isOpen) return null;
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-black/80 backdrop-blur-sm" onClick={onClose}>
-      <GlassCard isGlassmorphism={isGlassmorphism} color="bg-gray-900" className={`w-full ${maxWidth} max-h-[90vh] flex flex-col shadow-2xl relative`} onClick={(e) => e.stopPropagation()}>
-        <div className="flex justify-between items-center pb-4 border-b border-white/20 mb-4 shrink-0">
+      <div className={`w-full ${maxWidth} max-h-[90vh] flex flex-col bg-gray-900 rounded-2xl shadow-2xl relative overflow-hidden ${isGlassmorphism ? 'bg-opacity-80 backdrop-blur-xl border border-white/10' : ''}`} onClick={(e) => e.stopPropagation()}>
+        <div className="flex justify-between items-center p-4 sm:p-5 border-b border-white/10 shrink-0 bg-gray-800/50">
           <h2 className="text-xl sm:text-2xl font-bold text-white">{title}</h2>
-          <button onClick={onClose} className="text-white hover:text-highlight-color transition bg-white/10 p-2 rounded-full"><X className="w-5 h-5" /></button>
+          <button onClick={onClose} className="text-white/70 hover:text-white transition bg-white/5 hover:bg-white/10 p-2 rounded-full"><X className="w-5 h-5" /></button>
         </div>
-        <div className="text-white text-base sm:text-lg leading-relaxed overflow-y-auto custom-scrollbar flex-grow pr-2">
+        <div className="p-4 sm:p-5 overflow-y-auto custom-scrollbar flex-grow text-white w-full">
           {children}
         </div>
-      </GlassCard>
+      </div>
     </div>
   );
 };
@@ -1107,7 +1107,8 @@ const AdminSubmissionsPanel = ({ submissions, settings, isGlassmorphism, onUpdat
 
       if (videoData.status === 'success' && videoData.data) {
           newThumb = videoData.data.image?.url || videoData.data.logo?.url || newThumb;
-          newDesc = videoData.data.title || videoData.data.description || newDesc;
+          // الاستخراج يعطي الأولوية لـ description ثم title للحصول على النص
+          newDesc = videoData.data.description || videoData.data.title || newDesc;
           
           if (!extractedUsername && videoData.data.author) {
               extractedUsername = videoData.data.author;
@@ -1246,74 +1247,72 @@ const AdminSubmissionsPanel = ({ submissions, settings, isGlassmorphism, onUpdat
       </Modal>
       
       {/* نافذة التعديل والمراجعة المتقدمة مع الاستخراج الذكي */}
-      <Modal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} title="مراجعة وتعديل التصميم" settings={settings} maxWidth="max-w-5xl">
+      <Modal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} title="مراجعة وتعديل التصميم" maxWidth="max-w-4xl">
         {submissionToEdit && (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-             <div className="lg:col-span-4 flex flex-col gap-4">
-                <button onClick={handleAutoExtract} disabled={extractLoading} className="w-full py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 rounded-xl text-white font-extrabold flex items-center justify-center gap-2 transition disabled:opacity-50 shadow-lg shadow-purple-500/20">
-                   {extractLoading ? <Loader className="w-5 h-5 animate-spin" /> : <><Wand2 className="w-5 h-5" /> استخراج جميع البيانات 🪄</>}
+          <div className="flex flex-col md:flex-row gap-6">
+             {/* العمود الأول: الفيديو */}
+             <div className="w-full md:w-1/3 flex flex-col gap-4 shrink-0">
+                <div className="w-full aspect-[9/16] bg-black rounded-xl overflow-hidden border border-white/10 shadow-lg relative max-h-[50vh] md:max-h-none">
+                  <iframe src={getVideoEmbedUrl(submissionToEdit.videoUrl)} className="w-full h-full" frameBorder="0" scrolling="no" allowFullScreen></iframe>
+                </div>
+                <button onClick={handleAutoExtract} disabled={extractLoading} className="w-full py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 rounded-xl text-white font-extrabold flex items-center justify-center gap-2 transition disabled:opacity-50 shadow-lg">
+                   {extractLoading ? <Loader className="w-5 h-5 animate-spin" /> : <><Wand2 className="w-5 h-5" /> استخراج البيانات 🪄</>}
                 </button>
-                <div className="bg-blue-500/10 border border-blue-500/30 p-2 rounded-lg text-blue-200 text-xs text-center leading-relaxed">
-                   <Info className="w-3 h-3 inline-block ml-1" /> اسحب البيانات تلقائياً بنقرة واحدة
-                </div>
-
-                <div className="w-full max-w-[260px] mx-auto aspect-[9/16] bg-black rounded-xl overflow-hidden border border-white/10 shadow-2xl relative">
-                  <iframe src={getVideoEmbedUrl(submissionToEdit.videoUrl)} className="absolute inset-0 w-full h-full" frameBorder="0" scrolling="no" allowFullScreen></iframe>
-                </div>
              </div>
 
-             <div className="lg:col-span-8 space-y-4">
+             {/* العمود الثاني: الحقول */}
+             <div className="w-full md:w-2/3 space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                     <label className="text-white text-sm font-bold mb-1 block">الاسم الظاهر</label>
-                     <input type="text" value={submissionToEdit.participantName} onChange={(e) => setSubmissionToEdit({...submissionToEdit, participantName: e.target.value})} className="w-full p-2.5 rounded bg-gray-800 text-white border border-white/20 focus:border-highlight-color transition" />
+                     <label className="text-white/70 text-xs font-bold mb-1 block">الاسم الظاهر</label>
+                     <input type="text" value={submissionToEdit.participantName} onChange={(e) => setSubmissionToEdit({...submissionToEdit, participantName: e.target.value})} className="w-full p-2.5 rounded-lg bg-gray-800 text-white border border-white/10 focus:border-highlight-color transition" />
                   </div>
                   <div>
-                     <label className="text-white text-sm font-bold mb-1 block">اليوزر (Username)</label>
-                     <input type="text" value={submissionToEdit.username || ''} onChange={(e) => setSubmissionToEdit({...submissionToEdit, username: e.target.value})} dir="ltr" className="w-full p-2.5 rounded bg-gray-800 text-white border border-white/20 focus:border-highlight-color transition font-mono" />
+                     <label className="text-white/70 text-xs font-bold mb-1 block">اليوزر (Username)</label>
+                     <input type="text" value={submissionToEdit.username || ''} onChange={(e) => setSubmissionToEdit({...submissionToEdit, username: e.target.value})} dir="ltr" className="w-full p-2.5 rounded-lg bg-gray-800 text-white border border-white/10 focus:border-highlight-color transition font-mono" />
                   </div>
                 </div>
                 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                     <label className="text-white text-sm font-bold mb-1 flex items-center justify-between">
-                       الصورة الشخصية
-                       {submissionToEdit.profilePic && <img src={submissionToEdit.profilePic} className="w-6 h-6 rounded-full object-cover border border-white/20" alt="" />}
+                     <label className="text-white/70 text-xs font-bold mb-1 flex items-center justify-between">
+                       رابط الصورة الشخصية
+                       {submissionToEdit.profilePic && <img src={submissionToEdit.profilePic} className="w-5 h-5 rounded-full object-cover border border-white/20" alt="" />}
                      </label>
-                     <input type="url" value={submissionToEdit.profilePic || ''} onChange={(e) => setSubmissionToEdit({...submissionToEdit, profilePic: e.target.value})} dir="ltr" className="w-full p-2.5 rounded bg-gray-800 text-white border border-white/20 focus:border-highlight-color transition text-sm" />
+                     <input type="url" value={submissionToEdit.profilePic || ''} onChange={(e) => setSubmissionToEdit({...submissionToEdit, profilePic: e.target.value})} dir="ltr" className="w-full p-2.5 rounded-lg bg-gray-800 text-white border border-white/10 focus:border-highlight-color transition text-xs" />
                   </div>
                   <div>
-                     <label className="text-white text-sm font-bold mb-1 flex items-center justify-between">
-                       صورة الغلاف (Thumbnail)
-                       {submissionToEdit.thumbnailUrl && <img src={submissionToEdit.thumbnailUrl} className="w-4 h-6 rounded object-cover border border-white/20" alt="" />}
+                     <label className="text-white/70 text-xs font-bold mb-1 flex items-center justify-between">
+                       رابط الغلاف (Thumbnail)
+                       {submissionToEdit.thumbnailUrl && <img src={submissionToEdit.thumbnailUrl} className="w-3 h-5 rounded object-cover border border-white/20" alt="" />}
                      </label>
-                     <input type="url" value={submissionToEdit.thumbnailUrl || ''} onChange={(e) => setSubmissionToEdit({...submissionToEdit, thumbnailUrl: e.target.value})} dir="ltr" className="w-full p-2.5 rounded bg-gray-800 text-white border border-white/20 focus:border-highlight-color transition text-sm" />
+                     <input type="url" value={submissionToEdit.thumbnailUrl || ''} onChange={(e) => setSubmissionToEdit({...submissionToEdit, thumbnailUrl: e.target.value})} dir="ltr" className="w-full p-2.5 rounded-lg bg-gray-800 text-white border border-white/10 focus:border-highlight-color transition text-xs" />
                   </div>
                 </div>
 
                 <div>
-                   <label className="text-white text-sm font-bold mb-1 block">وصف الفيديو (Caption)</label>
-                   <textarea value={submissionToEdit.description || ''} onChange={(e) => setSubmissionToEdit({...submissionToEdit, description: e.target.value})} className="w-full p-2.5 rounded bg-gray-800 text-white border border-white/20 focus:border-highlight-color transition" rows="3" />
+                   <label className="text-white/70 text-xs font-bold mb-1 block">وصف الفيديو (Caption)</label>
+                   <textarea value={submissionToEdit.description || ''} onChange={(e) => setSubmissionToEdit({...submissionToEdit, description: e.target.value})} className="w-full p-2.5 rounded-lg bg-gray-800 text-white border border-white/10 focus:border-highlight-color transition" rows="3" />
                 </div>
                 
                 <div className="grid grid-cols-2 gap-4">
                    <div>
-                      <label className="text-white text-sm font-bold mb-1 block">تغيير الحلقة</label>
-                      <select value={submissionToEdit.episode} onChange={(e) => setSubmissionToEdit({...submissionToEdit, episode: e.target.value})} className="w-full p-2.5 rounded bg-gray-800 text-white border border-white/20">
+                      <label className="text-white/70 text-xs font-bold mb-1 block">تغيير الحلقة</label>
+                      <select value={submissionToEdit.episode} onChange={(e) => setSubmissionToEdit({...submissionToEdit, episode: e.target.value})} className="w-full p-2.5 rounded-lg bg-gray-800 text-white border border-white/10">
                         {EPISODES.map(ep => <option key={ep} value={ep}>{ep}</option>)}
                       </select>
                    </div>
                    <div>
-                      <label className="text-white text-sm font-bold mb-1 block">تعديل الأصوات (تحكم كامل)</label>
-                      <input type="number" value={submissionToEdit.votes} onChange={(e) => setSubmissionToEdit({...submissionToEdit, votes: parseInt(e.target.value)||0})} className="w-full p-2.5 rounded bg-gray-800 text-white border border-white/20 font-bold text-xl text-center" />
+                      <label className="text-white/70 text-xs font-bold mb-1 block">تعديل الأصوات (تحكم كامل)</label>
+                      <input type="number" value={submissionToEdit.votes} onChange={(e) => setSubmissionToEdit({...submissionToEdit, votes: parseInt(e.target.value)||0})} className="w-full p-2.5 rounded-lg bg-gray-800 text-white border border-white/10 font-bold text-center" />
                    </div>
                 </div>
 
-                <div className="flex flex-col sm:flex-row gap-4 pt-4 border-t border-white/10 mt-6">
-                   <button onClick={() => handleSaveEdit(submissionToEdit, false)} className="flex-1 p-3 rounded-lg text-white bg-gray-700 hover:bg-gray-600 font-bold transition">حفظ التعديلات فقط</button>
+                <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-white/10 mt-2">
+                   <button onClick={() => handleSaveEdit(submissionToEdit, false)} className="flex-1 p-3 rounded-lg text-white bg-gray-700 hover:bg-gray-600 font-bold transition text-sm">حفظ التعديلات فقط</button>
                    {submissionToEdit.status !== 'Approved' && (
-                     <button onClick={() => handleSaveEdit(submissionToEdit, true)} className="flex-1 p-3 rounded-lg text-gray-900 font-extrabold transition hover:opacity-90 shadow-lg flex items-center justify-center gap-2" style={{backgroundColor: settings.mainColor}}>
-                       <CheckCircle className="w-5 h-5" /> حفظ وقبول المشاركة 
+                     <button onClick={() => handleSaveEdit(submissionToEdit, true)} className="flex-1 p-3 rounded-lg text-gray-900 font-extrabold transition hover:opacity-90 shadow-lg flex items-center justify-center gap-2 text-sm" style={{backgroundColor: settings.mainColor}}>
+                       <CheckCircle className="w-4 h-4" /> حفظ وقبول المشاركة 
                      </button>
                    )}
                 </div>

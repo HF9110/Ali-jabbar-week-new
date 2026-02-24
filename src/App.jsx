@@ -1438,6 +1438,28 @@ const AdminSubmissionsPanel = ({ submissions, settings, isGlassmorphism, onUpdat
     } catch (e) { console.error("Error updating", e); }
   };
 
+  // دالة مساعدة لجلب البيانات عبر خوادم وسيطة لتخطي حظر (CORS)
+  const fetchViaProxy = async (url, isJson = false) => {
+    const proxies = [
+      `https://corsproxy.io/?${encodeURIComponent(url)}`,
+      `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`
+    ];
+    for (const proxy of proxies) {
+      try {
+        const controller = new AbortController();
+        const id = setTimeout(() => controller.abort(), 6000);
+        const res = await fetch(proxy, { signal: controller.signal });
+        clearTimeout(id);
+        if (res.ok) {
+           return isJson ? await res.json() : await res.text();
+        }
+      } catch (e) {
+        continue; // جرب الخادم البديل في حال الفشل
+      }
+    }
+    return null;
+  };
+
   const handleAutoExtract = async () => {
     if (!submissionToEdit || !submissionToEdit.videoUrl) return;
     setExtractLoading(true);
@@ -1448,17 +1470,17 @@ const AdminSubmissionsPanel = ({ submissions, settings, isGlassmorphism, onUpdat
       let newDesc = submissionToEdit.description !== 'سيتم إضافة التفاصيل والصور من قبل الإدارة قريباً.' ? submissionToEdit.description : '';
       let newThumb = submissionToEdit.thumbnailUrl;
       let newProfilePic = submissionToEdit.profilePic;
+      let newVideoUrl = submissionToEdit.videoUrl;
 
-      const videoUrl = submissionToEdit.videoUrl;
-      const isTikTok = videoUrl.includes('tiktok');
-      const isInsta = videoUrl.includes('instagram');
+      const isTikTok = newVideoUrl.includes('tiktok');
+      const isInsta = newVideoUrl.includes('instagram');
 
-      // 1. استخراج اليوزر عن طريق Regex (لحظي وسريع جداً كخطة أولى)
+      // 1. استخراج مبدئي لليوزر عن طريق Regex
       if (isTikTok) {
-         const match = videoUrl.match(/@([a-zA-Z0-9_.-]+)/);
+         const match = newVideoUrl.match(/@([a-zA-Z0-9_.-]+)/);
          if (match) extractedUsername = match[1];
       } else if (isInsta) {
-         const match = videoUrl.match(/instagram\.com\/([a-zA-Z0-9_.-]+)\//);
+         const match = newVideoUrl.match(/instagram\.com\/([a-zA-Z0-9_.-]+)\//);
          if (match && !['p', 'reel', 'tv', 'explore', 'stories'].includes(match[1])) {
              extractedUsername = match[1];
          }
@@ -1466,47 +1488,39 @@ const AdminSubmissionsPanel = ({ submissions, settings, isGlassmorphism, onUpdat
 
       let metaData = null;
 
-      // دالة مساعدة مع Timeout لمنع تعليق النظام أكثر من 5 ثواني
-      const fetchMetaWithTimeout = async (url, timeout = 5000) => {
-          const controller = new AbortController();
-          const id = setTimeout(() => controller.abort(), timeout);
-          try {
-              const res = await fetch(url, { signal: controller.signal });
-              clearTimeout(id);
-              if (!res.ok) throw new Error('Network response was not ok');
-              return await res.json();
-          } catch (err) {
-              clearTimeout(id);
-              return null; // إذا فشل أو تأخر، نرجع null ونتجاوزه
-          }
-      };
-
-      // 2. استخدام واجهة TikTok عبر Proxy لتجاوز حظر المتصفحات (CORS)
+      // 2. تيك توك: استخدام API الرسمي عبر البروكسي (يجلب الغلاف، العنوان، ورقم الفيديو للروابط المختصرة)
       if (isTikTok) {
-          const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(`https://www.tiktok.com/oembed?url=${videoUrl}`)}`;
-          const proxyData = await fetchMetaWithTimeout(proxyUrl);
-          
-          if (proxyData && proxyData.contents) {
-              try {
-                  const ttData = JSON.parse(proxyData.contents);
-                  metaData = {
-                      title: ttData.title,
-                      author: ttData.author_name,
-                      thumbnail: ttData.thumbnail_url
-                  };
-              } catch(e) { console.log("Failed to parse TikTok data"); }
+          const proxyData = await fetchViaProxy(`https://www.tiktok.com/oembed?url=${newVideoUrl}`, true);
+          if (proxyData) {
+              metaData = {
+                  title: proxyData.title,
+                  author: proxyData.author_name,
+                  thumbnail: proxyData.thumbnail_url,
+                  videoId: proxyData.embed_product_id // مهم جداً للروابط المختصرة
+              };
+              
+              // معالجة الروابط المختصرة مثل (vt.tiktok.com) وتحويلها للرابط الكامل لكي يعمل مشغل الفيديو (iframe)
+              if (metaData.videoId && !newVideoUrl.includes(metaData.videoId)) {
+                  newVideoUrl = `https://www.tiktok.com/@${metaData.author || 'user'}/video/${metaData.videoId}`;
+              }
           }
       }
 
-      // 3. استخدام Microlink كحل بديل للانستغرام أو تيك توك (مع نظام الـ Timeout)
+      // 3. انستغرام (أو في حال فشل تيك توك): سحب البيانات الوصفية (og:tags) من صفحة الفيديو مباشرة
       if (!metaData) {
-          const microlinkData = await fetchMetaWithTimeout(`https://api.microlink.io/?url=${encodeURIComponent(videoUrl)}`, 6000);
-          if (microlinkData && microlinkData.status === 'success' && microlinkData.data) {
-              metaData = {
-                  title: microlinkData.data.description || microlinkData.data.title,
-                  author: microlinkData.data.author,
-                  thumbnail: microlinkData.data.image?.url || microlinkData.data.logo?.url
-              };
+          const html = await fetchViaProxy(newVideoUrl, false);
+          if (html) {
+              const doc = new DOMParser().parseFromString(html, "text/html");
+              const ogImage = doc.querySelector('meta[property="og:image"]')?.content;
+              const ogTitle = doc.querySelector('meta[property="og:title"]')?.content || doc.querySelector('title')?.innerText;
+              
+              if (ogImage) {
+                  metaData = {
+                      title: ogTitle,
+                      thumbnail: ogImage,
+                      author: extractedUsername
+                  };
+              }
           }
       }
 
@@ -1545,6 +1559,7 @@ const AdminSubmissionsPanel = ({ submissions, settings, isGlassmorphism, onUpdat
 
       setSubmissionToEdit(prev => ({
           ...prev,
+          videoUrl: newVideoUrl, // تحديث الرابط في حال كان مختصراً
           username: extractedUsername,
           participantName: newParticipantName,
           description: newDesc,
@@ -1554,7 +1569,7 @@ const AdminSubmissionsPanel = ({ submissions, settings, isGlassmorphism, onUpdat
 
     } catch (err) {
        console.error("Extraction error:", err);
-       alert('حدث خطأ أثناء الاستخراج. قد يكون الرابط خاصاً أو محمياً من قبل المنصة.');
+       alert('حدث خطأ أثناء الاستخراج. قد يكون الرابط خاصاً أو محمي بقوة من المنصة.');
     } finally {
        setExtractLoading(false);
     }
@@ -1571,30 +1586,29 @@ const AdminSubmissionsPanel = ({ submissions, settings, isGlassmorphism, onUpdat
           ? `https://www.tiktok.com/@${submissionToEdit.username}`
           : `https://www.instagram.com/${submissionToEdit.username}/`;
           
-      // إضافة AbortController لإنهاء الطلب إذا تأخرت الاستجابة أكثر من 6 ثوانٍ
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 6000);
+      // سحب الصفحة الشخصية واستخراج صورة البروفايل (og:image)
+      const html = await fetchViaProxy(profileUrl, false);
       
-      const profileRes = await fetch(`https://api.microlink.io/?url=${encodeURIComponent(profileUrl)}`, { signal: controller.signal });
-      clearTimeout(timeoutId);
-      
-      if (!profileRes.ok) throw new Error('Failed to fetch from Microlink');
-      
-      const profileData = await profileRes.json();
-      
-      if (profileData.status === 'success' && profileData.data) {
-          const picUrl = profileData.data.image?.url || profileData.data.logo?.url;
+      if (html) {
+          const doc = new DOMParser().parseFromString(html, "text/html");
+          let picUrl = doc.querySelector('meta[property="og:image"]')?.content;
+          
+          // تصفية الصور الافتراضية لشعار المنصة
+          if (picUrl && (picUrl.includes('tiktok_logo') || picUrl.includes('150x150'))) {
+              picUrl = null;
+          }
+
           if (picUrl) {
               setSubmissionToEdit(prev => ({...prev, profilePic: picUrl}));
-          } else {
-              alert('لم يتم العثور على صورة شخصية متاحة للعامة.');
+              setProfileExtractLoading(false);
+              return;
           }
-      } else {
-          alert('فشل في العثور على الصورة الشخصية.');
       }
+      
+      alert('لم يتم العثور على صورة شخصية متاحة. قد يكون الحساب خاصاً.');
     } catch(e) {
       console.error(e);
-      alert('انتهى وقت الطلب أو فشل الاتصال. تأكد أن الحساب ليس خاصاً.');
+      alert('فشل الاتصال لجلب الصورة الشخصية.');
     } finally {
       setProfileExtractLoading(false);
     }

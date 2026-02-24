@@ -1724,6 +1724,11 @@ const AdminSubmissionsPanel = ({ submissions, settings, isGlassmorphism, onUpdat
              </div>
 
              <div className="lg:col-span-8 space-y-6 bg-black/20 p-6 md:p-8 rounded-3xl border border-white/5 shadow-inner">
+                <div>
+                   <label className="text-white/80 text-sm font-bold mb-2 flex items-center gap-2"><Link2 className="w-4 h-4"/> رابط الفيديو (المشاركة)</label>
+                   <input type="url" value={submissionToEdit.videoUrl || ''} onChange={(e) => setSubmissionToEdit({...submissionToEdit, videoUrl: e.target.value})} dir="ltr" className="w-full p-4 rounded-xl bg-black/50 text-white border border-white/10 focus:ring-2 focus:outline-none transition-all shadow-inner font-mono text-sm" style={{ '--tw-ring-color': settings.highlightColor }} />
+                </div>
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                   <div>
                      <label className="text-white/80 text-sm font-bold mb-2 block">الاسم الظاهر للمصمم</label>

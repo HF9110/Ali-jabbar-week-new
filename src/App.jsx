@@ -61,7 +61,9 @@ import {
   Link2,
   Plus,
   Image as ImageIcon,
-  Newspaper
+  Newspaper,
+  Heart,
+  Share2
 } from 'lucide-react';
 
 // --- إضافة مكون خاص لشعار تيك توك الرسمي (SVG) ---
@@ -357,11 +359,30 @@ const Modal = ({ isOpen, onClose, title, children, isGlassmorphism = true, maxWi
 };
 
 // =========================================================================
-// 3.5 STORIES COMPONENT (آخر الأخبار)
+// 3.5 STORIES COMPONENT (آخر الأخبار - Instagram Style)
 // =========================================================================
 
 const StoriesBar = ({ stories, settings }) => {
   const [activeStory, setActiveStory] = useState(null);
+  const [liked, setLiked] = useState(false);
+  const [shared, setShared] = useState(false);
+
+  useEffect(() => {
+    setLiked(false);
+    setShared(false);
+  }, [activeStory]);
+
+  const handleShare = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: activeStory.title, url: window.location.href });
+      } catch (err) {}
+    } else {
+      document.execCommand('copy');
+      setShared(true);
+      setTimeout(() => setShared(false), 2000);
+    }
+  };
 
   if (!stories || stories.length === 0) return null;
 
@@ -376,7 +397,6 @@ const StoriesBar = ({ stories, settings }) => {
         <div className="flex gap-4 overflow-x-auto custom-scrollbar pb-4 pt-2 px-1 snap-x">
           {stories.map(story => (
             <div key={story.id} className="flex flex-col items-center gap-2 cursor-pointer group flex-shrink-0 snap-start" onClick={() => setActiveStory(story)}>
-              {/* Instagram Style Gradient Border */}
               <div className="p-[3px] rounded-full bg-gradient-to-tr from-yellow-400 via-pink-500 to-purple-500 hover:scale-105 transition-transform duration-300 shadow-lg">
                 <div className="bg-[#050505] p-1 rounded-full">
                   <img 
@@ -395,22 +415,46 @@ const StoriesBar = ({ stories, settings }) => {
         </div>
       </div>
 
-      <Modal isOpen={!!activeStory} onClose={() => setActiveStory(null)} title={activeStory?.title} settings={settings} maxWidth="max-w-md">
-        {activeStory && (
-          <div className="flex flex-col items-center text-center">
-            <img 
-              src={activeStory.imageUrl} 
-              alt={activeStory.title}
-              className="w-full aspect-square sm:aspect-[4/5] object-cover rounded-2xl mb-6 shadow-2xl border border-white/10"
-              onError={(e) => e.target.src = 'https://placehold.co/400x500/111/fff?text=News'}
-            />
-            <h4 className="text-2xl font-black text-white mb-4">{activeStory.title}</h4>
-            <p className="text-white/80 text-base leading-relaxed font-medium whitespace-pre-wrap bg-black/30 p-4 rounded-xl border border-white/5 w-full">
-              {activeStory.content}
-            </p>
+      {activeStory && createPortal(
+        <div className="fixed inset-0 z-[10000] bg-black sm:bg-zinc-900/95 flex items-center justify-center sm:p-4 backdrop-blur-md animate-fade-in" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}>
+          {/* Background Blur for Desktop */}
+          <div className="absolute inset-0 bg-cover bg-center opacity-30 blur-3xl hidden sm:block pointer-events-none" style={{backgroundImage: `url(${activeStory.imageUrl})`}}></div>
+          
+          {/* Main Story Container - Full screen on Mobile, Contained on Desktop */}
+          <div className="relative w-full h-full sm:w-[420px] sm:h-[90vh] bg-black sm:rounded-[2rem] overflow-hidden shadow-2xl flex flex-col sm:border border-white/10">
+            
+            {/* Top Bar with Title and Close */}
+            <div className="absolute top-0 left-0 w-full p-4 flex justify-between items-center z-50 bg-gradient-to-b from-black/80 via-black/40 to-transparent pt-6 sm:pt-4">
+               <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full p-[2px] bg-gradient-to-tr from-yellow-400 via-pink-500 to-purple-500">
+                    <img src={activeStory.imageUrl} className="w-full h-full rounded-full object-cover border border-black" />
+                  </div>
+                  <span className="text-white font-bold drop-shadow-md text-sm tracking-wide">{activeStory.title}</span>
+               </div>
+               <button onClick={() => setActiveStory(null)} className="p-2 text-white/90 hover:text-white transition-colors drop-shadow-md">
+                 <X className="w-7 h-7" />
+               </button>
+            </div>
+
+            {/* Image Content (Fill Screen) */}
+            <div className="flex-grow flex items-center justify-center bg-[#111] relative">
+              <img src={activeStory.imageUrl} className="w-full h-full object-cover" alt={activeStory.title} onError={(e) => e.target.src = 'https://placehold.co/400x800/111/fff?text=News'} />
+            </div>
+
+            {/* Floating Actions (Right Side Instagram style) */}
+            <div className="absolute bottom-24 right-4 flex flex-col gap-6 z-50">
+               <button onClick={() => setLiked(!liked)} className="flex flex-col items-center gap-1 group outline-none">
+                  <Heart className={`w-8 h-8 drop-shadow-lg transition-transform hover:scale-110 ${liked ? 'fill-red-500 text-red-500' : 'text-white'}`} />
+                  <span className="text-white drop-shadow-md text-xs font-bold">{liked ? '1' : ''}</span>
+               </button>
+               <button onClick={handleShare} className="flex flex-col items-center gap-1 group outline-none">
+                  {shared ? <CheckCircle className="w-8 h-8 text-green-400 drop-shadow-lg transition-transform hover:scale-110" /> : <Share2 className="w-8 h-8 text-white drop-shadow-lg transition-transform hover:scale-110" />}
+               </button>
+            </div>
           </div>
-        )}
-      </Modal>
+        </div>,
+        document.body
+      )}
     </>
   );
 };
@@ -420,18 +464,18 @@ const StoriesBar = ({ stories, settings }) => {
 // 4. MAIN VIEWS
 // =========================================================================
 
-const StatsCard = ({ designerItem, settings, currentFilter, onDesignerClick }) => {
+const StatsCard = ({ designerItem, settings, currentFilter, onDesignerClick, rank }) => {
   return (
     <div className="relative w-full h-44 group [perspective:1000px]">
       <style>{`.flip-container { transition: transform 0.7s cubic-bezier(0.4, 0.2, 0.2, 1); transform-style: preserve-3d; } .flip-container.flipped { transform: rotateY(180deg); } .front, .back { backface-visibility: hidden; position: absolute; top: 0; left: 0; width: 100%; height: 100%; } .back { transform: rotateY(180deg); }`}</style>
       <div className="flip-container h-full group-hover:flipped">
         <div className="front h-full">
           <GlassCard isGlassmorphism={settings.useGlassmorphism} color="bg-gray-800" className="h-full !p-3 flex flex-col items-center justify-center overflow-hidden relative cursor-pointer">
-            {/* Badge updated to sit top-left exactly over image as requested */}
-            <span className="absolute top-3 left-3 bg-black/80 backdrop-blur-md text-[10px] px-2 py-1 rounded-md text-white font-bold border border-white/10 shadow-lg z-20 flex items-center gap-1">
-               <span className="w-1.5 h-1.5 rounded-full" style={{backgroundColor: settings.highlightColor}}></span>
-               {currentFilter === 'الكل' ? `${designerItem.episodesCount} مشاركات` : designerItem.singleEpisode}
-            </span>
+            {/* Rank Indicator from 4 to 10 */}
+            <div className="absolute top-0 right-0 w-8 h-8 flex items-center justify-center font-black rounded-bl-xl shadow-md z-20 bg-gray-700/80 backdrop-blur-md text-white border-l border-b border-white/10">
+              #{rank}
+            </div>
+            
             <img
               src={designerItem.profilePic}
               alt={`Profile`}
@@ -507,9 +551,8 @@ const LiveResultsView = ({ approvedSubmissions, settings, currentFilter, current
   if (rankedDesigners.length === 0) return null;
 
   const CompactPodiumItem = ({ designerItem, rank, settings }) => {
-    const { participantName, username, country, votes, profilePic, episodesCount, singleEpisode } = designerItem;
+    const { participantName, username, country, votes, profilePic } = designerItem;
     const rankColor = { 1: '#fbbf24', 2: '#94a3b8', 3: '#b45309' }[rank]; 
-    const episodeText = currentFilter === 'الكل' ? `${episodesCount} مشاركات` : singleEpisode;
     const isFirst = rank === 1;
 
     return (
@@ -529,12 +572,6 @@ const LiveResultsView = ({ approvedSubmissions, settings, currentFilter, current
         <div className="absolute top-0 right-0 w-8 h-8 flex items-center justify-center font-black rounded-bl-xl shadow-md z-20" style={{ backgroundColor: rankColor, color: isFirst ? '#000' : '#fff' }}>
           #{rank}
         </div>
-        
-        {/* Badge positioned exactly like screenshot 15 */}
-        <p className="text-[10px] font-bold text-white absolute top-3 left-3 px-2 py-1 rounded-md bg-black/80 border border-white/10 backdrop-blur-sm shadow-md z-20 flex items-center gap-1">
-          <span className="w-1.5 h-1.5 rounded-full" style={{backgroundColor: rankColor}}></span>
-          {episodeText}
-        </p>
         
         <img 
            src={profilePic} 
@@ -583,8 +620,8 @@ const LiveResultsView = ({ approvedSubmissions, settings, currentFilter, current
           
           <div className="flex-grow mx-12 overflow-hidden px-2 py-4">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-5 transition-transform duration-500 ease-out">
-              {currentSlideDesigners.map((designer) => (
-                <StatsCard key={designer.id} designerItem={designer} settings={settings} currentFilter={currentFilter} onDesignerClick={onDesignerClick}/>
+              {currentSlideDesigners.map((designer, i) => (
+                <StatsCard key={designer.id} designerItem={designer} settings={settings} currentFilter={currentFilter} onDesignerClick={onDesignerClick} rank={4 + (currentIndex * perSlide) + i} />
               ))}
               {[...Array(perSlide - currentSlideDesigners.length)].map((_, i) => (
                 <div key={`filler-${i}`} className="w-full hidden md:block"></div>
@@ -1775,20 +1812,20 @@ const AdminLibraryPanel = ({ libraryScenes, isGlassmorphism, settings }) => {
 };
 
 // =========================================================================
-// 5.C ADMIN STORIES PANEL (الأخبار والستوريات)
+// 5.C ADMIN STORIES PANEL (الأخبار والستوريات) - تم إزالة الوصف
 // =========================================================================
 
 const AdminStoriesPanel = ({ stories, isGlassmorphism, settings }) => {
-  const [newStory, setNewStory] = useState({ title: '', imageUrl: '', content: '' });
+  const [newStory, setNewStory] = useState({ title: '', imageUrl: '' });
   const [isAdding, setIsAdding] = useState(false);
 
   const handleAddStory = async (e) => {
     e.preventDefault();
-    if (!newStory.title || !newStory.imageUrl || !newStory.content) return;
+    if (!newStory.title || !newStory.imageUrl) return;
     setIsAdding(true);
     try {
       await addDoc(collection(db, PUBLIC_STORIES_COLLECTION), { ...newStory, createdAt: serverTimestamp() });
-      setNewStory({ title: '', imageUrl: '', content: '' });
+      setNewStory({ title: '', imageUrl: '' });
     } catch (e) {
       console.error("Error adding story", e);
     } finally {
@@ -1807,19 +1844,15 @@ const AdminStoriesPanel = ({ stories, isGlassmorphism, settings }) => {
   return (
     <div className="animate-fade-in space-y-6">
       <GlassCard isGlassmorphism={isGlassmorphism} color="bg-gray-900" className="p-6">
-        <h3 className="text-xl font-bold text-white mb-4 border-b border-white/10 pb-2">إضافة ستوري جديد (خبر)</h3>
+        <h3 className="text-xl font-bold text-white mb-4 border-b border-white/10 pb-2">إضافة ستوري جديد (صورة فقط)</h3>
         <form onSubmit={handleAddStory} className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="text-white text-sm mb-1 block">عنوان الخبر (يظهر تحت الدائرة)</label>
-            <input type="text" value={newStory.title} onChange={(e) => setNewStory({...newStory, title: e.target.value})} placeholder="مثال: تحديث جديد" className="w-full p-3 rounded-xl bg-black/40 text-white border border-white/20 focus:ring-2 focus:outline-none transition-all shadow-inner" style={{ '--tw-ring-color': settings.highlightColor }} required />
+            <label className="text-white text-sm mb-1 block">عنوان الستوري (يظهر تحت الدائرة المصغرة)</label>
+            <input type="text" value={newStory.title} onChange={(e) => setNewStory({...newStory, title: e.target.value})} placeholder="مثال: تصميم جديد" className="w-full p-3 rounded-xl bg-black/40 text-white border border-white/20 focus:ring-2 focus:outline-none transition-all shadow-inner" style={{ '--tw-ring-color': settings.highlightColor }} required />
           </div>
           <div>
             <label className="text-white text-sm mb-1 block flex items-center"><ImageIcon className="w-4 h-4 ml-1 text-blue-400"/> رابط صورة الستوري</label>
             <input type="url" value={newStory.imageUrl} onChange={(e) => setNewStory({...newStory, imageUrl: e.target.value})} dir="ltr" placeholder="https://..." className="w-full p-3 rounded-xl bg-black/40 text-white border border-white/20 focus:ring-2 focus:outline-none transition-all shadow-inner font-mono text-sm" style={{ '--tw-ring-color': settings.highlightColor }} required />
-          </div>
-          <div className="md:col-span-2">
-            <label className="text-white text-sm mb-1 block">تفاصيل الخبر (تظهر عند النقر على الدائرة)</label>
-            <textarea value={newStory.content} onChange={(e) => setNewStory({...newStory, content: e.target.value})} placeholder="اكتب تفاصيل الخبر هنا..." className="w-full p-3 rounded-xl bg-black/40 text-white border border-white/20 focus:ring-2 focus:outline-none transition-all shadow-inner custom-scrollbar" rows="3" style={{ '--tw-ring-color': settings.highlightColor }} required />
           </div>
           
           <div className="md:col-span-2 pt-2">
@@ -1834,13 +1867,13 @@ const AdminStoriesPanel = ({ stories, isGlassmorphism, settings }) => {
       </GlassCard>
 
       <GlassCard isGlassmorphism={isGlassmorphism} color="bg-gray-900" className="p-6">
-        <h3 className="text-xl font-bold text-white mb-4 border-b border-white/10 pb-2">الستوريات والأخبار الحالية ({stories.length})</h3>
+        <h3 className="text-xl font-bold text-white mb-4 border-b border-white/10 pb-2">الستوريات الحالية ({stories.length})</h3>
         <div className="overflow-x-auto">
           <table className="w-full text-right text-white/80">
             <thead className="bg-white/5 text-white font-bold border-b border-white/20 text-sm">
               <tr>
                 <th className="p-3">صورة الستوري</th>
-                <th className="p-3">العنوان والتفاصيل</th>
+                <th className="p-3">العنوان</th>
                 <th className="p-3 text-left">حذف</th>
               </tr>
             </thead>
@@ -1853,10 +1886,7 @@ const AdminStoriesPanel = ({ stories, isGlassmorphism, settings }) => {
                     <td className="p-3">
                       <img src={story.imageUrl} alt={story.title} className="w-12 h-12 rounded-full object-cover border-2 border-white/20" />
                     </td>
-                    <td className="p-3">
-                      <p className="font-bold text-white">{story.title}</p>
-                      <p className="text-xs text-white/50 truncate max-w-xs mt-1">{story.content}</p>
-                    </td>
+                    <td className="p-3 font-bold text-white">{story.title}</td>
                     <td className="p-3 text-left">
                       <button onClick={() => handleDeleteStory(story.id)} className="p-2 bg-red-600/20 text-red-500 rounded-lg hover:bg-red-600 hover:text-white transition-colors border border-red-500/30"><Trash2 className="w-4 h-4"/></button>
                     </td>
@@ -2071,7 +2101,7 @@ const App = () => {
   const [settings, setSettings] = useState(null);
   const [submissions, setSubmissions] = useState([]);
   const [libraryScenes, setLibraryScenes] = useState([]); 
-  const [stories, setStories] = useState([]); // ستوريات آخر الأخبار
+  const [stories, setStories] = useState([]); 
   const [loading, setLoading] = useState(true);
   const [adminMode, setAdminMode] = useState(false);
   const [authModalOpen, setAuthModalOpen] = useState(false);
@@ -2240,7 +2270,7 @@ const App = () => {
                  <button onClick={() => setAdminActiveTab('stats')} className={`flex-1 py-4 px-6 font-black text-lg transition-all rounded-xl whitespace-nowrap ${adminActiveTab === 'stats' ? 'bg-white/10 shadow-md text-white' : 'text-white/50 hover:bg-white/5 hover:text-white'}`} style={{ color: adminActiveTab === 'stats' ? settings.highlightColor : undefined }}>📊 الإحصائيات العامة</button>
                  <button onClick={() => setAdminActiveTab('subs')} className={`flex-1 py-4 px-6 font-black text-lg transition-all rounded-xl whitespace-nowrap ${adminActiveTab === 'subs' ? 'bg-white/10 shadow-md text-white' : 'text-white/50 hover:bg-white/5 hover:text-white'}`} style={{ color: adminActiveTab === 'subs' ? settings.highlightColor : undefined }}>🎬 إدارة المشاركات والطلبات</button>
                  <button onClick={() => setAdminActiveTab('library')} className={`flex-1 py-4 px-6 font-black text-lg transition-all rounded-xl whitespace-nowrap ${adminActiveTab === 'library' ? 'bg-white/10 shadow-md text-white' : 'text-white/50 hover:bg-white/5 hover:text-white'}`} style={{ color: adminActiveTab === 'library' ? settings.highlightColor : undefined }}>🎞️ إدارة المكتبة</button>
-                 <button onClick={() => setAdminActiveTab('stories')} className={`flex-1 py-4 px-6 font-black text-lg transition-all rounded-xl whitespace-nowrap ${adminActiveTab === 'stories' ? 'bg-white/10 shadow-md text-white' : 'text-white/50 hover:bg-white/5 hover:text-white'}`} style={{ color: adminActiveTab === 'stories' ? settings.highlightColor : undefined }}>📰 الأخبار والستوريات</button>
+                 <button onClick={() => setAdminActiveTab('stories')} className={`flex-1 py-4 px-6 font-black text-lg transition-all rounded-xl whitespace-nowrap ${adminActiveTab === 'stories' ? 'bg-white/10 shadow-md text-white' : 'text-white/50 hover:bg-white/5 hover:text-white'}`} style={{ color: adminActiveTab === 'stories' ? settings.highlightColor : undefined }}>📰 إدارة الأخبار (ستوريات)</button>
                  <button onClick={() => setAdminActiveTab('settings')} className={`flex-1 py-4 px-6 font-black text-lg transition-all rounded-xl whitespace-nowrap ${adminActiveTab === 'settings' ? 'bg-white/10 shadow-md text-white' : 'text-white/50 hover:bg-white/5 hover:text-white'}`} style={{ color: adminActiveTab === 'settings' ? settings.highlightColor : undefined }}>⚙️ إعدادات وتخصيص الموقع</button>
                </div>
 

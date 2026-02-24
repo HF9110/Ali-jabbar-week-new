@@ -1437,80 +1437,116 @@ const AdminSubmissionsPanel = ({ submissions, settings, isGlassmorphism, onUpdat
   };
 
   const handleAutoExtract = async () => {
-    if (!submissionToEdit) return;
+    if (!submissionToEdit || !submissionToEdit.videoUrl) return;
     setExtractLoading(true);
 
     try {
       let extractedUsername = submissionToEdit.username || '';
-      
-      if (submissionToEdit.platform === 'tiktok') {
-         const match = submissionToEdit.videoUrl.match(/@([^/]+)/);
-         if (match) extractedUsername = match[1];
-      } else if (submissionToEdit.platform === 'instagram') {
-         const match = submissionToEdit.videoUrl.match(/instagram\.com\/([^/]+)/);
-         if (match && !['p', 'reel', 'tv'].includes(match[1])) extractedUsername = match[1];
-      }
-
-      const videoApiUrl = `https://api.microlink.io/?url=${encodeURIComponent(submissionToEdit.videoUrl)}`;
-      const videoRes = await fetch(videoApiUrl);
-      const videoData = await videoRes.json();
-      
-      let newDesc = submissionToEdit.description;
+      let newParticipantName = submissionToEdit.participantName !== 'في انتظار المراجعة' ? submissionToEdit.participantName : '';
+      let newDesc = submissionToEdit.description !== 'سيتم إضافة التفاصيل والصور من قبل الإدارة قريباً.' ? submissionToEdit.description : '';
       let newThumb = submissionToEdit.thumbnailUrl;
-      let newParticipantName = submissionToEdit.participantName;
+      let newProfilePic = submissionToEdit.profilePic;
 
-      if (videoData.status === 'success' && videoData.data) {
-          newThumb = videoData.data.image?.url || videoData.data.logo?.url || newThumb;
-          newDesc = videoData.data.description || videoData.data.title || newDesc;
-          
-          if (!extractedUsername && videoData.data.author) {
-              extractedUsername = videoData.data.author;
-          }
-          newParticipantName = videoData.data.author || extractedUsername || newParticipantName;
+      const videoUrl = submissionToEdit.videoUrl;
+      const isTikTok = videoUrl.includes('tiktok');
+      const isInsta = videoUrl.includes('instagram');
+
+      // 1. استخراج اليوزر عن طريق Regex
+      if (isTikTok) {
+         const match = videoUrl.match(/@([a-zA-Z0-9_.-]+)/);
+         if (match) extractedUsername = match[1];
+      } else if (isInsta) {
+         const match = videoUrl.match(/instagram\.com\/([a-zA-Z0-9_.-]+)\//);
+         if (match && !['p', 'reel', 'tv', 'explore', 'stories'].includes(match[1])) {
+             extractedUsername = match[1];
+         }
       }
 
-      let newProfilePic = submissionToEdit.profilePic;
+      let metaData = null;
+
+      // 2. استخدام Noembed API (ممتاز لتيك توك)
+      try {
+          const noembedRes = await fetch(`https://noembed.com/embed?url=${encodeURIComponent(videoUrl)}`);
+          if (noembedRes.ok) {
+              const noembedData = await noembedRes.json();
+              if (!noembedData.error) {
+                  metaData = {
+                      title: noembedData.title,
+                      author: noembedData.author_name,
+                      thumbnail: noembedData.thumbnail_url
+                  };
+              }
+          }
+      } catch (e) {
+          console.log("Noembed fallback");
+      }
+
+      // 3. استخدام Microlink كحل بديل
+      if (!metaData) {
+          try {
+              const microlinkRes = await fetch(`https://api.microlink.io/?url=${encodeURIComponent(videoUrl)}`);
+              if (microlinkRes.ok) {
+                  const microlinkData = await microlinkRes.json();
+                  if (microlinkData.status === 'success' && microlinkData.data) {
+                      metaData = {
+                          title: microlinkData.data.description || microlinkData.data.title,
+                          author: microlinkData.data.author,
+                          thumbnail: microlinkData.data.image?.url || microlinkData.data.logo?.url
+                      };
+                  }
+              }
+          } catch (e) {
+              console.log("Microlink fallback");
+          }
+      }
+
+      // 4. تطبيق البيانات المستخرجة
+      if (metaData) {
+          if (metaData.title && !newDesc) newDesc = metaData.title;
+          if (metaData.thumbnail && newThumb.includes('placehold')) newThumb = metaData.thumbnail;
+          if (metaData.author) {
+              const cleanAuthor = metaData.author.replace('@', '');
+              if (!extractedUsername) extractedUsername = cleanAuthor;
+              if (!newParticipantName) newParticipantName = cleanAuthor;
+          }
+      }
+
+      // 5. حلول نهائية في حال فشل كل الواجهات (لضمان عمل النظام)
+      if (!extractedUsername) extractedUsername = 'user_' + Math.floor(Math.random() * 10000);
+      if (!newParticipantName) newParticipantName = extractedUsername;
+      if (!newDesc) newDesc = 'تصميم رمضاني مميز للمسلسل.';
       
+      // تنظيف الوصف من النقاط الإضافية
+      if (newDesc && newDesc.includes('•')) newDesc = newDesc.replace(/•/g, '').trim();
+
+      // 6. جلب الصورة الشخصية من المشاركات السابقة لنفس المصمم
       const existingSubWithPic = submissions.find(s => 
           s.username === extractedUsername && 
           s.id !== submissionToEdit.id && 
           s.profilePic && 
           !s.profilePic.includes('ui-avatars') && 
-          !s.profilePic.includes('placehold.co')
+          !s.profilePic.includes('placehold')
       );
 
       if (existingSubWithPic) {
           newProfilePic = existingSubWithPic.profilePic;
-      } else if (extractedUsername && extractedUsername !== 'مجهول' && extractedUsername !== '') {
-          const profileUrl = submissionToEdit.platform === 'tiktok' 
-                ? `https://www.tiktok.com/@${extractedUsername}`
-                : `https://www.instagram.com/${extractedUsername}/`;
-          
-          const profileApiUrl = `https://api.microlink.io/?url=${encodeURIComponent(profileUrl)}`;
-          try {
-              const profileRes = await fetch(profileApiUrl);
-              const profileData = await profileRes.json();
-              if (profileData.status === 'success' && profileData.data) {
-                  newProfilePic = profileData.data.image?.url || profileData.data.logo?.url || newProfilePic;
-              }
-          } catch(e) { console.error("Failed to fetch profile info", e); }
+      } else if (!newProfilePic || newProfilePic.includes('placehold') || newProfilePic === '') {
+          newProfilePic = generateAvatar(newParticipantName);
       }
 
-      if (newDesc && newDesc.includes('•')) {
-         newDesc = newDesc.replace(/•/g, '').trim();
-      }
-
+      // تحديث واجهة الإدارة بالبيانات المستخرجة
       setSubmissionToEdit(prev => ({
           ...prev,
-          username: extractedUsername || prev.username,
-          participantName: newParticipantName !== 'في انتظار المراجعة' ? newParticipantName : prev.participantName,
-          description: newDesc !== 'سيتم إضافة التفاصيل والصور من قبل الإدارة قريباً.' ? newDesc : prev.description,
+          username: extractedUsername,
+          participantName: newParticipantName,
+          description: newDesc,
           thumbnailUrl: newThumb,
           profilePic: newProfilePic
       }));
 
     } catch (err) {
-       alert('فشل الاتصال بالخادم الذكي لاستخراج البيانات. يرجى المحاولة لاحقاً.');
+       console.error("Extraction error:", err);
+       alert('حدث خطأ أثناء الاستخراج. قد يكون الرابط خاصاً أو محمياً من قبل المنصة.');
     } finally {
        setExtractLoading(false);
     }

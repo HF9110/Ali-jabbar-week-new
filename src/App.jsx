@@ -6,7 +6,6 @@ import {
   signInAnonymously,
   signInWithCustomToken,
   onAuthStateChanged,
-  signInWithEmailAndPassword,
   signOut,
 } from 'firebase/auth';
 import {
@@ -38,8 +37,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Lock,
-  Mail,
-  Key,
   CheckCircle,
   Clock,
   Info,
@@ -54,7 +51,6 @@ import {
   PlayCircle,
   ArrowRight,
   AlertTriangle,
-  Code,
   BarChart2,
   TrendingUp,
   Users,
@@ -64,7 +60,8 @@ import {
   Wand2,
   Link2,
   Plus,
-  Video
+  Image as ImageIcon,
+  Newspaper
 } from 'lucide-react';
 
 // --- إضافة مكون خاص لشعار تيك توك الرسمي (SVG) ---
@@ -121,6 +118,7 @@ if (Object.keys(firebaseConfig).length) {
 const PUBLIC_SETTINGS_PATH = `settings/config`;
 const PUBLIC_SUBMISSIONS_COLLECTION = `submissions`;
 const PUBLIC_LIBRARY_COLLECTION = `library_scenes`;
+const PUBLIC_STORIES_COLLECTION = `news_stories`;
 
 const retryOperation = async (operation, maxRetries = 3, delay = 1000) => {
   for (let i = 0; i < maxRetries; i++) {
@@ -182,14 +180,11 @@ const DEFAULT_SETTINGS = {
   adminInsta: '',
   adBanners: [
     'https://placehold.co/1200x400/1e293b/25f4ee?text=إعلان+المسلسل+الأول',
-    'https://placehold.co/1200x400/fe2c55/ffffff?text=إعلان+المسلسل+الثاني',
-    'https://placehold.co/1200x400/111827/fe2c55?text=إعلان+المسلسل+الثالث'
+    'https://placehold.co/1200x400/fe2c55/ffffff?text=إعلان+المسلسل+الثاني'
   ]
 };
 
 const generateAvatar = (name) => `https://ui-avatars.com/api/?name=${encodeURIComponent(name || 'Unknown')}&background=random&color=fff&size=128&bold=true`;
-
-const MOCK_SUBMISSIONS = []; 
 
 // =========================================================================
 // 3. CORE COMPONENTS & HOOKS
@@ -285,13 +280,6 @@ const AdBanner = ({ settings }) => {
               />
             ))}
           </div>
-          
-          <button onClick={() => setCurrentAd((prev) => (prev - 1 + banners.length) % banners.length)} className="absolute right-6 top-1/2 -translate-y-1/2 w-12 h-12 bg-black/40 hover:bg-black/80 rounded-full flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-all duration-300 backdrop-blur-md border border-white/20 z-30 hover:scale-110 shadow-xl">
-            <ChevronRight className="w-7 h-7" />
-          </button>
-          <button onClick={() => setCurrentAd((prev) => (prev + 1) % banners.length)} className="absolute left-6 top-1/2 -translate-y-1/2 w-12 h-12 bg-black/40 hover:bg-black/80 rounded-full flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-all duration-300 backdrop-blur-md border border-white/20 z-30 hover:scale-110 shadow-xl">
-            <ChevronLeft className="w-7 h-7" />
-          </button>
         </>
       )}
     </div>
@@ -300,17 +288,14 @@ const AdBanner = ({ settings }) => {
 
 const AlertBanner = ({ settings }) => {
   const [isVisible, setIsVisible] = useState(true);
-
   if (!isVisible || !settings.marqueeText) return null;
 
   return (
     <div className="relative mb-8 group animate-fade-in z-20">
       <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent rounded-2xl blur-md group-hover:bg-white/10 transition-all duration-500 pointer-events-none"></div>
 
-      <div className="relative flex items-center bg-black/60 backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden shadow-[0_8px_30px_0_rgba(0,0,0,0.5)] transition-all duration-300 hover:shadow-[0_8px_40px_rgba(255,255,255,0.05)]"
-        style={{
-          borderRight: `4px solid ${settings.highlightColor}`,
-        }}>
+      <div className="relative flex items-center bg-black/60 backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden shadow-[0_8px_30px_0_rgba(0,0,0,0.5)] transition-all duration-300"
+        style={{ borderRight: `4px solid ${settings.highlightColor}` }}>
         <style>{`
           @keyframes marquee-rtl { 0% { transform: translateX(-100vw); } 100% { transform: translateX(100vw); } }
           .marquee-container:hover .marquee-text { animation-play-state: paused; }
@@ -324,7 +309,7 @@ const AlertBanner = ({ settings }) => {
               <Film className="w-5 h-5 text-white" />
             </div>
           </div>
-          <span className="font-extrabold text-lg tracking-wide text-transparent bg-clip-text hidden sm:block drop-shadow-md" style={{ backgroundImage: `linear-gradient(to left, #fff, ${settings.highlightColor})` }}>
+          <span className="font-extrabold text-lg tracking-wide text-transparent bg-clip-text hidden sm:block" style={{ backgroundImage: `linear-gradient(to left, #fff, ${settings.highlightColor})` }}>
             إعلان هام
           </span>
         </div>
@@ -335,7 +320,7 @@ const AlertBanner = ({ settings }) => {
             </span>
         </div>
 
-        <button onClick={() => setIsVisible(false)} className="p-4 z-10 bg-gradient-to-r from-black/80 to-transparent hover:bg-white/10 transition-colors text-white/50 hover:text-white flex-shrink-0 border-r border-white/5" title="إغلاق الإعلان">
+        <button onClick={() => setIsVisible(false)} className="p-4 z-10 bg-gradient-to-r from-black/80 to-transparent hover:bg-white/10 transition-colors text-white/50 hover:text-white flex-shrink-0 border-r border-white/5">
           <X className="w-5 h-5" />
         </button>
       </div>
@@ -372,6 +357,66 @@ const Modal = ({ isOpen, onClose, title, children, isGlassmorphism = true, maxWi
 };
 
 // =========================================================================
+// 3.5 STORIES COMPONENT (آخر الأخبار)
+// =========================================================================
+
+const StoriesBar = ({ stories, settings }) => {
+  const [activeStory, setActiveStory] = useState(null);
+
+  if (!stories || stories.length === 0) return null;
+
+  return (
+    <>
+      <div className="mb-8 w-full">
+        <div className="flex items-center mb-4">
+          <Newspaper className="w-5 h-5 ml-2" style={{ color: settings.highlightColor }} />
+          <h3 className="text-xl font-black text-white">آخر الأخبار</h3>
+        </div>
+        
+        <div className="flex gap-4 overflow-x-auto custom-scrollbar pb-4 pt-2 px-1 snap-x">
+          {stories.map(story => (
+            <div key={story.id} className="flex flex-col items-center gap-2 cursor-pointer group flex-shrink-0 snap-start" onClick={() => setActiveStory(story)}>
+              {/* Instagram Style Gradient Border */}
+              <div className="p-[3px] rounded-full bg-gradient-to-tr from-yellow-400 via-pink-500 to-purple-500 hover:scale-105 transition-transform duration-300 shadow-lg">
+                <div className="bg-[#050505] p-1 rounded-full">
+                  <img 
+                    src={story.imageUrl} 
+                    alt={story.title}
+                    className="w-16 h-16 sm:w-20 sm:h-20 rounded-full object-cover border border-white/10"
+                    onError={(e) => e.target.src = 'https://placehold.co/150x150/111/fff?text=News'}
+                  />
+                </div>
+              </div>
+              <span className="text-xs sm:text-sm font-bold text-white/80 w-20 sm:w-24 text-center truncate group-hover:text-white transition-colors">
+                {story.title}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <Modal isOpen={!!activeStory} onClose={() => setActiveStory(null)} title={activeStory?.title} settings={settings} maxWidth="max-w-md">
+        {activeStory && (
+          <div className="flex flex-col items-center text-center">
+            <img 
+              src={activeStory.imageUrl} 
+              alt={activeStory.title}
+              className="w-full aspect-square sm:aspect-[4/5] object-cover rounded-2xl mb-6 shadow-2xl border border-white/10"
+              onError={(e) => e.target.src = 'https://placehold.co/400x500/111/fff?text=News'}
+            />
+            <h4 className="text-2xl font-black text-white mb-4">{activeStory.title}</h4>
+            <p className="text-white/80 text-base leading-relaxed font-medium whitespace-pre-wrap bg-black/30 p-4 rounded-xl border border-white/5 w-full">
+              {activeStory.content}
+            </p>
+          </div>
+        )}
+      </Modal>
+    </>
+  );
+};
+
+
+// =========================================================================
 // 4. MAIN VIEWS
 // =========================================================================
 
@@ -382,8 +427,10 @@ const StatsCard = ({ designerItem, settings, currentFilter, onDesignerClick }) =
       <div className="flip-container h-full group-hover:flipped">
         <div className="front h-full">
           <GlassCard isGlassmorphism={settings.useGlassmorphism} color="bg-gray-800" className="h-full !p-3 flex flex-col items-center justify-center overflow-hidden relative cursor-pointer">
-            <span className="absolute top-2 right-2 bg-black/60 backdrop-blur-md text-[10px] px-2 py-1 rounded-md text-highlight-color font-bold border border-white/10">
-              {currentFilter === 'الكل' ? `${designerItem.episodesCount} مشاركات` : designerItem.singleEpisode}
+            {/* Badge updated to sit top-left exactly over image as requested */}
+            <span className="absolute top-3 left-3 bg-black/80 backdrop-blur-md text-[10px] px-2 py-1 rounded-md text-white font-bold border border-white/10 shadow-lg z-20 flex items-center gap-1">
+               <span className="w-1.5 h-1.5 rounded-full" style={{backgroundColor: settings.highlightColor}}></span>
+               {currentFilter === 'الكل' ? `${designerItem.episodesCount} مشاركات` : designerItem.singleEpisode}
             </span>
             <img
               src={designerItem.profilePic}
@@ -439,7 +486,6 @@ const LiveResultsView = ({ approvedSubmissions, settings, currentFilter, current
       map[key].votes += (sub.votes || 0);
       map[key].episodesCount += 1;
     });
-    // ترتيب المصممين وحصرهم في أول 10 فقط
     return Object.values(map).sort((a, b) => b.votes - a.votes).slice(0, 10);
   }, [approvedSubmissions]);
 
@@ -462,12 +508,12 @@ const LiveResultsView = ({ approvedSubmissions, settings, currentFilter, current
 
   const CompactPodiumItem = ({ designerItem, rank, settings }) => {
     const { participantName, username, country, votes, profilePic, episodesCount, singleEpisode } = designerItem;
-    const rankColor = { 1: '#fbbf24', 2: '#94a3b8', 3: '#b45309' }[rank]; // Gold, Silver, Bronze
+    const rankColor = { 1: '#fbbf24', 2: '#94a3b8', 3: '#b45309' }[rank]; 
     const episodeText = currentFilter === 'الكل' ? `${episodesCount} مشاركات` : singleEpisode;
     const isFirst = rank === 1;
 
     return (
-      <div className={`relative flex flex-col items-center p-4 text-center w-full transform hover:-translate-y-2 transition-all duration-300 rounded-2xl ${isFirst ? 'mt-0 z-20 scale-105' : 'mt-8 z-10 opacity-90 hover:opacity-100'}`}
+      <div className={`relative flex flex-col items-center p-4 text-center w-full transform hover:-translate-y-2 transition-all duration-300 rounded-2xl overflow-hidden ${isFirst ? 'mt-0 z-20 scale-105' : 'mt-8 z-10 opacity-90 hover:opacity-100'}`}
         style={{ 
           background: `linear-gradient(to bottom, ${rankColor}20, rgba(0,0,0,0.5))`, 
           borderTop: `2px solid ${rankColor}`, 
@@ -480,10 +526,13 @@ const LiveResultsView = ({ approvedSubmissions, settings, currentFilter, current
         
         {isFirst && <Crown className="absolute -top-7 text-yellow-400 w-10 h-10 drop-shadow-[0_0_15px_rgba(250,204,21,0.8)] animate-bounce" />}
         
-        <div className="absolute top-0 right-0 w-8 h-8 flex items-center justify-center font-black rounded-bl-xl rounded-tr-xl shadow-md" style={{ backgroundColor: rankColor, color: isFirst ? '#000' : '#fff' }}>
+        <div className="absolute top-0 right-0 w-8 h-8 flex items-center justify-center font-black rounded-bl-xl shadow-md z-20" style={{ backgroundColor: rankColor, color: isFirst ? '#000' : '#fff' }}>
           #{rank}
         </div>
-        <p className="text-[10px] font-bold text-white/80 absolute top-2 left-2 px-2 py-0.5 rounded-md bg-black/60 border border-white/10 backdrop-blur-sm">
+        
+        {/* Badge positioned exactly like screenshot 15 */}
+        <p className="text-[10px] font-bold text-white absolute top-3 left-3 px-2 py-1 rounded-md bg-black/80 border border-white/10 backdrop-blur-sm shadow-md z-20 flex items-center gap-1">
+          <span className="w-1.5 h-1.5 rounded-full" style={{backgroundColor: rankColor}}></span>
           {episodeText}
         </p>
         
@@ -491,7 +540,7 @@ const LiveResultsView = ({ approvedSubmissions, settings, currentFilter, current
            src={profilePic} 
            alt={`Rank ${rank}`} 
            onClick={() => onDesignerClick(username)}
-           className={`object-cover rounded-full mb-3 border-4 mt-5 cursor-pointer hover:scale-110 transition-transform duration-300 shadow-xl ${isFirst ? 'w-20 h-20' : 'w-16 h-16'}`} 
+           className={`object-cover rounded-full mb-3 border-4 mt-6 cursor-pointer hover:scale-110 transition-transform duration-300 shadow-xl relative z-10 ${isFirst ? 'w-20 h-20' : 'w-16 h-16'}`} 
            style={{ borderColor: rankColor, boxShadow: `0 0 20px ${rankColor}40` }} 
         />
         <p className={`font-black text-white drop-shadow-md text-amber-400 ${isFirst ? 'text-3xl' : 'text-xl'}`}>{votes.toLocaleString()}</p>
@@ -606,7 +655,7 @@ const SubmissionForm = ({ settings, userId, allSubmissions }) => {
       
       const newSubmission = {
         participantName: 'في انتظار المراجعة', 
-        username: '',               
+        username: '',                
         description: 'سيتم إضافة التفاصيل والصور من قبل الإدارة قريباً.',
         videoUrl: cleanUrl,
         platform: selectedPlatform, 
@@ -818,7 +867,6 @@ const DesignerProfile = ({ designerId, allSubmissions, settings, onVote, onBack,
          </button>
 
          <GlassCard isGlassmorphism={settings.useGlassmorphism} color="bg-gray-900" className="!p-0 relative overflow-hidden rounded-3xl border-t-4" style={{ borderTopColor: settings.mainColor }}>
-            {/* Cover Background */}
             <div className="absolute top-0 left-0 w-full h-40 md:h-48 bg-cover bg-center opacity-30" style={{ backgroundImage: `url(${profileInfo.thumbnailUrl || 'https://placehold.co/1200x400/111827/ffffff'})`, filter: 'blur(10px)' }}></div>
             <div className="absolute top-0 left-0 w-full h-40 md:h-48 bg-gradient-to-b from-black/20 via-black/60 to-gray-900"></div>
             
@@ -997,7 +1045,7 @@ const DesignersLibrary = ({ settings, libraryScenes }) => {
   );
 };
 
-const Home = ({ settings, allSubmissions, totalApproved, onVote, cooldown, setVoteConfirmData, onDesignerClick }) => {
+const Home = ({ settings, allSubmissions, totalApproved, onVote, cooldown, setVoteConfirmData, onDesignerClick, stories }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterEpisode, setFilterEpisode] = useState('الكل');
   const [filterPlatform, setFilterPlatform] = useState('الكل');
@@ -1044,60 +1092,70 @@ const Home = ({ settings, allSubmissions, totalApproved, onVote, cooldown, setVo
   return (
     <>
       <div className="space-y-10 animate-fade-in">
-        {/* Modern Filter Bar */}
-        <GlassCard isGlassmorphism={settings.useGlassmorphism} color="bg-gray-900" className="!p-4 flex flex-col lg:flex-row gap-4 items-center sticky top-20 z-30 shadow-[0_10px_30px_rgba(0,0,0,0.8)] backdrop-blur-2xl border-white/10 rounded-2xl">
-          
-          {/* 1. البحث المطوّر */}
-          <div className="relative group w-full lg:w-2/5">
-            <input 
-               type="text" 
-               placeholder="البحث عن مصمم، بلد، أو وصف..." 
-               value={searchTerm} 
-               onChange={(e) => setSearchTerm(e.target.value)} 
-               className="w-full p-3.5 pr-12 pl-12 rounded-xl bg-black/40 border border-white/10 text-white font-medium focus:ring-2 focus:outline-none transition-all shadow-inner hover:border-white/30 placeholder-white/40" 
-               style={{ '--tw-ring-color': settings.highlightColor }} 
-            />
-            <Search className="absolute right-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-white/40 group-hover:text-white transition-colors" />
-            
-            {/* زر المسح عند وجود نص */}
-            {searchTerm && (
-              <button 
-                onClick={() => setSearchTerm('')} 
-                className="absolute left-3 top-1/2 transform -translate-y-1/2 p-1.5 bg-white/10 hover:bg-white/20 rounded-full text-white/70 hover:text-white transition-all scale-in-center"
-                title="مسح البحث"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            )}
-          </div>
-          
-          {/* 2. فلتر المنصات */}
-          <div className="relative group w-full lg:w-1/5">
-            <select value={filterPlatform} onChange={(e) => setFilterPlatform(e.target.value)} className="appearance-none w-full p-3.5 rounded-xl bg-black/40 border border-white/10 text-white font-bold focus:ring-2 focus:outline-none pr-12 transition-all shadow-inner cursor-pointer hover:border-white/30" style={{ '--tw-ring-color': settings.highlightColor, backgroundImage: 'none' }}>
-              <option value="الكل" className="bg-gray-900">🌐 جميع المنصات</option>
-              <option value="tiktok" className="bg-gray-900">🎵 تيك توك</option>
-              <option value="instagram" className="bg-gray-900">📷 انستغرام</option>
-            </select>
-            <ChevronDown className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-white/40 group-hover:text-white transition-colors pointer-events-none" />
-          </div>
+        
+        {/* شريط الستوريات - الأخبار */}
+        <StoriesBar stories={stories} settings={settings} />
 
-          {/* 3. فلتر الحلقات */}
-          <div className="relative group w-full lg:w-1/5">
-            <select value={filterEpisode} onChange={(e) => setFilterEpisode(e.target.value)} className="appearance-none w-full p-3.5 rounded-xl bg-black/40 border border-white/10 text-white font-bold focus:ring-2 focus:outline-none pr-12 transition-all shadow-inner cursor-pointer hover:border-white/30" style={{ '--tw-ring-color': settings.highlightColor, backgroundImage: 'none' }}>
-              <option value="الكل" className="bg-gray-900">📺 جميع الحلقات</option>
-              {EPISODES.map((ep) => <option key={ep} value={ep} className="bg-gray-900">{ep}</option>)}
-            </select>
-            <ChevronDown className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-white/40 group-hover:text-white transition-colors pointer-events-none" />
-          </div>
+        {/* شريط البحث المطور المطابق للصورة */}
+        <div className="sticky top-20 z-30">
+          <GlassCard isGlassmorphism={settings.useGlassmorphism} color="bg-gray-900" className="!p-4 shadow-[0_10px_30px_rgba(0,0,0,0.8)] backdrop-blur-2xl border-white/10 rounded-2xl">
+            <div className="flex flex-col md:flex-row gap-4">
+              
+              {/* القسم الأيمن: شريط البحث (يأخذ المساحة الأكبر) */}
+              <div className="flex-grow relative group flex items-center">
+                <input 
+                   type="text" 
+                   placeholder="البحث عن مصمم، بلد، أو وصف..." 
+                   value={searchTerm} 
+                   onChange={(e) => setSearchTerm(e.target.value)} 
+                   className="w-full h-full min-h-[50px] md:min-h-full p-4 pr-12 pl-12 rounded-xl bg-[#111] border border-white/10 text-white font-medium focus:ring-2 focus:outline-none transition-all shadow-inner hover:border-white/30 placeholder-white/40" 
+                   style={{ '--tw-ring-color': settings.highlightColor }} 
+                />
+                <Search className="absolute right-4 w-5 h-5 text-white/40 group-hover:text-white transition-colors" />
+                
+                {/* زر المسح عند وجود نص */}
+                {searchTerm && (
+                  <button 
+                    onClick={() => setSearchTerm('')} 
+                    className="absolute left-4 p-1.5 bg-white/10 hover:bg-white/20 rounded-full text-white/70 hover:text-white transition-all scale-in-center"
+                    title="مسح البحث"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+              
+              {/* القسم الأيسر: الفلاتر المكدسة وعداد النتائج */}
+              <div className="flex flex-col gap-2 w-full md:w-64 flex-shrink-0">
+                {/* فلتر المنصات */}
+                <div className="relative group w-full">
+                  <select value={filterPlatform} onChange={(e) => setFilterPlatform(e.target.value)} className="appearance-none w-full p-2.5 rounded-lg bg-[#111] border border-white/10 text-white font-bold text-sm focus:ring-2 focus:outline-none pr-10 transition-all shadow-inner cursor-pointer hover:border-white/30" style={{ '--tw-ring-color': settings.highlightColor, backgroundImage: 'none' }}>
+                    <option value="الكل" className="bg-gray-900">🌐 جميع المنصات</option>
+                    <option value="tiktok" className="bg-gray-900">🎵 تيك توك</option>
+                    <option value="instagram" className="bg-gray-900">📷 انستغرام</option>
+                  </select>
+                  <ChevronDown className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-white/40 group-hover:text-white transition-colors pointer-events-none" />
+                </div>
 
-          {/* 4. العداد */}
-          <div className="w-full lg:w-1/5 flex items-center justify-center lg:justify-end text-white border-t lg:border-t-0 lg:border-r border-white/10 pt-4 lg:pt-0 lg:pr-4">
-            <div className="bg-black/40 px-5 py-2.5 rounded-xl border border-white/5 flex items-center shadow-inner w-full lg:w-auto justify-between lg:justify-start">
-              <span className="text-sm font-bold text-white/60 lg:ml-3">نتائج البحث:</span>
-              <span className="text-3xl font-black drop-shadow-md" style={{ color: `var(--highlight-color-css)` }}>{filteredGridSubmissions.length}</span>
+                {/* فلتر الحلقات */}
+                <div className="relative group w-full">
+                  <select value={filterEpisode} onChange={(e) => setFilterEpisode(e.target.value)} className="appearance-none w-full p-2.5 rounded-lg bg-[#111] border border-white/10 text-white font-bold text-sm focus:ring-2 focus:outline-none pr-10 transition-all shadow-inner cursor-pointer hover:border-white/30" style={{ '--tw-ring-color': settings.highlightColor, backgroundImage: 'none' }}>
+                    <option value="الكل" className="bg-gray-900">📺 جميع الحلقات</option>
+                    {EPISODES.map((ep) => <option key={ep} value={ep} className="bg-gray-900">{ep}</option>)}
+                  </select>
+                  <ChevronDown className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-white/40 group-hover:text-white transition-colors pointer-events-none" />
+                </div>
+
+                {/* العداد */}
+                <div className="w-full flex items-center justify-between text-white mt-1 px-1">
+                  <span className="text-xs font-bold text-white/50">نتائج البحث:</span>
+                  <span className="text-lg font-black drop-shadow-md" style={{ color: `var(--highlight-color-css)` }}>{filteredGridSubmissions.length}</span>
+                </div>
+              </div>
+
             </div>
-          </div>
-        </GlassCard>
+          </GlassCard>
+        </div>
 
         <LiveResultsView approvedSubmissions={leaderboardSubmissions} settings={settings} currentFilter={filterEpisode} currentPlatformFilter={filterPlatform} onDesignerClick={onDesignerClick} />
 
@@ -1230,7 +1288,7 @@ const Home = ({ settings, allSubmissions, totalApproved, onVote, cooldown, setVo
 };
 
 // =========================================================================
-// 5. ADMIN PANEL
+// 5. ADMIN PANELS
 // =========================================================================
 
 const AdminStatsPanel = ({ submissions, settings, isGlassmorphism }) => {
@@ -1326,7 +1384,6 @@ const AdminSubmissionsPanel = ({ submissions, settings, isGlassmorphism, onUpdat
       
       await retryOperation(() => setDoc(doc(db, PUBLIC_SUBMISSIONS_COLLECTION, finalSubmission.id), finalSubmission, { merge: true }));
       
-      // توحيد الهوية: تحديث صور المصمم في مشاركاته السابقة إذا تم تعديلها هنا
       if (finalSubmission.profilePic && finalSubmission.username) {
         const q = query(collection(db, PUBLIC_SUBMISSIONS_COLLECTION), where("username", "==", finalSubmission.username));
         const querySnapshot = await getDocs(q);
@@ -1357,7 +1414,6 @@ const AdminSubmissionsPanel = ({ submissions, settings, isGlassmorphism, onUpdat
          if (match && !['p', 'reel', 'tv'].includes(match[1])) extractedUsername = match[1];
       }
 
-      // جلب البيانات الأساسية من الرابط (الغلاف والوصف والاسم)
       const videoApiUrl = `https://api.microlink.io/?url=${encodeURIComponent(submissionToEdit.videoUrl)}`;
       const videoRes = await fetch(videoApiUrl);
       const videoData = await videoRes.json();
@@ -1376,7 +1432,6 @@ const AdminSubmissionsPanel = ({ submissions, settings, isGlassmorphism, onUpdat
           newParticipantName = videoData.data.author || extractedUsername || newParticipantName;
       }
 
-      // التحقق مما إذا كان هناك صورة بروفايل سابقة وحفظها، وإلا يتم جلبها
       let newProfilePic = submissionToEdit.profilePic;
       
       const existingSubWithPic = submissions.find(s => 
@@ -1388,10 +1443,8 @@ const AdminSubmissionsPanel = ({ submissions, settings, isGlassmorphism, onUpdat
       );
 
       if (existingSubWithPic) {
-          // تثبيت الصورة إذا كانت موجودة مسبقاً
           newProfilePic = existingSubWithPic.profilePic;
       } else if (extractedUsername && extractedUsername !== 'مجهول' && extractedUsername !== '') {
-          // إذا لم تكن موجودة، استخرجها من البروفايل
           const profileUrl = submissionToEdit.platform === 'tiktok' 
                 ? `https://www.tiktok.com/@${extractedUsername}`
                 : `https://www.instagram.com/${extractedUsername}/`;
@@ -1618,7 +1671,7 @@ const AdminSubmissionsPanel = ({ submissions, settings, isGlassmorphism, onUpdat
 };
 
 // =========================================================================
-// 5.B ADMIN LIBRARY PANEL (مكتبة المصممين)
+// 5.B ADMIN LIBRARY PANEL
 // =========================================================================
 
 const AdminLibraryPanel = ({ libraryScenes, isGlassmorphism, settings }) => {
@@ -1709,6 +1762,103 @@ const AdminLibraryPanel = ({ libraryScenes, isGlassmorphism, settings }) => {
                     </td>
                     <td className="p-3 text-left">
                       <button onClick={() => handleDeleteScene(scene.id)} className="p-1.5 bg-red-600/20 text-red-500 rounded-lg hover:bg-red-600 hover:text-white transition-colors border border-red-500/30"><Trash2 className="w-4 h-4"/></button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </GlassCard>
+    </div>
+  );
+};
+
+// =========================================================================
+// 5.C ADMIN STORIES PANEL (الأخبار والستوريات)
+// =========================================================================
+
+const AdminStoriesPanel = ({ stories, isGlassmorphism, settings }) => {
+  const [newStory, setNewStory] = useState({ title: '', imageUrl: '', content: '' });
+  const [isAdding, setIsAdding] = useState(false);
+
+  const handleAddStory = async (e) => {
+    e.preventDefault();
+    if (!newStory.title || !newStory.imageUrl || !newStory.content) return;
+    setIsAdding(true);
+    try {
+      await addDoc(collection(db, PUBLIC_STORIES_COLLECTION), { ...newStory, createdAt: serverTimestamp() });
+      setNewStory({ title: '', imageUrl: '', content: '' });
+    } catch (e) {
+      console.error("Error adding story", e);
+    } finally {
+      setIsAdding(false);
+    }
+  };
+
+  const handleDeleteStory = async (id) => {
+    if (window.confirm('هل أنت متأكد من حذف هذا الخبر/الستوري؟')) {
+      try {
+        await deleteDoc(doc(db, PUBLIC_STORIES_COLLECTION, id));
+      } catch (e) { console.error("Error deleting story", e); }
+    }
+  };
+
+  return (
+    <div className="animate-fade-in space-y-6">
+      <GlassCard isGlassmorphism={isGlassmorphism} color="bg-gray-900" className="p-6">
+        <h3 className="text-xl font-bold text-white mb-4 border-b border-white/10 pb-2">إضافة ستوري جديد (خبر)</h3>
+        <form onSubmit={handleAddStory} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="text-white text-sm mb-1 block">عنوان الخبر (يظهر تحت الدائرة)</label>
+            <input type="text" value={newStory.title} onChange={(e) => setNewStory({...newStory, title: e.target.value})} placeholder="مثال: تحديث جديد" className="w-full p-3 rounded-xl bg-black/40 text-white border border-white/20 focus:ring-2 focus:outline-none transition-all shadow-inner" style={{ '--tw-ring-color': settings.highlightColor }} required />
+          </div>
+          <div>
+            <label className="text-white text-sm mb-1 block flex items-center"><ImageIcon className="w-4 h-4 ml-1 text-blue-400"/> رابط صورة الستوري</label>
+            <input type="url" value={newStory.imageUrl} onChange={(e) => setNewStory({...newStory, imageUrl: e.target.value})} dir="ltr" placeholder="https://..." className="w-full p-3 rounded-xl bg-black/40 text-white border border-white/20 focus:ring-2 focus:outline-none transition-all shadow-inner font-mono text-sm" style={{ '--tw-ring-color': settings.highlightColor }} required />
+          </div>
+          <div className="md:col-span-2">
+            <label className="text-white text-sm mb-1 block">تفاصيل الخبر (تظهر عند النقر على الدائرة)</label>
+            <textarea value={newStory.content} onChange={(e) => setNewStory({...newStory, content: e.target.value})} placeholder="اكتب تفاصيل الخبر هنا..." className="w-full p-3 rounded-xl bg-black/40 text-white border border-white/20 focus:ring-2 focus:outline-none transition-all shadow-inner custom-scrollbar" rows="3" style={{ '--tw-ring-color': settings.highlightColor }} required />
+          </div>
+          
+          <div className="md:col-span-2 pt-2">
+            <button type="submit" disabled={isAdding} className="relative w-full p-4 rounded-xl font-bold text-white transition-all hover:scale-[1.01] shadow-lg overflow-hidden group border border-purple-500/30 bg-gradient-to-r from-purple-600 to-pink-600">
+              <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-in-out"></div>
+              <span className="relative z-10 flex items-center justify-center gap-2">
+                {isAdding ? <Loader className="w-5 h-5 animate-spin"/> : <><Plus className="w-5 h-5"/> نشر الستوري</>}
+              </span>
+            </button>
+          </div>
+        </form>
+      </GlassCard>
+
+      <GlassCard isGlassmorphism={isGlassmorphism} color="bg-gray-900" className="p-6">
+        <h3 className="text-xl font-bold text-white mb-4 border-b border-white/10 pb-2">الستوريات والأخبار الحالية ({stories.length})</h3>
+        <div className="overflow-x-auto">
+          <table className="w-full text-right text-white/80">
+            <thead className="bg-white/5 text-white font-bold border-b border-white/20 text-sm">
+              <tr>
+                <th className="p-3">صورة الستوري</th>
+                <th className="p-3">العنوان والتفاصيل</th>
+                <th className="p-3 text-left">حذف</th>
+              </tr>
+            </thead>
+            <tbody>
+              {stories.length === 0 ? (
+                <tr><td colSpan="3" className="p-6 text-center text-white/50">لا توجد ستوريات مضافة حالياً.</td></tr>
+              ) : (
+                stories.map(story => (
+                  <tr key={story.id} className="border-b border-white/10 hover:bg-white/5 transition-colors">
+                    <td className="p-3">
+                      <img src={story.imageUrl} alt={story.title} className="w-12 h-12 rounded-full object-cover border-2 border-white/20" />
+                    </td>
+                    <td className="p-3">
+                      <p className="font-bold text-white">{story.title}</p>
+                      <p className="text-xs text-white/50 truncate max-w-xs mt-1">{story.content}</p>
+                    </td>
+                    <td className="p-3 text-left">
+                      <button onClick={() => handleDeleteStory(story.id)} className="p-2 bg-red-600/20 text-red-500 rounded-lg hover:bg-red-600 hover:text-white transition-colors border border-red-500/30"><Trash2 className="w-4 h-4"/></button>
                     </td>
                   </tr>
                 ))
@@ -1920,7 +2070,8 @@ const Footer = ({ settings }) => (
 const App = () => {
   const [settings, setSettings] = useState(null);
   const [submissions, setSubmissions] = useState([]);
-  const [libraryScenes, setLibraryScenes] = useState([]); // حالة مكتبة المصممين
+  const [libraryScenes, setLibraryScenes] = useState([]); 
+  const [stories, setStories] = useState([]); // ستوريات آخر الأخبار
   const [loading, setLoading] = useState(true);
   const [adminMode, setAdminMode] = useState(false);
   const [authModalOpen, setAuthModalOpen] = useState(false);
@@ -1940,7 +2091,6 @@ const App = () => {
       document.documentElement.style.setProperty('--highlight-color-css', settings.highlightColor);
       document.documentElement.style.fontFamily = `'${settings.appFont}', system-ui, -apple-system, sans-serif`;
       
-      // Inject global styles for custom scrollbars and animations
       const styleEl = document.createElement('style');
       styleEl.innerHTML = `
         body { background-color: #050505; color: #ffffff; }
@@ -1975,14 +2125,6 @@ const App = () => {
         const settingsDocRef = doc(db, PUBLIC_SETTINGS_PATH);
         const settingsSnap = await retryOperation(() => getDoc(settingsDocRef));
         if (!settingsSnap.exists()) await retryOperation(() => setDoc(settingsDocRef, DEFAULT_SETTINGS));
-
-        const subColRef = collection(db, PUBLIC_SUBMISSIONS_COLLECTION);
-        const subSnap = await retryOperation(() => getDocs(query(subColRef, limit(1))));
-        if (subSnap.empty) {
-          for (const sub of MOCK_SUBMISSIONS) {
-            await retryOperation(() => setDoc(doc(db, PUBLIC_SUBMISSIONS_COLLECTION, sub.id), { ...sub, submittedAt: serverTimestamp() }));
-          }
-        }
       } catch (e) { console.error('Init Error', e); }
       setLoading(false);
     };
@@ -2000,8 +2142,11 @@ const App = () => {
     const unsubscribeLibrary = onSnapshot(collection(db, PUBLIC_LIBRARY_COLLECTION), (snapshot) => {
         setLibraryScenes(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })).sort((a,b) => b.createdAt - a.createdAt));
     });
+    const unsubscribeStories = onSnapshot(collection(db, PUBLIC_STORIES_COLLECTION), (snapshot) => {
+        setStories(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })).sort((a,b) => b.createdAt - a.createdAt));
+    });
 
-    return () => { unsubscribeSettings(); unsubscribeSubmissions(); unsubscribeLibrary(); };
+    return () => { unsubscribeSettings(); unsubscribeSubmissions(); unsubscribeLibrary(); unsubscribeStories(); };
   }, [isAuthReady]);
 
   useEffect(() => {
@@ -2095,6 +2240,7 @@ const App = () => {
                  <button onClick={() => setAdminActiveTab('stats')} className={`flex-1 py-4 px-6 font-black text-lg transition-all rounded-xl whitespace-nowrap ${adminActiveTab === 'stats' ? 'bg-white/10 shadow-md text-white' : 'text-white/50 hover:bg-white/5 hover:text-white'}`} style={{ color: adminActiveTab === 'stats' ? settings.highlightColor : undefined }}>📊 الإحصائيات العامة</button>
                  <button onClick={() => setAdminActiveTab('subs')} className={`flex-1 py-4 px-6 font-black text-lg transition-all rounded-xl whitespace-nowrap ${adminActiveTab === 'subs' ? 'bg-white/10 shadow-md text-white' : 'text-white/50 hover:bg-white/5 hover:text-white'}`} style={{ color: adminActiveTab === 'subs' ? settings.highlightColor : undefined }}>🎬 إدارة المشاركات والطلبات</button>
                  <button onClick={() => setAdminActiveTab('library')} className={`flex-1 py-4 px-6 font-black text-lg transition-all rounded-xl whitespace-nowrap ${adminActiveTab === 'library' ? 'bg-white/10 shadow-md text-white' : 'text-white/50 hover:bg-white/5 hover:text-white'}`} style={{ color: adminActiveTab === 'library' ? settings.highlightColor : undefined }}>🎞️ إدارة المكتبة</button>
+                 <button onClick={() => setAdminActiveTab('stories')} className={`flex-1 py-4 px-6 font-black text-lg transition-all rounded-xl whitespace-nowrap ${adminActiveTab === 'stories' ? 'bg-white/10 shadow-md text-white' : 'text-white/50 hover:bg-white/5 hover:text-white'}`} style={{ color: adminActiveTab === 'stories' ? settings.highlightColor : undefined }}>📰 الأخبار والستوريات</button>
                  <button onClick={() => setAdminActiveTab('settings')} className={`flex-1 py-4 px-6 font-black text-lg transition-all rounded-xl whitespace-nowrap ${adminActiveTab === 'settings' ? 'bg-white/10 shadow-md text-white' : 'text-white/50 hover:bg-white/5 hover:text-white'}`} style={{ color: adminActiveTab === 'settings' ? settings.highlightColor : undefined }}>⚙️ إعدادات وتخصيص الموقع</button>
                </div>
 
@@ -2102,6 +2248,7 @@ const App = () => {
                  {adminActiveTab === 'stats' && <AdminStatsPanel submissions={submissions} settings={settings} isGlassmorphism={settings.useGlassmorphism} />}
                  {adminActiveTab === 'subs' && <AdminSubmissionsPanel submissions={submissions} settings={settings} isGlassmorphism={settings.useGlassmorphism} onUpdateSubmissionStatus={async (id, s) => { await updateDoc(doc(db, PUBLIC_SUBMISSIONS_COLLECTION, id), {status: s}) }} onDeleteSubmission={handleDeleteSubmission} onResetVotes={handleResetVotes} />}
                  {adminActiveTab === 'library' && <AdminLibraryPanel libraryScenes={libraryScenes} settings={settings} isGlassmorphism={settings.useGlassmorphism} />}
+                 {adminActiveTab === 'stories' && <AdminStoriesPanel stories={stories} settings={settings} isGlassmorphism={settings.useGlassmorphism} />}
                  {adminActiveTab === 'settings' && <AdminSettingsPanel settings={settings} isGlassmorphism={settings.useGlassmorphism} onSaveSettings={async (newSet) => { await setDoc(doc(db, PUBLIC_SETTINGS_PATH), newSet) }} />}
                </div>
             </>
@@ -2118,7 +2265,7 @@ const App = () => {
                 />
               ) : (
                 <>
-                  {activeView === 'home' && <Home settings={settings} allSubmissions={submissions} totalApproved={submissions.filter(s=>s.status==='Approved').length} onVote={(sub) => cooldown > 0 ? null : setVoteConfirmData(sub)} cooldown={cooldown} setVoteConfirmData={setVoteConfirmData} onDesignerClick={handleDesignerClick} />}
+                  {activeView === 'home' && <Home settings={settings} allSubmissions={submissions} totalApproved={submissions.filter(s=>s.status==='Approved').length} onVote={(sub) => cooldown > 0 ? null : setVoteConfirmData(sub)} cooldown={cooldown} setVoteConfirmData={setVoteConfirmData} onDesignerClick={handleDesignerClick} stories={stories} />}
                   {activeView === 'submit' && <SubmissionForm settings={settings} userId={userId} allSubmissions={submissions} />}
                   {activeView === 'library' && <DesignersLibrary settings={settings} libraryScenes={libraryScenes} />}
                 </>
@@ -2132,7 +2279,7 @@ const App = () => {
         {/* نافذة "حول المسابقة / عني" */}
         <Modal isOpen={isAboutModalOpen} onClose={() => setIsAboutModalOpen(false)} title="" isGlassmorphism={true} maxWidth="max-w-xl">
            <div className="flex flex-col items-center justify-center p-4 sm:p-8 text-center relative mt-2">
-              
+             
               <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full h-full bg-white/5 rounded-full blur-3xl opacity-30 pointer-events-none" style={{ backgroundColor: settings.highlightColor }}></div>
 
               <div className="w-28 h-28 bg-black/60 backdrop-blur-md rounded-full flex items-center justify-center mb-6 border-4 shadow-[0_0_30px_rgba(0,0,0,0.5)] relative z-10 transform hover:scale-110 transition-transform duration-500" style={{ borderColor: settings.highlightColor }}>

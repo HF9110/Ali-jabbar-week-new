@@ -1178,6 +1178,7 @@ const Home = ({ settings, allSubmissions, totalApproved, onVote, cooldown, setVo
                 <div className="relative group w-full">
                   <select value={filterEpisode} onChange={(e) => setFilterEpisode(e.target.value)} className="appearance-none w-full p-2.5 rounded-lg bg-[#111] border border-white/10 text-white font-bold text-sm focus:ring-2 focus:outline-none pr-10 transition-all shadow-inner cursor-pointer hover:border-white/30" style={{ '--tw-ring-color': settings.highlightColor, backgroundImage: 'none' }}>
                     <option value="الكل" className="bg-gray-900">📺 جميع الحلقات</option>
+                    <option value="الكل" className="bg-gray-900">📺 جميع الحلقات</option>
                     {EPISODES.map((ep) => <option key={ep} value={ep} className="bg-gray-900">{ep}</option>)}
                   </select>
                   <ChevronDown className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-white/40 group-hover:text-white transition-colors pointer-events-none" />
@@ -1437,34 +1438,22 @@ const AdminSubmissionsPanel = ({ submissions, settings, isGlassmorphism, onUpdat
     } catch (e) { console.error("Error updating", e); }
   };
 
-  // دالة وسيطة (Proxy) قوية لتخطي حظر المنصات (CORS) وجلب البيانات الخام
-  const fetchViaProxy = async (targetUrl) => {
-    try {
-      const response = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`);
-      if (!response.ok) return null;
-      const data = await response.json();
-      return data.contents;
-    } catch (e) {
-      console.error("Proxy fetch error:", e);
-      return null;
-    }
-  };
-
   const handleAutoExtract = async () => {
     if (!submissionToEdit || !submissionToEdit.videoUrl) return;
     setExtractLoading(true);
 
     try {
-      const videoUrl = submissionToEdit.videoUrl;
-      const isTikTok = videoUrl.includes('tiktok.com');
-      const isInsta = videoUrl.includes('instagram.com');
-
       let extractedUsername = submissionToEdit.username || '';
       let newParticipantName = submissionToEdit.participantName !== 'في انتظار المراجعة' ? submissionToEdit.participantName : '';
       let newDesc = submissionToEdit.description !== 'سيتم إضافة التفاصيل والصور من قبل الإدارة قريباً.' ? submissionToEdit.description : '';
       let newThumb = submissionToEdit.thumbnailUrl;
+      let newProfilePic = submissionToEdit.profilePic;
 
-      // 1. استخراج اليوزر المبدئي من الرابط باستخدام Regex
+      const videoUrl = submissionToEdit.videoUrl;
+      const isTikTok = videoUrl.includes('tiktok');
+      const isInsta = videoUrl.includes('instagram');
+
+      // 1. استخراج اليوزر عن طريق Regex (لحظي وسريع جداً كخطة أولى)
       if (isTikTok) {
          const match = videoUrl.match(/@([a-zA-Z0-9_.-]+)/);
          if (match) extractedUsername = match[1];
@@ -1475,55 +1464,97 @@ const AdminSubmissionsPanel = ({ submissions, settings, isGlassmorphism, onUpdat
          }
       }
 
-      // 2. جلب البيانات باستخدام وسيط لتخطي حظر المنصات
-      if (isTikTok) {
-          const oembedUrl = `https://www.tiktok.com/oembed?url=${encodeURIComponent(videoUrl)}`;
-          const responseData = await fetchViaProxy(oembedUrl);
-          if (responseData) {
-              try {
-                  const jsonData = JSON.parse(responseData);
-                  if (jsonData.title) newDesc = jsonData.title;
-                  if (jsonData.author_name) newParticipantName = jsonData.author_name;
-                  if (jsonData.thumbnail_url) newThumb = jsonData.thumbnail_url;
-                  if (jsonData.author_unique_id && !extractedUsername) extractedUsername = jsonData.author_unique_id;
-              } catch(e) { console.error("JSON parse error for TikTok", e); }
-          }
-      } else if (isInsta) {
-          const htmlData = await fetchViaProxy(videoUrl);
-          if (htmlData) {
-              const titleMatch = htmlData.match(/<meta property="og:title" content="([^"]+)"/i) || htmlData.match(/<meta name="twitter:title" content="([^"]+)"/i);
-              const descMatch = htmlData.match(/<meta property="og:description" content="([^"]+)"/i);
-              const imgMatch = htmlData.match(/<meta property="og:image" content="([^"]+)"/i);
+      let metaData = null;
 
-              if (titleMatch && !newParticipantName) {
-                  newParticipantName = titleMatch[1].split(' on Instagram')[0].split(' (@')[0];
-              }
-              if (descMatch && !newDesc) {
-                  let rawDesc = descMatch[1];
-                  if (rawDesc.includes(' - ')) rawDesc = rawDesc.split(' - ')[1];
-                  newDesc = rawDesc.replace(/&quot;/g, '"');
-              }
-              if (imgMatch) newThumb = imgMatch[1].replace(/&amp;/g, '&');
+      // دالة مساعدة مع Timeout لمنع تعليق النظام أكثر من 5 ثواني
+      const fetchMetaWithTimeout = async (url, timeout = 5000) => {
+          const controller = new AbortController();
+          const id = setTimeout(() => controller.abort(), timeout);
+          try {
+              const res = await fetch(url, { signal: controller.signal });
+              clearTimeout(id);
+              if (!res.ok) throw new Error('Network response was not ok');
+              return await res.json();
+          } catch (err) {
+              clearTimeout(id);
+              return null; // إذا فشل أو تأخر، نرجع null ونتجاوزه
+          }
+      };
+
+      // 2. استخدام واجهة TikTok عبر Proxy لتجاوز حظر المتصفحات (CORS)
+      if (isTikTok) {
+          const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(`https://www.tiktok.com/oembed?url=${videoUrl}`)}`;
+          const proxyData = await fetchMetaWithTimeout(proxyUrl);
+          
+          if (proxyData && proxyData.contents) {
+              try {
+                  const ttData = JSON.parse(proxyData.contents);
+                  metaData = {
+                      title: ttData.title,
+                      author: ttData.author_name,
+                      thumbnail: ttData.thumbnail_url
+                  };
+              } catch(e) { console.log("Failed to parse TikTok data"); }
           }
       }
 
-      // 3. تنظيف البيانات ومعالجة الحقول الفارغة كحل بديل
-      if (!extractedUsername) extractedUsername = newParticipantName.replace(/\s+/g, '').toLowerCase() || 'user_' + Math.floor(Math.random() * 10000);
-      if (!newParticipantName) newParticipantName = extractedUsername;
-      if (!newDesc) newDesc = 'تصميم رمضاني مميز للمسلسل.';
-      if (newDesc.includes('•')) newDesc = newDesc.replace(/•/g, '').trim();
+      // 3. استخدام Microlink كحل بديل للانستغرام أو تيك توك (مع نظام الـ Timeout)
+      if (!metaData) {
+          const microlinkData = await fetchMetaWithTimeout(`https://api.microlink.io/?url=${encodeURIComponent(videoUrl)}`, 6000);
+          if (microlinkData && microlinkData.status === 'success' && microlinkData.data) {
+              metaData = {
+                  title: microlinkData.data.description || microlinkData.data.title,
+                  author: microlinkData.data.author,
+                  thumbnail: microlinkData.data.image?.url || microlinkData.data.logo?.url
+              };
+          }
+      }
+
+      // 4. تطبيق البيانات المستخرجة
+      if (metaData) {
+          if (metaData.title && (!newDesc || newDesc === 'تصميم رمضاني مميز للمسلسل.')) newDesc = metaData.title;
+          if (metaData.thumbnail && (newThumb.includes('placehold') || !newThumb)) newThumb = metaData.thumbnail;
+          if (metaData.author) {
+              const cleanAuthor = metaData.author.replace('@', '');
+              if (!extractedUsername) extractedUsername = cleanAuthor;
+              if (!newParticipantName || newParticipantName === 'في انتظار المراجعة') newParticipantName = cleanAuthor;
+          }
+      }
+
+      // 5. حلول نهائية لتجنب الحقول الفارغة
+      if (!extractedUsername) extractedUsername = 'user_' + Math.floor(Math.random() * 10000);
+      if (!newParticipantName || newParticipantName === 'في انتظار المراجعة') newParticipantName = extractedUsername;
+      if (!newDesc || newDesc === 'سيتم إضافة التفاصيل والصور من قبل الإدارة قريباً.') newDesc = 'تصميم مميز للمسلسل.';
+      
+      if (newDesc && newDesc.includes('•')) newDesc = newDesc.replace(/•/g, '').trim();
+
+      // 6. التحقق من وجود صورة قديمة للمصمم في قاعدة البيانات
+      const existingSubWithPic = submissions.find(s => 
+          s.username === extractedUsername && 
+          s.id !== submissionToEdit.id && 
+          s.profilePic && 
+          !s.profilePic.includes('ui-avatars') && 
+          !s.profilePic.includes('placehold')
+      );
+
+      if (existingSubWithPic) {
+          newProfilePic = existingSubWithPic.profilePic;
+      } else if (!newProfilePic || newProfilePic.includes('placehold') || newProfilePic === '') {
+          newProfilePic = generateAvatar(newParticipantName);
+      }
 
       setSubmissionToEdit(prev => ({
           ...prev,
           username: extractedUsername,
           participantName: newParticipantName,
           description: newDesc,
-          thumbnailUrl: newThumb
+          thumbnailUrl: newThumb,
+          profilePic: newProfilePic
       }));
 
     } catch (err) {
        console.error("Extraction error:", err);
-       alert('حدث خطأ أثناء الاستخراج. تأكد من صحة الرابط وأن المنشور عام.');
+       alert('حدث خطأ أثناء الاستخراج. قد يكون الرابط خاصاً أو محمياً من قبل المنصة.');
     } finally {
        setExtractLoading(false);
     }
@@ -1536,33 +1567,34 @@ const AdminSubmissionsPanel = ({ submissions, settings, isGlassmorphism, onUpdat
     }
     setProfileExtractLoading(true);
     try {
-      const username = submissionToEdit.username;
-      const isTikTok = submissionToEdit.platform === 'tiktok' || (submissionToEdit.videoUrl && submissionToEdit.videoUrl.includes('tiktok'));
-      
-      const profileUrl = isTikTok 
-          ? `https://www.tiktok.com/@${username}`
-          : `https://www.instagram.com/${username}/`;
+      const profileUrl = submissionToEdit.platform === 'tiktok' 
+          ? `https://www.tiktok.com/@${submissionToEdit.username}`
+          : `https://www.instagram.com/${submissionToEdit.username}/`;
           
-      const htmlData = await fetchViaProxy(profileUrl);
-      let picUrl = '';
-
-      if (htmlData) {
-          const imgMatch = htmlData.match(/<meta property="og:image" content="([^"]+)"/i);
-          if (imgMatch && imgMatch[1]) {
-              picUrl = imgMatch[1].replace(/&amp;/g, '&');
+      // إضافة AbortController لإنهاء الطلب إذا تأخرت الاستجابة أكثر من 6 ثوانٍ
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 6000);
+      
+      const profileRes = await fetch(`https://api.microlink.io/?url=${encodeURIComponent(profileUrl)}`, { signal: controller.signal });
+      clearTimeout(timeoutId);
+      
+      if (!profileRes.ok) throw new Error('Failed to fetch from Microlink');
+      
+      const profileData = await profileRes.json();
+      
+      if (profileData.status === 'success' && profileData.data) {
+          const picUrl = profileData.data.image?.url || profileData.data.logo?.url;
+          if (picUrl) {
+              setSubmissionToEdit(prev => ({...prev, profilePic: picUrl}));
+          } else {
+              alert('لم يتم العثور على صورة شخصية متاحة للعامة.');
           }
-      }
-
-      if (picUrl && !picUrl.includes('150x150')) {
-          setSubmissionToEdit(prev => ({...prev, profilePic: picUrl}));
       } else {
-          const avatarUrl = generateAvatar(submissionToEdit.participantName || username);
-          setSubmissionToEdit(prev => ({...prev, profilePic: avatarUrl}));
-          alert('تم تعيين صورة افتراضية. لم نتمكن من جلب الصورة الشخصية لأن الحساب قد يكون خاصاً أو محمياً.');
+          alert('فشل في العثور على الصورة الشخصية.');
       }
     } catch(e) {
-      console.error("Profile pic fetch error:", e);
-      alert('فشل الاتصال لجلب الصورة الشخصية.');
+      console.error(e);
+      alert('انتهى وقت الطلب أو فشل الاتصال. تأكد أن الحساب ليس خاصاً.');
     } finally {
       setProfileExtractLoading(false);
     }
@@ -1708,7 +1740,7 @@ const AdminSubmissionsPanel = ({ submissions, settings, isGlassmorphism, onUpdat
                      <label className="text-white/80 text-sm font-bold mb-2 flex items-center justify-between">
                        <span>رابط الصورة الشخصية</span>
                        <div className="flex items-center gap-2">
-                         <button type="button" onClick={handleExtractProfilePic} disabled={profileExtractLoading} className="text-xs bg-blue-500/20 text-blue-400 px-2 py-1 rounded hover:bg-blue-500 hover:text-white transition-colors cursor-pointer border border-blue-500/30">
+                         <button type="button" onClick={handleExtractProfilePic} disabled={profileExtractLoading} className="text-xs bg-blue-500/20 text-blue-400 px-2 py-1 rounded hover:bg-blue-500 hover:text-white transition-colors cursor-pointer">
                            {profileExtractLoading ? 'جاري...' : 'جلب الصورة 🔄'}
                          </button>
                          {submissionToEdit.profilePic && <img src={submissionToEdit.profilePic} className="w-8 h-8 rounded-full object-cover border-2 border-white/20 shadow-sm" alt="" />}

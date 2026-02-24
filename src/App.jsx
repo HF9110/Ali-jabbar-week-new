@@ -1407,6 +1407,7 @@ const AdminSubmissionsPanel = ({ submissions, settings, isGlassmorphism, onUpdat
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [confirmAction, setConfirmAction] = useState(null);
   const [extractLoading, setExtractLoading] = useState(false);
+  const [profileExtractLoading, setProfileExtractLoading] = useState(false);
 
   const filteredSubmissions = useMemo(() => {
     let list = submissions.filter((sub) => sub.status === activeTab);
@@ -1464,24 +1465,22 @@ const AdminSubmissionsPanel = ({ submissions, settings, isGlassmorphism, onUpdat
 
       let metaData = null;
 
-      // 2. استخدام Noembed API (ممتاز لتيك توك)
-      try {
-          const noembedRes = await fetch(`https://noembed.com/embed?url=${encodeURIComponent(videoUrl)}`);
-          if (noembedRes.ok) {
-              const noembedData = await noembedRes.json();
-              if (!noembedData.error) {
+      // 2. استخدام واجهة TikTok الرسمية (سريعة ومضمونة لصورة الغلاف)
+      if (isTikTok) {
+          try {
+              const ttRes = await fetch(`https://www.tiktok.com/oembed?url=${encodeURIComponent(videoUrl)}`);
+              if (ttRes.ok) {
+                  const ttData = await ttRes.json();
                   metaData = {
-                      title: noembedData.title,
-                      author: noembedData.author_name,
-                      thumbnail: noembedData.thumbnail_url
+                      title: ttData.title,
+                      author: ttData.author_name,
+                      thumbnail: ttData.thumbnail_url
                   };
               }
-          }
-      } catch (e) {
-          console.log("Noembed fallback");
+          } catch (e) { console.log("TT oEmbed failed"); }
       }
 
-      // 3. استخدام Microlink كحل بديل
+      // 3. استخدام Microlink كحل بديل للانستغرام أو في حال فشل تيك توك
       if (!metaData) {
           try {
               const microlinkRes = await fetch(`https://api.microlink.io/?url=${encodeURIComponent(videoUrl)}`);
@@ -1495,15 +1494,13 @@ const AdminSubmissionsPanel = ({ submissions, settings, isGlassmorphism, onUpdat
                       };
                   }
               }
-          } catch (e) {
-              console.log("Microlink fallback");
-          }
+          } catch (e) { console.log("Microlink fallback failed"); }
       }
 
       // 4. تطبيق البيانات المستخرجة
       if (metaData) {
           if (metaData.title && !newDesc) newDesc = metaData.title;
-          if (metaData.thumbnail && newThumb.includes('placehold')) newThumb = metaData.thumbnail;
+          if (metaData.thumbnail && (newThumb.includes('placehold') || !newThumb)) newThumb = metaData.thumbnail;
           if (metaData.author) {
               const cleanAuthor = metaData.author.replace('@', '');
               if (!extractedUsername) extractedUsername = cleanAuthor;
@@ -1511,15 +1508,14 @@ const AdminSubmissionsPanel = ({ submissions, settings, isGlassmorphism, onUpdat
           }
       }
 
-      // 5. حلول نهائية في حال فشل كل الواجهات (لضمان عمل النظام)
+      // 5. حلول نهائية لتجنب الحقول الفارغة
       if (!extractedUsername) extractedUsername = 'user_' + Math.floor(Math.random() * 10000);
       if (!newParticipantName) newParticipantName = extractedUsername;
       if (!newDesc) newDesc = 'تصميم رمضاني مميز للمسلسل.';
       
-      // تنظيف الوصف من النقاط الإضافية
       if (newDesc && newDesc.includes('•')) newDesc = newDesc.replace(/•/g, '').trim();
 
-      // 6. جلب الصورة الشخصية من المشاركات السابقة لنفس المصمم
+      // 6. التحقق مما إذا كان المصمم قد شارك مسبقاً لجلب صورته القديمة (ولكن لا نقوم بجلب جديد من النت هنا)
       const existingSubWithPic = submissions.find(s => 
           s.username === extractedUsername && 
           s.id !== submissionToEdit.id && 
@@ -1534,7 +1530,6 @@ const AdminSubmissionsPanel = ({ submissions, settings, isGlassmorphism, onUpdat
           newProfilePic = generateAvatar(newParticipantName);
       }
 
-      // تحديث واجهة الإدارة بالبيانات المستخرجة
       setSubmissionToEdit(prev => ({
           ...prev,
           username: extractedUsername,
@@ -1549,6 +1544,36 @@ const AdminSubmissionsPanel = ({ submissions, settings, isGlassmorphism, onUpdat
        alert('حدث خطأ أثناء الاستخراج. قد يكون الرابط خاصاً أو محمياً من قبل المنصة.');
     } finally {
        setExtractLoading(false);
+    }
+  };
+
+  const handleExtractProfilePic = async () => {
+    if (!submissionToEdit.username) {
+      alert('الرجاء التأكد من وجود اليوزر (Username) أولاً لجلب الصورة الشخصية.');
+      return;
+    }
+    setProfileExtractLoading(true);
+    try {
+      const profileUrl = submissionToEdit.platform === 'tiktok' 
+          ? `https://www.tiktok.com/@${submissionToEdit.username}`
+          : `https://www.instagram.com/${submissionToEdit.username}/`;
+          
+      const profileRes = await fetch(`https://api.microlink.io/?url=${encodeURIComponent(profileUrl)}`);
+      const profileData = await profileRes.json();
+      
+      if (profileData.status === 'success' && profileData.data) {
+          const picUrl = profileData.data.image?.url || profileData.data.logo?.url;
+          if (picUrl) {
+              setSubmissionToEdit(prev => ({...prev, profilePic: picUrl}));
+          } else {
+              alert('لم يتم العثور على صورة شخصية متاحة للعامة.');
+          }
+      }
+    } catch(e) {
+      console.error(e);
+      alert('فشل الاتصال بالخادم لجلب الصورة الشخصية.');
+    } finally {
+      setProfileExtractLoading(false);
     }
   };
 
@@ -1690,8 +1715,13 @@ const AdminSubmissionsPanel = ({ submissions, settings, isGlassmorphism, onUpdat
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                   <div>
                      <label className="text-white/80 text-sm font-bold mb-2 flex items-center justify-between">
-                       رابط الصورة الشخصية
-                       {submissionToEdit.profilePic && <img src={submissionToEdit.profilePic} className="w-8 h-8 rounded-full object-cover border-2 border-white/20 shadow-sm" alt="" />}
+                       <span>رابط الصورة الشخصية</span>
+                       <div className="flex items-center gap-2">
+                         <button type="button" onClick={handleExtractProfilePic} disabled={profileExtractLoading} className="text-xs bg-blue-500/20 text-blue-400 px-2 py-1 rounded hover:bg-blue-500 hover:text-white transition-colors cursor-pointer">
+                           {profileExtractLoading ? 'جاري...' : 'جلب الصورة 🔄'}
+                         </button>
+                         {submissionToEdit.profilePic && <img src={submissionToEdit.profilePic} className="w-8 h-8 rounded-full object-cover border-2 border-white/20 shadow-sm" alt="" />}
+                       </div>
                      </label>
                      <input type="url" value={submissionToEdit.profilePic || ''} onChange={(e) => setSubmissionToEdit({...submissionToEdit, profilePic: e.target.value})} dir="ltr" className="w-full p-4 rounded-xl bg-black/50 text-white border border-white/10 focus:ring-2 focus:outline-none transition-all shadow-inner text-sm font-mono" style={{ '--tw-ring-color': settings.highlightColor }} />
                   </div>
